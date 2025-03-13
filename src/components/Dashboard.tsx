@@ -7,6 +7,9 @@ import PriceChart from './PriceChart';
 import TradeList from './TradeList';
 import BlacklistManager from './BlacklistManager';
 import ConfigPanel from './ConfigPanel';
+import AILearningSystem from './AILearningSystem';
+import TechnicalAnalysisConfig from './TechnicalAnalysisConfig';
+import AgentActivityMonitor from './AgentActivityMonitor';
 
 const generateRandomData = (points: number) => {
   return Array.from({ length: points }).map(() => ({
@@ -95,16 +98,25 @@ const Dashboard = () => {
             </div>
           </div>
           
+          <div className="grid grid-cols-1 gap-6">
+            <AgentActivityMonitor />
+          </div>
+          
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <PriceChart height={300} />
             <TradeList />
           </div>
           
+          <div className="grid grid-cols-1 gap-6">
+            <AILearningSystem />
+          </div>
+          
           <BlacklistManager />
         </div>
         
-        <div className="lg:col-span-1">
+        <div className="lg:col-span-1 space-y-6">
           <ConfigPanel />
+          <TechnicalAnalysisConfig />
         </div>
       </div>
     </div>

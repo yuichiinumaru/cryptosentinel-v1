@@ -1,82 +1,53 @@
 
-import { useEffect, useState } from 'react';
+import { useState, useEffect, CSSProperties } from 'react';
 
-// Creates a staggered array of delays for animations
-export const getStaggeredDelay = (index: number, baseDelay: number = 50): number => {
-  return index * baseDelay;
+type FadeInStyle = {
+  opacity: number;
+  transform: string;
 };
 
-// Hook for creating fade-in animations
-export const useFadeIn = (delay: number = 0) => {
-  const [style, setStyle] = useState({ 
-    opacity: 0, 
-    transform: 'translateY(10px)' 
+export const useFadeIn = (delay: number = 0): CSSProperties => {
+  const [style, setStyle] = useState<FadeInStyle>({
+    opacity: 0,
+    transform: 'translateY(20px)'
   });
 
   useEffect(() => {
-    const timer = setTimeout(() => {
+    const timeout = setTimeout(() => {
       setStyle({
         opacity: 1,
-        transform: 'translateY(0)',
-        transition: 'opacity 0.5s ease, transform 0.5s ease'
+        transform: 'translateY(0)'
       });
     }, delay);
     
-    return () => clearTimeout(timer);
+    return () => clearTimeout(timeout);
   }, [delay]);
 
-  return style;
+  return {
+    opacity: style.opacity,
+    transform: style.transform,
+    transition: 'opacity 0.5s ease-out, transform 0.5s ease-out'
+  } as CSSProperties;
 };
 
-// Hook for reveal on scroll
-export const useRevealOnScroll = (
-  threshold: number = 0.1
-): [React.RefObject<HTMLDivElement>, boolean] => {
-  const [isVisible, setIsVisible] = useState(false);
-  const ref = React.createRef<HTMLDivElement>();
-
+export const useTypingEffect = (text: string, speed: number = 50): string => {
+  const [displayedText, setDisplayedText] = useState('');
+  
   useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setIsVisible(true);
-          if (ref.current) observer.unobserve(ref.current);
-        }
-      },
-      { threshold }
-    );
-
-    if (ref.current) {
-      observer.observe(ref.current);
-    }
-
-    return () => {
-      if (ref.current) observer.unobserve(ref.current);
-    };
-  }, [ref, threshold]);
-
-  return [ref, isVisible];
-};
-
-// Utility for applying blur effects when elements enter/exit
-export const blurTransition = (isEntering: boolean) => {
-  return {
-    initial: { filter: 'blur(8px)', opacity: 0 },
-    animate: isEntering 
-      ? { filter: 'blur(0px)', opacity: 1 } 
-      : { filter: 'blur(8px)', opacity: 0 },
-    transition: { duration: 0.4, ease: 'easeOut' }
-  };
-};
-
-export const slideUpTransition = (delay: number = 0) => {
-  return {
-    initial: { y: 20, opacity: 0 },
-    animate: { y: 0, opacity: 1 },
-    transition: { 
-      duration: 0.4, 
-      ease: [0.25, 0.1, 0.25, 1.0], 
-      delay: delay / 1000 
-    }
-  };
+    let currentIndex = 0;
+    setDisplayedText('');
+    
+    const interval = setInterval(() => {
+      if (currentIndex < text.length) {
+        setDisplayedText(prev => prev + text.charAt(currentIndex));
+        currentIndex++;
+      } else {
+        clearInterval(interval);
+      }
+    }, speed);
+    
+    return () => clearInterval(interval);
+  }, [text, speed]);
+  
+  return displayedText;
 };
