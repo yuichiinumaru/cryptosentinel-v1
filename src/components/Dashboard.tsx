@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Activity, TrendingUp, ShieldAlert, Brain, Zap } from 'lucide-react';
 import { useFadeIn } from '@/utils/animations';
@@ -10,6 +9,7 @@ import ConfigPanel from './ConfigPanel';
 import AILearningSystem from './AILearningSystem';
 import TechnicalAnalysisConfig from './TechnicalAnalysisConfig';
 import AgentActivityMonitor from './AgentActivityMonitor';
+import ChatWithAgent from './ChatWithAgent';
 
 const generateRandomData = (points: number) => {
   return Array.from({ length: points }).map(() => ({
@@ -117,6 +117,7 @@ const Dashboard = () => {
         <div className="lg:col-span-1 space-y-6">
           <ConfigPanel />
           <TechnicalAnalysisConfig />
+          <ChatWithAgent />
         </div>
       </div>
     </div>

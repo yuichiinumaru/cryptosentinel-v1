@@ -51,3 +51,8 @@ export const useTypingEffect = (text: string, speed: number = 50): string => {
   
   return displayedText;
 };
+
+// Add getStaggeredDelay function
+export const getStaggeredDelay = (index: number, baseDelay: number = 50): number => {
+  return baseDelay * index;
+};
