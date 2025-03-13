@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Activity, TrendingUp, ShieldAlert, Brain, Zap } from 'lucide-react';
 import { useFadeIn } from '@/utils/animations';
@@ -6,10 +7,12 @@ import PriceChart from './PriceChart';
 import TradeList from './TradeList';
 import BlacklistManager from './BlacklistManager';
 import ConfigPanel from './ConfigPanel';
-import AILearningSystem from './AILearningSystem';
 import TechnicalAnalysisConfig from './TechnicalAnalysisConfig';
+import AILearningSystem from './AILearningSystem';
 import AgentActivityMonitor from './AgentActivityMonitor';
 import ChatWithAgent from './ChatWithAgent';
+import WalletConnection from './WalletConnection';
+import FundsDashboard from './FundsDashboard';
 
 const generateRandomData = (points: number) => {
   return Array.from({ length: points }).map(() => ({
@@ -70,6 +73,8 @@ const Dashboard = () => {
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
+          <FundsDashboard />
+          
           <div className="glass-panel rounded-lg p-4">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-lg font-medium">Hot Opportunities</h2>
@@ -115,6 +120,7 @@ const Dashboard = () => {
         </div>
         
         <div className="lg:col-span-1 space-y-6">
+          <WalletConnection />
           <ConfigPanel />
           <TechnicalAnalysisConfig />
           <ChatWithAgent />

@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Brain, TrendingUp, Activity, Zap, BarChart3, BarChart2, LineChart, GitBranch } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
@@ -35,7 +36,6 @@ const TechnicalAnalysisConfig = () => {
           <Switch 
             checked={true} 
             onCheckedChange={() => {}} 
-            size="sm"
           />
         </div>
       </div>
