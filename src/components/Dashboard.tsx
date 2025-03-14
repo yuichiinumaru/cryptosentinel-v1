@@ -1,188 +1,105 @@
 
-import { useState, useEffect } from 'react';
-import { Activity, TrendingUp, ShieldAlert, Brain, Zap } from 'lucide-react';
-import { useFadeIn } from '@/utils/animations';
-import MetricsCard from './MetricsCard';
-import PriceChart from './PriceChart';
-import TradeList from './TradeList';
-import BlacklistManager from './BlacklistManager';
-import ConfigPanel from './ConfigPanel';
-import TechnicalAnalysisConfig from './TechnicalAnalysisConfig';
-import AILearningSystem from './AILearningSystem';
-import AgentActivityMonitor from './AgentActivityMonitor';
-import ChatWithAgent from './ChatWithAgent';
-import WalletConnection from './WalletConnection';
-import FundsDashboard from './FundsDashboard';
-
-const generateRandomData = (points: number) => {
-  return Array.from({ length: points }).map(() => ({
-    value: Math.floor(Math.random() * 100)
-  }));
-};
+import { useState } from "react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import AgentActivityMonitor from "./AgentActivityMonitor";
+import ConfigPanel from "./ConfigPanel";
+import FundsDashboard from "./FundsDashboard";
+import TechnicalAnalysisConfig from "./TechnicalAnalysisConfig";
+import PriceChart from "./PriceChart";
+import TradeList from "./TradeList";
+import StatusIndicator from "./StatusIndicator";
+import NewsFeed from "./NewsFeed";
+import AgentTeam from "./AgentTeam";
+import BlacklistManager from "./BlacklistManager";
+import AILearningSystem from "./AILearningSystem";
+import ChatWithAgent from "./ChatWithAgent";
+import WalletConnection from "./WalletConnection";
 
 const Dashboard = () => {
-  const [isLoading, setIsLoading] = useState(true);
-  const fadeInStyle = useFadeIn(300);
-  
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 1000);
-    return () => clearTimeout(timer);
-  }, []);
-  
+  const [activeTab, setActiveTab] = useState("dashboard");
+
   return (
-    <div className="container mx-auto p-4 lg:p-6 space-y-6 pb-20" style={fadeInStyle}>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <MetricsCard
-          title="Daily Profit"
-          value="+$128.45"
-          change={12.5}
-          data={generateRandomData(20)}
-          icon={<TrendingUp className="w-5 h-5" />}
-          variant="success"
-        />
-        
-        <MetricsCard
-          title="Trades Today"
-          value="24"
-          change={-8.2}
-          data={generateRandomData(20)}
-          icon={<Activity className="w-5 h-5" />}
-          variant="info"
-        />
-        
-        <MetricsCard
-          title="Scams Avoided"
-          value="17"
-          change={42}
-          data={generateRandomData(20)}
-          icon={<ShieldAlert className="w-5 h-5" />}
-          variant="warning"
-        />
-        
-        <MetricsCard
-          title="AI Confidence"
-          value="86%"
-          change={3.4}
-          data={generateRandomData(20)}
-          icon={<Brain className="w-5 h-5" />}
-          variant="default"
-        />
-      </div>
+    <div>
+      <h1 className="text-2xl font-bold mb-6">CryptoSentinel Dashboard</h1>
       
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-6">
-          <FundsDashboard />
-          
-          <div className="glass-panel rounded-lg p-4">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-medium">Hot Opportunities</h2>
-              <div className="badge badge-success">
-                <Zap className="w-3 h-3 mr-1" />
-                Live Tracking
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <OpportunityCard 
-                name="PEPE"
-                address="0x6982508145454ce325ddbe47a25d4ec3d2311933"
-                change={+18.5}
-                liquidity="$5.2M"
-                confidence={92}
-              />
-              
-              <OpportunityCard 
-                name="SHIB"
-                address="0x95ad61b0a150d79219dcf64e1e6cc01f0b64c4ce"
-                change={+7.2}
-                liquidity="$28.9M"
-                confidence={88}
-              />
-            </div>
-          </div>
-          
-          <div className="grid grid-cols-1 gap-6">
+      <StatusIndicator />
+      
+      <Tabs defaultValue={activeTab} value={activeTab} onValueChange={setActiveTab} className="mt-6">
+        <TabsList className="grid grid-cols-4 md:grid-cols-8 mb-8">
+          <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+          <TabsTrigger value="analytics">Analytics</TabsTrigger>
+          <TabsTrigger value="trading">Trading</TabsTrigger>
+          <TabsTrigger value="agents">Agents</TabsTrigger>
+          <TabsTrigger value="news">News</TabsTrigger>
+          <TabsTrigger value="wallet">Wallet</TabsTrigger>
+          <TabsTrigger value="security">Security</TabsTrigger>
+          <TabsTrigger value="settings">Settings</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="dashboard" className="space-y-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <FundsDashboard />
             <AgentActivityMonitor />
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <PriceChart height={300} />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <PriceChart />
             <TradeList />
           </div>
-          
-          <div className="grid grid-cols-1 gap-6">
+        </TabsContent>
+        
+        <TabsContent value="analytics" className="space-y-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <PriceChart />
+            <TechnicalAnalysisConfig />
+          </div>
+        </TabsContent>
+        
+        <TabsContent value="trading" className="space-y-4">
+          <div className="grid grid-cols-1 gap-4">
+            <TradeList />
+            <ConfigPanel />
+          </div>
+        </TabsContent>
+        
+        <TabsContent value="agents" className="space-y-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <AgentTeam />
+            <AgentActivityMonitor />
+          </div>
+          <div className="grid grid-cols-1 gap-4">
+            <ChatWithAgent />
+          </div>
+        </TabsContent>
+        
+        <TabsContent value="news" className="space-y-4">
+          <div className="grid grid-cols-1 gap-4">
+            <NewsFeed />
+          </div>
+        </TabsContent>
+        
+        <TabsContent value="wallet" className="space-y-4">
+          <div className="grid grid-cols-1 gap-4">
+            <WalletConnection />
+            <FundsDashboard />
+          </div>
+        </TabsContent>
+        
+        <TabsContent value="security" className="space-y-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <BlacklistManager />
             <AILearningSystem />
           </div>
-          
-          <BlacklistManager />
-        </div>
+        </TabsContent>
         
-        <div className="lg:col-span-1 space-y-6">
-          <WalletConnection />
-          <ConfigPanel />
-          <TechnicalAnalysisConfig />
-          <ChatWithAgent />
-        </div>
-      </div>
+        <TabsContent value="settings" className="space-y-4">
+          <div className="grid grid-cols-1 gap-4">
+            <ConfigPanel />
+          </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
-
-interface OpportunityCardProps {
-  name: string;
-  address: string;
-  change: number;
-  liquidity: string;
-  confidence: number;
-}
-
-const OpportunityCard = ({ name, address, change, liquidity, confidence }: OpportunityCardProps) => (
-  <div className="bg-secondary/30 rounded-lg p-4 hover:bg-secondary/50 transition-colors">
-    <div className="flex justify-between items-start">
-      <div>
-        <div className="text-lg font-medium">{name}</div>
-        <div className="text-xs text-muted-foreground font-mono">
-          {address.substring(0, 6)}...{address.substring(address.length - 4)}
-        </div>
-        
-        <div className="mt-3 space-y-1">
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-muted-foreground">24h Change</span>
-            <span className="text-sm font-medium text-success">+{change}%</span>
-          </div>
-          
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-muted-foreground">Liquidity</span>
-            <span className="text-sm">{liquidity}</span>
-          </div>
-          
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-muted-foreground">AI Confidence</span>
-            <span className="text-sm">{confidence}%</span>
-          </div>
-        </div>
-      </div>
-      
-      <div className="h-16 w-24 mt-1">
-        <PriceChart 
-          height={60}
-          showVolume={false}
-          isCompact={true}
-        />
-      </div>
-    </div>
-    
-    <div className="mt-4 flex space-x-2">
-      <button className="bg-primary text-primary-foreground px-3 py-1.5 rounded text-sm font-medium flex-1 hover:bg-primary/90 transition-colors">
-        Buy
-      </button>
-      <button className="bg-muted text-muted-foreground px-3 py-1.5 rounded text-sm flex-1 hover:bg-muted/80 transition-colors">
-        Analyze
-      </button>
-    </div>
-  </div>
-);
 
 export default Dashboard;

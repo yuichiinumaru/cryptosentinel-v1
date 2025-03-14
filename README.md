@@ -15,6 +15,22 @@ CryptoSentinel is an advanced autonomous trading bot for cryptocurrencies, desig
 - **Multi-language Support**: Interface available in multiple languages
 - **Theme Options**: Light, Dark, Dark Grey, and Mr. Robot themes
 
+## Multi-Agent Framework
+
+CryptoSentinel uses a team-based approach with multiple specialized AI agents:
+
+1. **MarketAnalyst**: Analyzes market data, checks token security, provides trading recommendations, and monitors for malicious activity
+   - Tools: Search News, Fetch Market Data, Check Token Security, Get Token Price, etc.
+
+2. **Trader**: Executes buy and sell orders, manages the portfolio
+   - Tools: Execute Swap, Get Portfolio, Check Arbitrage Opportunities, etc.
+
+3. **LearningManager**: Analyzes system performance and adjusts strategies for continuous learning
+   - Tools: Get Trade History, Analyze Performance, Adjust Agent Instructions, etc.
+
+4. **Manager**: Coordinates the team, sets goals, monitors performance and risks
+   - Tools: Monitor Risk, Optimize Capital Allocation, Manage Blacklist, etc.
+
 ## Security Measures
 
 - MEV Protection via Flashbots Protect RPC
@@ -37,4 +53,3 @@ CryptoSentinel is an advanced autonomous trading bot for cryptocurrencies, desig
 ## Project Status
 
 This project is under active development.
-
