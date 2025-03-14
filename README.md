@@ -1,4 +1,4 @@
-# DeepTrader V1 - Autonomous Cryptocurrency Trader Bot
+# CryptoSentinel V1 - Autonomous Cryptocurrency Trader Bot
 
 ## Project Under Development
 
