@@ -22,7 +22,7 @@ const Dashboard = () => {
     <div>
       <h1 className="text-2xl font-bold mb-6">CryptoSentinel Dashboard</h1>
       
-      <StatusIndicator />
+      <StatusIndicator status="online" />
       
       <Tabs defaultValue={activeTab} value={activeTab} onValueChange={setActiveTab} className="mt-6">
         <TabsList className="grid grid-cols-4 md:grid-cols-8 mb-8">

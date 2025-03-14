@@ -5,7 +5,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { NewsIcon, Zap, ArrowUpRight, ArrowDownRight, Filter, RefreshCw, ExternalLink } from 'lucide-react';
+import { Newspaper, Zap, ArrowUpRight, ArrowDownRight, Filter, RefreshCw, ExternalLink } from 'lucide-react';
 import { NewsItem, agency } from '@/lib/agencySwarm';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
@@ -91,7 +91,7 @@ const NewsFeed = () => {
     <div className="glass-panel rounded-lg overflow-hidden">
       <div className="px-4 py-3 border-b border-border flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <NewsIcon className="w-5 h-5 text-primary" />
+          <Newspaper className="w-5 h-5 text-primary" />
           <h3 className="text-lg font-medium">News Feed</h3>
           <Badge variant="outline" className="ml-2 bg-primary/10">
             <Zap className="mr-1 h-3 w-3" />
