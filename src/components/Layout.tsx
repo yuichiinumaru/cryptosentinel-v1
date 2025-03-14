@@ -1,28 +1,130 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Header from './Header';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { Moon, Sun, Terminal, Monitor } from 'lucide-react';
 
 interface LayoutProps {
   children: React.ReactNode;
 }
 
+type Theme = 'light' | 'dark' | 'dark-grey' | 'mr-robot';
+
 const Layout = ({ children }: LayoutProps) => {
   const [isRunning, setIsRunning] = useState(true);
+  const [theme, setTheme] = useState<Theme>('light');
   
   const toggleRunning = () => {
     setIsRunning(prev => !prev);
   };
   
+  useEffect(() => {
+    // Check if theme is stored in localStorage
+    const savedTheme = localStorage.getItem('theme') as Theme | null;
+    if (savedTheme) {
+      setTheme(savedTheme);
+    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      setTheme('dark');
+    }
+  }, []);
+  
+  useEffect(() => {
+    // Update HTML element classes based on the selected theme
+    const htmlElement = document.documentElement;
+    
+    // Remove all theme classes
+    htmlElement.classList.remove('dark', 'theme-dark-grey', 'theme-mr-robot');
+    
+    // Add the appropriate theme class
+    if (theme === 'dark') {
+      htmlElement.classList.add('dark');
+    } else if (theme === 'dark-grey') {
+      htmlElement.classList.add('theme-dark-grey');
+    } else if (theme === 'mr-robot') {
+      htmlElement.classList.add('theme-mr-robot');
+    }
+    
+    // Save theme preference to localStorage
+    localStorage.setItem('theme', theme);
+  }, [theme]);
+  
+  // Mr. Robot theme specific elements
+  const renderMrRobotElements = () => {
+    if (theme === 'mr-robot') {
+      return <div className="scanline"></div>;
+    }
+    return null;
+  };
+  
   return (
     <div className={cn(
       "min-h-screen bg-gradient-to-br from-background to-muted transition-colors duration-300",
+      theme === 'mr-robot' && "bg-[#0a0f14] bg-noise"
     )}>
       <Header isRunning={isRunning} onToggleRunning={toggleRunning} />
+      
+      <div className="fixed right-4 top-20 z-50 flex flex-col gap-2">
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={() => setTheme('light')}
+          className={cn(
+            "rounded-full",
+            theme === 'light' ? "bg-primary text-primary-foreground" : "bg-background/50 backdrop-blur-sm"
+          )}
+        >
+          <Sun className="h-[1.2rem] w-[1.2rem]" />
+          <span className="sr-only">Light mode</span>
+        </Button>
+        
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={() => setTheme('dark')}
+          className={cn(
+            "rounded-full",
+            theme === 'dark' ? "bg-primary text-primary-foreground" : "bg-background/50 backdrop-blur-sm"
+          )}
+        >
+          <Moon className="h-[1.2rem] w-[1.2rem]" />
+          <span className="sr-only">Dark mode</span>
+        </Button>
+        
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={() => setTheme('dark-grey')}
+          className={cn(
+            "rounded-full",
+            theme === 'dark-grey' ? "bg-primary text-primary-foreground" : "bg-background/50 backdrop-blur-sm"
+          )}
+        >
+          <Monitor className="h-[1.2rem] w-[1.2rem]" />
+          <span className="sr-only">Dark Grey theme</span>
+        </Button>
+        
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={() => setTheme('mr-robot')}
+          className={cn(
+            "rounded-full",
+            theme === 'mr-robot' ? "bg-primary text-primary-foreground" : "bg-background/50 backdrop-blur-sm"
+          )}
+        >
+          <Terminal className="h-[1.2rem] w-[1.2rem]" />
+          <span className="sr-only">Mr. Robot theme</span>
+        </Button>
+      </div>
+      
       <main>
         {children}
       </main>
+      
       <div className="fixed bottom-0 left-0 right-0 h-1.5 bg-gradient-subtle z-50" />
+      
+      {renderMrRobotElements()}
     </div>
   );
 };

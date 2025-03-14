@@ -2,7 +2,7 @@
 import type { Config } from "tailwindcss";
 
 export default {
-	darkMode: ["class"],
+	darkMode: ["class", ".theme-dark-grey", ".theme-mr-robot"],
 	content: [
 		"./pages/**/*.{ts,tsx}",
 		"./components/**/*.{ts,tsx}",
@@ -151,6 +151,23 @@ export default {
 					'50%': { 
 						opacity: '1'
 					}
+				},
+				'noise': {
+					'0%, 100%': { 
+						backgroundPosition: '0% 0%' 
+					},
+					'20%': { 
+						backgroundPosition: '20% 20%' 
+					},
+					'40%': { 
+						backgroundPosition: '40% 40%' 
+					},
+					'60%': { 
+						backgroundPosition: '60% 60%' 
+					},
+					'80%': { 
+						backgroundPosition: '80% 80%' 
+					}
 				}
 			},
 			animation: {
@@ -161,7 +178,8 @@ export default {
 				'slide-up': 'slide-up 0.4s ease-out',
 				'slide-down': 'slide-down 0.4s ease-out',
 				'blur-in': 'blur-in 0.4s ease-out',
-				'pulse-subtle': 'pulse-subtle 4s ease-in-out infinite'
+				'pulse-subtle': 'pulse-subtle 4s ease-in-out infinite',
+				'noise': 'noise 8s infinite'
 			},
 			fontFamily: {
 				sans: ['SF Pro Display', 'Inter', 'sans-serif'],
@@ -176,6 +194,7 @@ export default {
 			backgroundImage: {
 				'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
 				'gradient-subtle': 'linear-gradient(to right, var(--gradient-start), var(--gradient-end))',
+				'noise': "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E\")",
 			},
 		}
 	},

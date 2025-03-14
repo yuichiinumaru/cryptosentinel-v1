@@ -1,295 +1,139 @@
-
 import { useState } from 'react';
-import { Wallet, ArrowRight, Check, AlertCircle } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { AlertCircle, CheckCircle } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
-import { Input } from '@/components/ui/input';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
-import { Label } from '@/components/ui/label';
-import { useToast } from '@/components/ui/use-toast';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
-const WalletConnection = () => {
-  const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState('dex');
-  const [walletAddress, setWalletAddress] = useState('');
+interface WalletOption {
+  id: string;
+  name: string;
+  icon: React.ReactNode;
+}
+
+interface WalletConnectionProps {
+  className?: string;
+}
+
+const WalletConnection = ({ className }: WalletConnectionProps) => {
   const [isConnected, setIsConnected] = useState(false);
-  const [isAllowingTrading, setIsAllowingTrading] = useState(false);
-  const [connectedWallet, setConnectedWallet] = useState('');
-  const [cexApiKey, setCexApiKey] = useState('');
-  const [cexApiSecret, setCexApiSecret] = useState('');
-  const [selectedDex, setSelectedDex] = useState('uniswap');
-  const [selectedCex, setSelectedCex] = useState('binance');
-  const [maxTradingAmount, setMaxTradingAmount] = useState('0.5');
+  const [hasTrading, setHasTrading] = useState(false);
+  const [isConnectedToCEX, setIsConnectedToCEX] = useState(false);
+  const [selectedCEX, setSelectedCEX] = useState('Binance');
 
-  const handleConnectWallet = () => {
-    // Simulate wallet connection
-    if (activeTab === 'dex') {
-      if (walletAddress.length >= 40) {
-        setIsConnected(true);
-        setConnectedWallet(walletAddress);
-        toast({
-          title: "Wallet Connected",
-          description: `Successfully connected to ${walletAddress.substring(0, 6)}...${walletAddress.substring(walletAddress.length - 4)}`,
-        });
-      } else {
-        toast({
-          title: "Invalid Wallet Address",
-          description: "Please enter a valid wallet address",
-          variant: "destructive",
-        });
-      }
-    } else if (activeTab === 'cex') {
-      if (cexApiKey.length > 5 && cexApiSecret.length > 5) {
-        setIsConnected(true);
-        toast({
-          title: "Exchange Connected",
-          description: `Successfully connected to ${selectedCex}`,
-        });
-      } else {
-        toast({
-          title: "Invalid API Keys",
-          description: "Please enter valid API keys",
-          variant: "destructive",
-        });
-      }
-    }
+  const walletOptions: WalletOption[] = [
+    { id: 'metamask', name: 'MetaMask', icon: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-wallet"><path d="M21 7.9V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-2.9"/><path d="M9 15V5"/><path d="M15 19v-4"/></svg> },
+    { id: 'coinbase', name: 'Coinbase', icon: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-badge"><path d="M3.73 21a2 2 0 0 1 0-4.2"/><path d="M20.27 21a2 2 0 0 0 0-4.2"/><path d="M12 14a5 5 0 0 0-4.8-3.34"/><path d="M12 14a5 5 0 0 1 4.8-3.34"/><path d="M12 7a5 5 0 0 1 4.8 3.34"/><path d="M12 7a5 5 0 0 0-4.8 3.34"/><path d="M12 2a10 10 0 1 0 0 20"/><path d="M8.3 2.73a2 2 0 0 0-4.2 0"/><path d="M15.7 2.73a2 2 0 0 1 4.2 0"/></svg> },
+  ];
+
+  const cexOptions = ['Binance', 'Coinbase', 'Kraken'];
+
+  const connectWallet = (wallet: WalletOption) => {
+    setIsConnected(true);
+    console.log(`Connecting to ${wallet.name}`);
   };
 
-  const handleDisconnect = () => {
+  const disconnectWallet = () => {
     setIsConnected(false);
-    setIsAllowingTrading(false);
-    setConnectedWallet('');
-    toast({
-      title: "Disconnected",
-      description: activeTab === 'dex' ? "Wallet disconnected" : "Exchange disconnected",
-    });
+    setIsConnectedToCEX(false);
+    setHasTrading(false);
+    console.log('Wallet disconnected');
+  };
+
+  const toggleCEXConnection = () => {
+    setIsConnectedToCEX(prev => !prev);
   };
 
   return (
-    <div className="glass-panel rounded-lg overflow-hidden">
+    <div className={cn("glass-panel rounded-lg", className)}>
       <div className="px-4 py-3 border-b border-border flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Wallet className="w-5 h-5 text-primary" />
-          <h3 className="text-lg font-medium">Trading Connection</h3>
-        </div>
+        <h3 className="text-lg font-medium">Wallet Connection</h3>
         {isConnected && (
-          <Badge variant={isAllowingTrading ? "success" : "secondary"}>
-            {isAllowingTrading ? "Trading Enabled" : "Connected"}
-          </Badge>
+          <Button variant="destructive" size="sm" onClick={disconnectWallet}>
+            Disconnect
+          </Button>
         )}
       </div>
       
-      <div className="p-4">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid grid-cols-2 mb-4">
-            <TabsTrigger value="dex" className="flex items-center gap-1.5">
-              <ArrowRight className="w-4 h-4" />
-              <span>DEX Wallet</span>
-            </TabsTrigger>
-            <TabsTrigger value="cex" className="flex items-center gap-1.5">
-              <ArrowRight className="w-4 h-4" />
-              <span>CEX Exchange</span>
-            </TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="dex" className="space-y-4">
-            {!isConnected ? (
-              <>
-                <div className="mb-4">
-                  <Label htmlFor="dex-select" className="mb-1 block">Select DEX</Label>
-                  <select 
-                    id="dex-select"
-                    value={selectedDex}
-                    onChange={(e) => setSelectedDex(e.target.value)}
-                    className="w-full px-3 py-2 border border-input rounded-md"
-                  >
-                    <option value="uniswap">Uniswap V3 (Ethereum)</option>
-                    <option value="pancakeswap">PancakeSwap (BNB Chain)</option>
-                    <option value="sushiswap">SushiSwap (Multi-chain)</option>
-                    <option value="baseswap">BaseSwap (Base)</option>
-                  </select>
-                </div>
-                
-                <div className="mb-4">
-                  <Label htmlFor="wallet-address" className="mb-1 block">Wallet Address</Label>
-                  <Input
-                    id="wallet-address"
-                    placeholder="0x..."
-                    value={walletAddress}
-                    onChange={(e) => setWalletAddress(e.target.value)}
-                  />
-                </div>
-                
-                <Button onClick={handleConnectWallet} className="w-full">
-                  Connect Wallet
+      <div className="p-4 space-y-4">
+        {!isConnected ? (
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Connect your wallet to enable trading.
+            </p>
+            
+            <div className="flex flex-wrap gap-2">
+              {walletOptions.map((wallet) => (
+                <Button
+                  key={wallet.id}
+                  variant="secondary"
+                  className="flex-1"
+                  onClick={() => connectWallet(wallet)}
+                >
+                  {wallet.icon}
+                  {wallet.name}
                 </Button>
-              </>
-            ) : (
-              <div className="space-y-4">
-                <div className="p-3 bg-success/10 border border-success/20 rounded-md flex items-start gap-2">
-                  <Check className="w-5 h-5 text-success flex-shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-medium">Wallet Connected</p>
-                    <p className="text-xs text-muted-foreground font-mono mt-1">
-                      {connectedWallet.substring(0, 6)}...{connectedWallet.substring(connectedWallet.length - 4)}
-                    </p>
-                    <p className="text-xs mt-2">
-                      Connected to: <Badge variant="outline" className="font-normal">{selectedDex}</Badge>
-                    </p>
-                  </div>
-                </div>
-                
-                <div className="flex flex-col space-y-4">
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <p className="text-sm font-medium">Enable AI Trading</p>
-                      <p className="text-xs text-muted-foreground">Allow AI agent to execute trades</p>
-                    </div>
-                    <Switch 
-                      checked={isAllowingTrading} 
-                      onCheckedChange={setIsAllowingTrading}
-                    />
-                  </div>
-                  
-                  <div>
-                    <Label htmlFor="max-amount" className="mb-1 block">Maximum Trading Amount (ETH)</Label>
-                    <Input
-                      id="max-amount"
-                      type="number"
-                      value={maxTradingAmount}
-                      onChange={(e) => setMaxTradingAmount(e.target.value)}
-                      min={0.01}
-                      max={10}
-                      step={0.01}
-                    />
-                    <p className="text-xs text-muted-foreground mt-1">
-                      AI agent won't spend more than this amount per trade
-                    </p>
-                  </div>
-                  
-                  <div className="p-3 bg-warning/10 border border-warning/20 rounded-md flex items-start gap-2">
-                    <AlertCircle className="w-5 h-5 text-warning flex-shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-sm font-medium">Security Notice</p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Never share your private keys. This integration uses read-only wallet connections 
-                        and requires manual transaction approval through your wallet.
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <Button onClick={handleDisconnect} variant="outline" className="w-full">
-                    Disconnect Wallet
-                  </Button>
-                </div>
-              </div>
-            )}
-          </TabsContent>
-          
-          <TabsContent value="cex" className="space-y-4">
-            {!isConnected ? (
-              <>
-                <div className="mb-4">
-                  <Label htmlFor="cex-select" className="mb-1 block">Select Exchange</Label>
-                  <select 
-                    id="cex-select"
-                    value={selectedCex}
-                    onChange={(e) => setSelectedCex(e.target.value)}
-                    className="w-full px-3 py-2 border border-input rounded-md"
-                  >
-                    <option value="binance">Binance</option>
-                    <option value="kucoin">KuCoin</option>
-                    <option value="coinbase">Coinbase</option>
-                    <option value="okx">OKX</option>
-                  </select>
-                </div>
-                
-                <div className="mb-4">
-                  <Label htmlFor="api-key" className="mb-1 block">API Key</Label>
-                  <Input
-                    id="api-key"
-                    type="text"
-                    value={cexApiKey}
-                    onChange={(e) => setCexApiKey(e.target.value)}
-                    placeholder="Enter your API key"
-                  />
-                </div>
-                
-                <div className="mb-4">
-                  <Label htmlFor="api-secret" className="mb-1 block">API Secret</Label>
-                  <Input
-                    id="api-secret"
-                    type="password"
-                    value={cexApiSecret}
-                    onChange={(e) => setCexApiSecret(e.target.value)}
-                    placeholder="Enter your API secret"
-                  />
-                </div>
-                
-                <Button onClick={handleConnectWallet} className="w-full">
-                  Connect Exchange
-                </Button>
-              </>
-            ) : (
-              <div className="space-y-4">
-                <div className="p-3 bg-success/10 border border-success/20 rounded-md flex items-start gap-2">
-                  <Check className="w-5 h-5 text-success flex-shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-medium">Exchange Connected</p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Successfully connected to {selectedCex}
-                    </p>
-                  </div>
-                </div>
-                
-                <div className="flex flex-col space-y-4">
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <p className="text-sm font-medium">Enable AI Trading</p>
-                      <p className="text-xs text-muted-foreground">Allow AI agent to execute trades</p>
-                    </div>
-                    <Switch 
-                      checked={isAllowingTrading} 
-                      onCheckedChange={setIsAllowingTrading}
-                    />
-                  </div>
-                  
-                  <div>
-                    <Label htmlFor="max-amount-cex" className="mb-1 block">Maximum Trading Amount (USD)</Label>
-                    <Input
-                      id="max-amount-cex"
-                      type="number"
-                      value={maxTradingAmount}
-                      onChange={(e) => setMaxTradingAmount(e.target.value)}
-                      min={10}
-                      max={10000}
-                      step={10}
-                    />
-                    <p className="text-xs text-muted-foreground mt-1">
-                      AI agent won't spend more than this amount per trade
-                    </p>
-                  </div>
-                  
-                  <div className="p-3 bg-warning/10 border border-warning/20 rounded-md flex items-start gap-2">
-                    <AlertCircle className="w-5 h-5 text-warning flex-shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-sm font-medium">Security Notice</p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        For security, create API keys with trading permissions only.
-                        Disable withdrawals and other sensitive operations in the exchange settings.
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <Button onClick={handleDisconnect} variant="outline" className="w-full">
-                    Disconnect Exchange
-                  </Button>
-                </div>
-              </div>
-            )}
-          </TabsContent>
-        </Tabs>
+              ))}
+            </div>
+            
+            <div>
+              <p className="text-sm font-medium">Or connect via CEX:</p>
+              <select
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                value={selectedCEX}
+                onChange={(e) => setSelectedCEX(e.target.value)}
+              >
+                {cexOptions.map((cex) => (
+                  <option key={cex} value={cex}>
+                    {cex}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Connected with MetaMask.
+            </p>
+            
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-medium">Trading Permission:</p>
+              <Switch 
+                checked={hasTrading} 
+                onCheckedChange={setHasTrading}
+              />
+            </div>
+            
+            <p className="text-xs text-muted-foreground">
+              Granting trading permission allows the bot to execute trades on your behalf.
+            </p>
+            
+            <Button
+              variant="secondary"
+              className={cn(
+                "w-full",
+                isConnectedToCEX ? "bg-success/10 text-success hover:bg-success/20" : ""
+              )}
+              onClick={toggleCEXConnection}
+            >
+              {isConnectedToCEX ? (
+                <>
+                  <CheckCircle className="w-4 h-4 mr-2" />
+                  Connected to {selectedCEX}
+                </>
+              ) : (
+                <>
+                  <AlertCircle className="w-4 h-4 mr-2" />
+                  Connect to {selectedCEX}
+                </>
+              )}
+            </Button>
+            
+            <p className="text-xs text-muted-foreground">
+              Connecting to a Centralized Exchange (CEX) allows for faster order execution.
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );

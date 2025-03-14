@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { LineChart, PieChart, CircleDollarSign, TrendingUp, TrendingDown, ArrowRightLeft, Activity } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,6 +6,8 @@ import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { useFadeIn } from '@/utils/animations';
+import { useToast } from '@/components/ui/use-toast';
+import { cn } from '@/lib/utils';
 
 // Mock data for tokens
 const mockTokens = [
@@ -160,8 +161,12 @@ const FundsDashboard = () => {
                           </td>
                           <td className="px-4 py-3 text-sm text-right">
                             <div className="flex justify-end space-x-2">
-                              <Button variant="ghost" size="sm" className="h-8 px-2">Buy</Button>
-                              <Button variant="ghost" size="sm" className="h-8 px-2">Sell</Button>
+                              <ActionButton
+                                action={token.change >= 0 ? 'buy' : 'sell'}
+                                symbol={token.symbol}
+                                amount={token.balance}
+                                price={token.value}
+                              />
                             </div>
                           </td>
                         </tr>
@@ -298,6 +303,38 @@ const FundsDashboard = () => {
         </Tabs>
       </div>
     </div>
+  );
+};
+
+const ActionButton = ({ action, symbol, amount, price }: {
+  action: 'buy' | 'sell';
+  symbol: string;
+  amount: number;
+  price: number;
+}) => {
+  const isPositive = action === 'buy';
+  const { toast } = useToast();
+
+  const handleAction = () => {
+    toast({
+      title: `${isPositive ? 'Buy' : 'Sell'} Order Placed`,
+      description: `${isPositive ? 'Bought' : 'Sold'} ${amount} ${symbol} at $${price}`,
+      variant: isPositive ? "default" : "destructive",
+    });
+  };
+
+  return (
+    <Button
+      variant={isPositive ? "default" : "destructive"}
+      size="sm"
+      onClick={handleAction}
+      className={cn(
+        "w-16",
+        isPositive ? "bg-success text-success-foreground hover:bg-success/90" : undefined
+      )}
+    >
+      {isPositive ? 'Buy' : 'Sell'}
+    </Button>
   );
 };
 

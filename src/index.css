@@ -107,6 +107,110 @@
     --gradient-start: rgba(26, 32, 44, 0.9);
     --gradient-end: rgba(17, 24, 39, 0.9);
   }
+
+  /* Dark Grey Theme */
+  .theme-dark-grey {
+    --background: 0 0% 13%;
+    --foreground: 0 0% 95%;
+
+    --card: 0 0% 16%;
+    --card-foreground: 0 0% 95%;
+
+    --popover: 0 0% 13%;
+    --popover-foreground: 0 0% 95%;
+
+    --primary: 0 0% 95%;
+    --primary-foreground: 0 0% 9%;
+
+    --secondary: 0 0% 20%;
+    --secondary-foreground: 0 0% 95%;
+
+    --muted: 0 0% 20%;
+    --muted-foreground: 0 0% 70%;
+
+    --accent: 0 0% 22%;
+    --accent-foreground: 0 0% 95%;
+
+    --destructive: 0 70% 50%;
+    --destructive-foreground: 0 0% 95%;
+
+    --success: 142 70% 45%;
+    --success-foreground: 0 0% 9%;
+
+    --info: 200 90% 50%;
+    --info-foreground: 0 0% 9%;
+
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 9%;
+
+    --border: 0 0% 20%;
+    --input: 0 0% 20%;
+    --ring: 0 0% 83%;
+
+    --sidebar-background: 0 0% 10%;
+    --sidebar-foreground: 0 0% 85%;
+    --sidebar-primary: 0 0% 76%;
+    --sidebar-primary-foreground: 0 0% 9%;
+    --sidebar-accent: 0 0% 15%;
+    --sidebar-accent-foreground: 0 0% 85%;
+    --sidebar-border: 0 0% 15%;
+    --sidebar-ring: 0 0% 70%;
+
+    --gradient-start: rgba(40, 40, 40, 0.9);
+    --gradient-end: rgba(25, 25, 25, 0.9);
+  }
+
+  /* Mr. Robot Hacker Style Theme */
+  .theme-mr-robot {
+    --background: 210 33% 9%;
+    --foreground: 120 100% 86%;
+
+    --card: 220 33% 11%;
+    --card-foreground: 120 100% 86%;
+
+    --popover: 210 33% 9%;
+    --popover-foreground: 120 100% 86%;
+
+    --primary: 142 70% 45%;
+    --primary-foreground: 210 33% 9%;
+
+    --secondary: 220 33% 15%;
+    --secondary-foreground: 120 100% 86%;
+
+    --muted: 220 33% 16%;
+    --muted-foreground: 120 30% 70%;
+
+    --accent: 220 33% 15%;
+    --accent-foreground: 120 100% 86%;
+
+    --destructive: 0 100% 50%;
+    --destructive-foreground: 0 0% 98%;
+
+    --success: 142 100% 40%;
+    --success-foreground: 0 0% 9%;
+
+    --info: 200 100% 40%;
+    --info-foreground: 0 0% 9%;
+
+    --warning: 32 100% 50%;
+    --warning-foreground: 0 0% 9%;
+
+    --border: 220 33% 20%;
+    --input: 220 33% 20%;
+    --ring: 120 30% 70%;
+
+    --sidebar-background: 220 33% 7%;
+    --sidebar-foreground: 120 30% 80%;
+    --sidebar-primary: 142 70% 45%;
+    --sidebar-primary-foreground: 0 0% 9%;
+    --sidebar-accent: 220 33% 12%;
+    --sidebar-accent-foreground: 120 30% 80%;
+    --sidebar-border: 220 33% 15%;
+    --sidebar-ring: 142 70% 45%;
+
+    --gradient-start: rgba(17, 23, 29, 0.95);
+    --gradient-end: rgba(10, 15, 20, 0.95);
+  }
 }
 
 @layer base {
@@ -117,6 +221,15 @@
   body {
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  /* Add terminal-like styles for the mr-robot theme */
+  .theme-mr-robot code, .theme-mr-robot pre {
+    @apply font-mono text-primary bg-background/50 px-1 rounded;
+  }
+  
+  .theme-mr-robot .glass-panel {
+    @apply backdrop-blur-xl bg-black/50 border border-primary/30 shadow-lg;
   }
 }
 
@@ -129,6 +242,23 @@
     @apply hover:shadow-glass-hover hover:bg-white/90 dark:hover:bg-black/80 transition-all duration-300;
   }
 
+  .theme-dark-grey .glass-panel {
+    @apply bg-card/90 backdrop-blur-xl border border-border/50 shadow-lg;
+  }
+  
+  .theme-dark-grey .glass-panel-hover {
+    @apply hover:shadow-glass-hover hover:bg-card/95 transition-all duration-300;
+  }
+
+  .theme-mr-robot .glass-panel {
+    @apply bg-black/70 backdrop-blur-xl border border-primary/20 shadow-md;
+  }
+  
+  .theme-mr-robot .glass-panel-hover {
+    @apply hover:shadow-glass-hover hover:bg-black/80 border-primary/30 transition-all duration-300;
+  }
+
+  /* Keep existing utility classes */
   .subtle-scroll::-webkit-scrollbar {
     width: 6px;
     height: 6px;
@@ -165,10 +295,24 @@
   .badge-info {
     @apply bg-info/10 text-info dark:text-info-foreground;
   }
+  
+  /* Mr Robot specific styling */
+  .theme-mr-robot .badge {
+    @apply text-xs font-mono uppercase tracking-wider;
+  }
+  
+  .theme-mr-robot .badge-success {
+    @apply bg-success/20 text-success border border-success/30;
+  }
 }
 
 /* Smooth transitions when toggling between light and dark mode */
 html.dark {
+  transition: background-color 0.3s ease;
+}
+
+html.theme-dark-grey, 
+html.theme-mr-robot {
   transition: background-color 0.3s ease;
 }
 
@@ -193,4 +337,45 @@ html.dark {
   opacity: 0;
   transform: translateY(5px);
   transition: opacity 0.3s, transform 0.3s;
+}
+
+/* Mr Robot theme-specific terminal effects */
+.theme-mr-robot .terminal-text {
+  font-family: 'SF Mono', 'Menlo', monospace;
+  color: var(--primary);
+  text-shadow: 0 0 5px rgba(var(--primary), 0.7);
+}
+
+.theme-mr-robot .terminal-cursor::after {
+  content: '|';
+  animation: blink 1s step-start infinite;
+}
+
+@keyframes blink {
+  50% { opacity: 0; }
+}
+
+.theme-mr-robot .scanline {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.03) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  pointer-events: none;
+  animation: scanline 6s linear infinite;
+}
+
+@keyframes scanline {
+  0% {
+    transform: translateY(-100%);
+  }
+  100% {
+    transform: translateY(100vh);
+  }
 }
