@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/sidebar';
 import { Home, LineChart, Settings, Bell, BookText, Shield, Wallet } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import NewsTickerBar from './NewsTickerBar';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -220,11 +221,14 @@ const Layout = ({ children }: LayoutProps) => {
             </Button>
           </div>
           
-          <main className="p-4 md:p-6 max-w-full">
+          <main className="p-4 md:p-6 max-w-full pb-20">
             {children}
           </main>
           
-          <div className="fixed bottom-0 left-0 right-0 h-1.5 bg-gradient-subtle z-50" />
+          {/* News ticker at the bottom */}
+          <NewsTickerBar />
+          
+          <div className="fixed bottom-0 left-0 right-0 h-1.5 bg-gradient-subtle z-40" />
           
           {renderMrRobotElements()}
         </SidebarInset>

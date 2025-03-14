@@ -8,7 +8,6 @@ import TechnicalAnalysisConfig from "./TechnicalAnalysisConfig";
 import PriceChart from "./PriceChart";
 import TradeList from "./TradeList";
 import StatusIndicator from "./StatusIndicator";
-import NewsFeed from "./NewsFeed";
 import AgentTeam from "./AgentTeam";
 import BlacklistManager from "./BlacklistManager";
 import AILearningSystem from "./AILearningSystem";
@@ -25,12 +24,11 @@ const Dashboard = () => {
       <StatusIndicator status="online" />
       
       <Tabs defaultValue={activeTab} value={activeTab} onValueChange={setActiveTab} className="mt-6">
-        <TabsList className="grid grid-cols-4 md:grid-cols-8 mb-8">
+        <TabsList className="grid grid-cols-4 md:grid-cols-7 mb-8">
           <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
           <TabsTrigger value="trading">Trading</TabsTrigger>
           <TabsTrigger value="agents">Agents</TabsTrigger>
-          <TabsTrigger value="news">News</TabsTrigger>
           <TabsTrigger value="wallet">Wallet</TabsTrigger>
           <TabsTrigger value="security">Security</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
@@ -69,12 +67,6 @@ const Dashboard = () => {
           </div>
           <div className="grid grid-cols-1 gap-4">
             <ChatWithAgent />
-          </div>
-        </TabsContent>
-        
-        <TabsContent value="news" className="space-y-4">
-          <div className="grid grid-cols-1 gap-4">
-            <NewsFeed />
           </div>
         </TabsContent>
         
