@@ -21,7 +21,7 @@ import {
   SidebarInset,
 } from '@/components/ui/sidebar';
 import { Home, LineChart, Settings, Bell, BookText, Shield, Wallet } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import NewsTickerBar from './NewsTickerBar';
 
 interface LayoutProps {
@@ -33,6 +33,7 @@ type Theme = 'light' | 'dark' | 'dark-grey' | 'mr-robot';
 const Layout = ({ children }: LayoutProps) => {
   const [isRunning, setIsRunning] = useState(true);
   const [theme, setTheme] = useState<Theme>('light');
+  const location = useLocation();
   
   const toggleRunning = () => {
     setIsRunning(prev => !prev);
@@ -117,7 +118,7 @@ const Layout = ({ children }: LayoutProps) => {
   return (
     <SidebarProvider defaultOpen={true}>
       <div className={cn(
-        "min-h-screen transition-colors duration-300",
+        "min-h-screen flex flex-col transition-colors duration-300",
         theme === 'mr-robot' && "bg-[#0a0f14] bg-noise"
       )}>
         <Sidebar variant="inset" collapsible="icon">
@@ -142,7 +143,7 @@ const Layout = ({ children }: LayoutProps) => {
                   <SidebarMenuButton
                     asChild
                     tooltip={item.name}
-                    isActive={window.location.pathname === item.href}
+                    isActive={location.pathname === item.href || location.pathname === item.href.toLowerCase()}
                   >
                     <Link to={item.href}>
                       <item.icon className="mr-2" />
@@ -164,7 +165,7 @@ const Layout = ({ children }: LayoutProps) => {
           <SidebarRail />
         </Sidebar>
         
-        <SidebarInset>
+        <SidebarInset className="flex flex-col flex-1 overflow-hidden">
           <Header isRunning={isRunning} onToggleRunning={toggleRunning} />
           
           <div className="fixed right-4 top-20 z-50 flex flex-col gap-2">
@@ -221,7 +222,7 @@ const Layout = ({ children }: LayoutProps) => {
             </Button>
           </div>
           
-          <main className="p-4 md:p-6 max-w-full pb-20">
+          <main className="flex-1 overflow-auto p-0 pb-16">
             {children}
           </main>
           
