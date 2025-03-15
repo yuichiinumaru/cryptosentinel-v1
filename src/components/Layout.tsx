@@ -3,14 +3,14 @@ import { useState, useEffect } from 'react';
 import Header from './Header';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { Moon, Sun, Terminal, Monitor } from 'lucide-react';
+import { Moon, Sun, Terminal, Shield } from 'lucide-react';
 import NewsTickerBar from './NewsTickerBar';
 
 interface LayoutProps {
   children: React.ReactNode;
 }
 
-type Theme = 'light' | 'dark' | 'dark-grey' | 'mr-robot';
+type Theme = 'light' | 'tactical-dark' | 'dark-grey' | 'mr-robot';
 
 const Layout = ({ children }: LayoutProps) => {
   const [isRunning, setIsRunning] = useState(true);
@@ -26,7 +26,7 @@ const Layout = ({ children }: LayoutProps) => {
     if (savedTheme) {
       setTheme(savedTheme);
     } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-      setTheme('dark');
+      setTheme('tactical-dark');
     }
   }, []);
   
@@ -35,11 +35,11 @@ const Layout = ({ children }: LayoutProps) => {
     const htmlElement = document.documentElement;
     
     // Remove all theme classes
-    htmlElement.classList.remove('dark', 'theme-dark-grey', 'theme-mr-robot');
+    htmlElement.classList.remove('dark', 'theme-dark-grey', 'theme-mr-robot', 'theme-tactical-dark');
     
     // Add the appropriate theme class
-    if (theme === 'dark') {
-      htmlElement.classList.add('dark');
+    if (theme === 'tactical-dark') {
+      htmlElement.classList.add('theme-tactical-dark');
     } else if (theme === 'dark-grey') {
       htmlElement.classList.add('theme-dark-grey');
     } else if (theme === 'mr-robot') {
@@ -87,14 +87,14 @@ const Layout = ({ children }: LayoutProps) => {
         <Button
           variant="outline"
           size="icon"
-          onClick={() => setTheme('dark')}
+          onClick={() => setTheme('tactical-dark')}
           className={cn(
             "rounded-full",
-            theme === 'dark' ? "bg-primary text-primary-foreground" : "bg-background/50 backdrop-blur-sm"
+            theme === 'tactical-dark' ? "bg-primary text-primary-foreground" : "bg-background/50 backdrop-blur-sm"
           )}
         >
-          <Moon className="h-[1.2rem] w-[1.2rem]" />
-          <span className="sr-only">Dark mode</span>
+          <Shield className="h-[1.2rem] w-[1.2rem]" />
+          <span className="sr-only">Tactical Dark mode</span>
         </Button>
         
         <Button
@@ -106,7 +106,7 @@ const Layout = ({ children }: LayoutProps) => {
             theme === 'dark-grey' ? "bg-primary text-primary-foreground" : "bg-background/50 backdrop-blur-sm"
           )}
         >
-          <Monitor className="h-[1.2rem] w-[1.2rem]" />
+          <Moon className="h-[1.2rem] w-[1.2rem]" />
           <span className="sr-only">Dark Grey theme</span>
         </Button>
         
