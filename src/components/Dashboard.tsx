@@ -18,13 +18,14 @@ const Dashboard = () => {
   const [activeTab, setActiveTab] = useState("dashboard");
 
   return (
-    <div>
-      <h1 className="text-2xl font-bold mb-6">CryptoSentinel Dashboard</h1>
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h1 className="text-2xl font-bold">CryptoSentinel Dashboard</h1>
+        <StatusIndicator status="online" />
+      </div>
       
-      <StatusIndicator status="online" />
-      
-      <Tabs defaultValue={activeTab} value={activeTab} onValueChange={setActiveTab} className="mt-6">
-        <TabsList className="grid grid-cols-4 md:grid-cols-7 mb-8">
+      <Tabs defaultValue={activeTab} value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="grid grid-cols-4 md:grid-cols-7 mb-6">
           <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
           <TabsTrigger value="trading">Trading</TabsTrigger>
