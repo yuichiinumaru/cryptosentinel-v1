@@ -1,9 +1,11 @@
 
 import { useState } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { 
   Play, Pause, Settings, Menu, 
-  X, Wallet, ChevronDown, LineChart
+  X, Wallet, ChevronDown, LineChart,
+  Home, Bell, BookText, Shield
 } from 'lucide-react';
 import StatusIndicator from './StatusIndicator';
 import { cn } from '@/lib/utils';
@@ -15,10 +17,21 @@ interface HeaderProps {
 
 const Header = ({ isRunning, onToggleRunning }: HeaderProps) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const location = useLocation();
   
   const toggleMenu = () => {
     setIsMenuOpen(prev => !prev);
   };
+  
+  const navItems = [
+    { name: "Dashboard", href: "/", icon: Home },
+    { name: "Analytics", href: "/analytics", icon: LineChart },
+    { name: "Wallet", href: "/wallet", icon: Wallet },
+    { name: "News", href: "/news", icon: BookText },
+    { name: "Notifications", href: "/notifications", icon: Bell },
+    { name: "Security", href: "/security", icon: Shield },
+    { name: "Settings", href: "/settings", icon: Settings },
+  ];
   
   return (
     <header className="glass-panel sticky top-0 z-50 backdrop-blur-xl border-b border-border">
@@ -38,6 +51,28 @@ const Header = ({ isRunning, onToggleRunning }: HeaderProps) => {
               {isMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </Button>
           </div>
+        </div>
+        
+        {/* Desktop Navigation */}
+        <div className="hidden md:flex items-center space-x-1">
+          {navItems.map((item) => (
+            <Button
+              key={item.href}
+              variant="ghost"
+              size="sm"
+              asChild
+              className={cn(
+                "gap-1.5",
+                (location.pathname === item.href || location.pathname === item.href.toLowerCase()) && 
+                "bg-muted text-foreground"
+              )}
+            >
+              <Link to={item.href}>
+                <item.icon className="w-4 h-4 mr-1" />
+                {item.name}
+              </Link>
+            </Button>
+          ))}
         </div>
         
         <div className="flex items-center gap-3">
@@ -62,7 +97,7 @@ const Header = ({ isRunning, onToggleRunning }: HeaderProps) => {
       {/* Mobile menu */}
       <div className={cn(
         "sm:hidden absolute w-full bg-background border-b border-border transition-all duration-300 overflow-hidden",
-        isMenuOpen ? "max-h-64 opacity-100" : "max-h-0 opacity-0"
+        isMenuOpen ? "max-h-screen opacity-100" : "max-h-0 opacity-0"
       )}>
         <div className="container mx-auto p-4 space-y-4">
           <div className="flex justify-between items-center">
@@ -78,17 +113,26 @@ const Header = ({ isRunning, onToggleRunning }: HeaderProps) => {
           </div>
           
           <div className="flex flex-col gap-2">
-            <div className="flex justify-between items-center">
+            {navItems.map((item) => (
+              <Button 
+                key={item.href}
+                variant="outline" 
+                asChild
+                className={cn(
+                  "gap-1.5 justify-start w-full",
+                  (location.pathname === item.href || location.pathname === item.href.toLowerCase()) && 
+                  "bg-muted border-primary"
+                )}
+              >
+                <Link to={item.href}>
+                  <item.icon className="w-4 h-4 mr-2" />
+                  {item.name}
+                </Link>
+              </Button>
+            ))}
+            <div className="flex justify-between items-center mt-2">
               <WalletButton fullWidth />
             </div>
-            <Button variant="outline" className="gap-1.5 justify-start w-full">
-              <Settings className="w-4 h-4" />
-              Settings
-            </Button>
-            <Button variant="outline" className="gap-1.5 justify-start w-full">
-              <LineChart className="w-4 h-4" />
-              Reports
-            </Button>
           </div>
         </div>
       </div>
@@ -99,7 +143,7 @@ const Header = ({ isRunning, onToggleRunning }: HeaderProps) => {
 const Logo = () => (
   <div className="flex items-center gap-2">
     <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
-      <div className="text-primary-foreground font-bold">AI</div>
+      <div className="text-primary-foreground font-bold">CS</div>
     </div>
     <div className="font-medium text-lg">CryptoSentinel</div>
   </div>

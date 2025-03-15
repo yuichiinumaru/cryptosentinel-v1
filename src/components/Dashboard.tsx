@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import AgentActivityMonitor from "./AgentActivityMonitor";
 import ConfigPanel from "./ConfigPanel";
@@ -14,17 +14,28 @@ import AILearningSystem from "./AILearningSystem";
 import ChatWithAgent from "./ChatWithAgent";
 import WalletConnection from "./WalletConnection";
 
-const Dashboard = () => {
+interface DashboardProps {
+  initialTab?: string;
+}
+
+const Dashboard = ({ initialTab }: DashboardProps) => {
   const [activeTab, setActiveTab] = useState("dashboard");
+  
+  // Set active tab based on initialTab prop (from route state)
+  useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 w-full">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold">CryptoSentinel Dashboard</h1>
         <StatusIndicator status="online" />
       </div>
       
-      <Tabs defaultValue={activeTab} value={activeTab} onValueChange={setActiveTab}>
+      <Tabs defaultValue={activeTab} value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid grid-cols-4 md:grid-cols-7 mb-6">
           <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
