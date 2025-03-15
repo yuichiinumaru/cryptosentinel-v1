@@ -4,7 +4,6 @@ import Header from './Header';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Moon, Sun, Terminal, Monitor } from 'lucide-react';
-import { useLocation } from 'react-router-dom';
 import NewsTickerBar from './NewsTickerBar';
 
 interface LayoutProps {
@@ -54,7 +53,12 @@ const Layout = ({ children }: LayoutProps) => {
   // Mr. Robot theme specific elements
   const renderMrRobotElements = () => {
     if (theme === 'mr-robot') {
-      return <div className="scanline"></div>;
+      return (
+        <>
+          <div className="scanline"></div>
+          <div className="matrix-bg"></div>
+        </>
+      );
     }
     return null;
   };
@@ -62,7 +66,7 @@ const Layout = ({ children }: LayoutProps) => {
   return (
     <div className={cn(
       "min-h-screen flex flex-col transition-colors duration-300",
-      theme === 'mr-robot' && "bg-[#0a0f14] bg-noise"
+      theme === 'mr-robot' && "bg-black crt-flicker"
     )}>
       <Header isRunning={isRunning} onToggleRunning={toggleRunning} />
       

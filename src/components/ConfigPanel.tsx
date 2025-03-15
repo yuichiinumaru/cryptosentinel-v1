@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
@@ -8,7 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { 
   Settings, RefreshCw, Brain, 
-  LineChart, Shield, Network, Save
+  LineChart, Shield, Network, Save,
+  Cpu, Bot
 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { cn } from '@/lib/utils';
@@ -81,6 +81,8 @@ const ConfigPanel = () => {
     detectionSensitivity: 70,
     
     // API keys
+    openAIApiKey: '',
+    openAICustomEndpoint: '',
     rugCheckApiKey: '',
     pocketUniverseApiKey: '',
     dexScreenerApiKey: ''
@@ -100,11 +102,27 @@ const ConfigPanel = () => {
   };
 
   const handleSaveConfig = () => {
+    localStorage.setItem('openAIApiKey', settings.openAIApiKey);
+    localStorage.setItem('openAICustomEndpoint', settings.openAICustomEndpoint);
+    
     toast({
       title: "Configuration Saved",
       description: "Your trading bot configuration has been updated."
     });
   };
+
+  useState(() => {
+    const savedOpenAIKey = localStorage.getItem('openAIApiKey');
+    const savedOpenAIEndpoint = localStorage.getItem('openAICustomEndpoint');
+    
+    if (savedOpenAIKey || savedOpenAIEndpoint) {
+      setSettings(prev => ({
+        ...prev,
+        openAIApiKey: savedOpenAIKey || '',
+        openAICustomEndpoint: savedOpenAIEndpoint || ''
+      }));
+    }
+  }, []);
 
   return (
     <div className="glass-panel rounded-lg overflow-hidden">
@@ -122,7 +140,7 @@ const ConfigPanel = () => {
       
       <div className="p-6">
         <Tabs defaultValue="trading">
-          <TabsList className="grid grid-cols-4 mb-6">
+          <TabsList className="grid grid-cols-5 mb-6">
             <TabsTrigger value="trading" className="flex items-center gap-1.5 text-xs sm:text-sm">
               <Settings className="w-4 h-4" />
               <span className="hidden sm:inline">Trading</span>
@@ -134,6 +152,10 @@ const ConfigPanel = () => {
             <TabsTrigger value="ai" className="flex items-center gap-1.5 text-xs sm:text-sm">
               <Brain className="w-4 h-4" />
               <span className="hidden sm:inline">AI</span>
+            </TabsTrigger>
+            <TabsTrigger value="openai" className="flex items-center gap-1.5 text-xs sm:text-sm">
+              <Bot className="w-4 h-4" />
+              <span className="hidden sm:inline">OpenAI</span>
             </TabsTrigger>
             <TabsTrigger value="api" className="flex items-center gap-1.5 text-xs sm:text-sm">
               <Network className="w-4 h-4" />
@@ -440,6 +462,69 @@ const ConfigPanel = () => {
                     </div>
                   </div>
                 </SettingItem>
+              </div>
+            </ConfigSection>
+          </TabsContent>
+          
+          <TabsContent value="openai">
+            <ConfigSection
+              title="OpenAI Configuration"
+              description="Configure OpenAI API settings for agent intelligence"
+              icon={<Bot className="w-4 h-4" />}
+            >
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="openAIApiKey" className="mb-1 block">
+                    OpenAI API Key
+                  </Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="openAIApiKey"
+                      type="password"
+                      value={settings.openAIApiKey}
+                      onChange={handleInputChange('openAIApiKey')}
+                      placeholder="Enter your OpenAI API key"
+                      className="flex-1"
+                    />
+                    <Button variant="outline" size="icon">
+                      <RefreshCw className="w-4 h-4" />
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Required for all AI agent functionality
+                  </p>
+                </div>
+                
+                <div>
+                  <Label htmlFor="openAICustomEndpoint" className="mb-1 block">
+                    Custom OpenAI Endpoint (Optional)
+                  </Label>
+                  <Input
+                    id="openAICustomEndpoint"
+                    type="text"
+                    value={settings.openAICustomEndpoint}
+                    onChange={handleInputChange('openAICustomEndpoint')}
+                    placeholder="https://your-custom-endpoint.com/v1"
+                    className="flex-1"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Use a custom compatible endpoint or proxy
+                  </p>
+                </div>
+                
+                <div className="mt-6 p-3 bg-info/10 border border-info/20 rounded-md">
+                  <div className="flex gap-2">
+                    <Cpu className="w-5 h-5 text-info flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-medium">Model Configuration</p>
+                      <p className="text-xs mt-1">
+                        Currently using: <span className="font-mono">gpt-4o</span><br />
+                        Response temperature: 0.7 (balanced)<br />
+                        Context window: 128K tokens
+                      </p>
+                    </div>
+                  </div>
+                </div>
               </div>
             </ConfigSection>
           </TabsContent>
