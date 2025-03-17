@@ -1,7 +1,7 @@
-
 import { useState, useEffect } from 'react';
 import { useFadeIn, getStaggeredDelay } from '@/utils/animations';
 import { cn } from '@/lib/utils';
+import { api } from '@/services/api';
 
 interface Trade {
   id: string;
@@ -19,42 +19,25 @@ interface TradeListProps {
   limit?: number;
 }
 
-// Generate sample trades
-const generateSampleTrades = (count: number): Trade[] => {
-  const tokens = ['ETH', 'BTC', 'XRP', 'SOL', 'DOGE', 'SHIB', 'PEPE', 'LINK'];
-  
-  return Array.from({ length: count }).map((_, index) => {
-    const action = Math.random() > 0.5 ? 'buy' : 'sell';
-    const isCompleted = Math.random() > 0.2;
-    const isFailed = !isCompleted && Math.random() > 0.5;
-    const status = isCompleted ? 'completed' : (isFailed ? 'failed' : 'pending');
-    
-    return {
-      id: `trade-${index}-${Date.now()}`,
-      token: tokens[Math.floor(Math.random() * tokens.length)],
-      action,
-      amount: parseFloat((Math.random() * 10).toFixed(3)),
-      price: parseFloat((Math.random() * 1000 + 100).toFixed(2)),
-      timestamp: new Date(Date.now() - Math.random() * 86400000 * 3),
-      profit: status === 'completed' ? parseFloat((Math.random() * 200 - 100).toFixed(2)) : undefined,
-      status
-    };
-  });
-};
-
 const TradeList = ({ className, limit = 10 }: TradeListProps) => {
   const [trades, setTrades] = useState<Trade[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
   useEffect(() => {
-    // Simulate loading data
-    const timer = setTimeout(() => {
-      setTrades(generateSampleTrades(20));
-      setIsLoading(false);
-    }, 800);
+    const fetchTrades = async () => {
+      try {
+        setIsLoading(true);
+        const data = await api.trades.getRecent(limit);
+        setTrades(data);
+      } catch (error) {
+        console.error('Failed to fetch trades:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
     
-    return () => clearTimeout(timer);
-  }, []);
+    fetchTrades();
+  }, [limit]);
   
   const limitedTrades = trades.slice(0, limit);
   

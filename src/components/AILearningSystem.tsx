@@ -1,5 +1,4 @@
-
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   Brain, Book, Database, RefreshCw, 
   ArrowUpRight, AlertCircle 
@@ -13,74 +12,56 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-
-// Mock data for learning records
-const mockLearningData = [
-  {
-    id: 1,
-    timestamp: '2023-10-15 14:32:21',
-    observation: 'Token PEPE exhibited 35% pump after influencer tweet',
-    action: 'Bought 0.23 ETH worth at $0.0000012',
-    outcome: 'Profit +18%',
-    learningOutcome: 'Strong correlation between social media engagement and short-term price movement',
-    confidenceChange: +3,
-  },
-  {
-    id: 2,
-    timestamp: '2023-10-14 09:15:43',
-    observation: 'Contract with high sell tax (15%) showed early liquidity manipulation',
-    action: 'Avoided purchase despite technical indicators',
-    outcome: 'Loss avoided (-82%)',
-    learningOutcome: 'Prioritize contract analysis over technical indicators for new tokens',
-    confidenceChange: +5,
-  },
-  {
-    id: 3,
-    timestamp: '2023-10-13 22:01:12',
-    observation: 'RSI below 30 for established token with strong fundamentals',
-    action: 'Bought 0.5 ETH worth based on oversold condition',
-    outcome: 'Small profit +4.2%',
-    learningOutcome: 'RSI is more reliable for established tokens than new listings',
-    confidenceChange: +1,
-  },
-  {
-    id: 4,
-    timestamp: '2023-10-12 18:45:33',
-    observation: 'Token with locked liquidity had suspicious wallet movement',
-    action: 'Entered position based on technical breakout',
-    outcome: 'Loss -42%',
-    learningOutcome: 'Wallet analysis should override technical signals when anomalies detected',
-    confidenceChange: -2,
-  },
-  {
-    id: 5,
-    timestamp: '2023-10-11 11:23:09',
-    observation: 'Multiple bottoms formed at key support level with increasing volume',
-    action: 'Accumulated position over 3 separate buys',
-    outcome: 'Profit +31%',
-    learningOutcome: 'Gradual position building at support levels reduces risk and improves returns',
-    confidenceChange: +4,
-  },
-];
+import { api } from '@/services/api';
 
 const AILearningSystem = () => {
+  const [learningData, setLearningData] = useState<any[]>([]);
+  const [knowledgeData, setKnowledgeData] = useState<any>(null);
   const [isTraining, setIsTraining] = useState(false);
   const [trainingProgress, setTrainingProgress] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
   
-  const startTraining = () => {
+  useEffect(() => {
+    fetchData();
+  }, []);
+  
+  const fetchData = async () => {
+    setIsLoading(true);
+    try {
+      const learnings = await api.learning.getLearnings();
+      setLearningData(learnings);
+      
+      const knowledge = await api.learning.getDatabase();
+      setKnowledgeData(knowledge);
+    } catch (error) {
+      console.error('Failed to fetch learning data:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  const startTraining = async () => {
     setIsTraining(true);
     setTrainingProgress(0);
     
-    const interval = setInterval(() => {
-      setTrainingProgress(prev => {
-        if (prev >= 100) {
-          clearInterval(interval);
-          setIsTraining(false);
-          return 100;
-        }
-        return prev + 5;
-      });
-    }, 150);
+    try {
+      await api.learning.trainModel();
+      
+      const interval = setInterval(() => {
+        setTrainingProgress(prev => {
+          if (prev >= 100) {
+            clearInterval(interval);
+            setIsTraining(false);
+            fetchData();
+            return 100;
+          }
+          return prev + 5;
+        });
+      }, 150);
+    } catch (error) {
+      console.error('Failed to start training:', error);
+      setIsTraining(false);
+    }
   };
   
   return (
@@ -169,7 +150,7 @@ const AILearningSystem = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {mockLearningData.map((item) => (
+                  {learningData.map((item) => (
                     <TableRow key={item.id}>
                       <TableCell className="font-mono text-xs">
                         {item.timestamp}

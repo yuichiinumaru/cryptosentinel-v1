@@ -1,33 +1,53 @@
-
 import { useState, useEffect, useRef } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ArrowUpRight, ArrowDownRight, Newspaper, Zap, ChevronUp, ChevronDown } from 'lucide-react';
-import { NewsItem, agency } from '@/lib/agencySwarm';
 import { cn } from '@/lib/utils';
+import { api } from '@/services/api';
+
+interface NewsItem {
+  id: string;
+  title: string;
+  summary: string;
+  source: string;
+  url?: string;
+  timestamp: Date;
+  sentiment: "positive" | "negative" | "neutral";
+  relevance: number;
+  tags: string[];
+  coins?: string[];
+  agentId: string;
+}
 
 const NewsTickerBar = () => {
   const [news, setNews] = useState<NewsItem[]>([]);
   const [isExpanded, setIsExpanded] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [polling, setPolling] = useState<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    // Initial load of news
-    setNews(agency.getNews());
+    fetchLatestNews();
     
-    // Subscribe to news updates
-    const handleNewsUpdate = (newsItem: NewsItem) => {
-      setNews(prevNews => [newsItem, ...prevNews].slice(0, 20));
-    };
+    const pollInterval = setInterval(() => {
+      fetchLatestNews();
+    }, 30000);
     
-    agency.on('news', handleNewsUpdate);
+    setPolling(pollInterval);
     
     return () => {
-      agency.off('news', handleNewsUpdate);
+      if (polling) clearInterval(polling);
     };
   }, []);
 
-  // Auto-scroll the ticker
+  const fetchLatestNews = async () => {
+    try {
+      const latestNews = await api.news.getLatest(10);
+      setNews(latestNews);
+    } catch (error) {
+      console.error('Failed to fetch latest news:', error);
+    }
+  };
+
   useEffect(() => {
     if (!scrollRef.current || isExpanded) return;
     
@@ -145,7 +165,6 @@ const NewsTickerBar = () => {
                   </span>
                 </span>
               ))}
-              {/* Duplicate the news for continuous scrolling effect */}
               {news.map((item) => (
                 <span key={`${item.id}-duplicate`} className="inline-flex items-center mr-8">
                   {getSentimentIcon(item.sentiment)}

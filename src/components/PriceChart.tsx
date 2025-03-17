@@ -1,31 +1,10 @@
-
 import { useState, useEffect } from 'react';
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
   LineChart, Line
 } from 'recharts';
 import { cn } from '@/lib/utils';
-
-// Sample data
-const generateDummyData = (length: number, isBullish: boolean = true) => {
-  const initialValue = 100 + Math.random() * 10;
-  const volatility = 0.03; // 3% volatility
-  const trend = isBullish ? 0.01 : -0.01; // 1% up or down trend
-
-  return Array.from({ length }).map((_, index) => {
-    const randomChange = (Math.random() - 0.5) * 2 * volatility;
-    const trendChange = trend * index;
-    
-    const multiplier = 1 + randomChange + trendChange;
-    const value = initialValue * (1 + index / 10) * multiplier;
-    
-    return {
-      time: new Date(Date.now() - (length - index) * 3600000).toISOString(),
-      price: parseFloat(value.toFixed(2)),
-      volume: Math.round(1000 + Math.random() * 5000),
-    };
-  });
-};
+import { api } from '@/services/api';
 
 interface PriceChartProps {
   className?: string;
@@ -50,28 +29,25 @@ const PriceChart = ({
   const [isBullish, setIsBullish] = useState(true);
 
   useEffect(() => {
-    setIsLoading(true);
-    
-    // Different data length for different periods
-    const getDataLength = () => {
-      switch (activePeriod) {
-        case '1H': return 60; // 60 minutes
-        case '1D': return 24; // 24 hours
-        case '1W': return 7 * 24; // 7 days
-        case '1M': return 30; // 30 days
-        case 'ALL': return 180; // half year
-        default: return 24;
+    const fetchPriceData = async () => {
+      setIsLoading(true);
+      try {
+        const symbol = tokeName.split('/')[0];
+        const priceData = await api.market.getPriceData(symbol, activePeriod);
+        
+        if (priceData && priceData.length > 0) {
+          setData(priceData);
+          setIsBullish(priceData[0].price < priceData[priceData.length - 1].price);
+        }
+      } catch (error) {
+        console.error('Failed to fetch price data:', error);
+      } finally {
+        setIsLoading(false);
       }
     };
 
-    // Simulate data load
-    setTimeout(() => {
-      const newData = generateDummyData(getDataLength(), Math.random() > 0.3);
-      setData(newData);
-      setIsBullish(newData[0].price < newData[newData.length - 1].price);
-      setIsLoading(false);
-    }, 500);
-  }, [activePeriod]);
+    fetchPriceData();
+  }, [activePeriod, tokeName]);
 
   const formatTime = (time: string) => {
     const date = new Date(time);
@@ -218,7 +194,6 @@ const PriceChart = ({
   );
 };
 
-// Custom tooltip component
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
     return (
@@ -245,7 +220,6 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   return null;
 };
 
-// Simple bar chart for volume
 const BarChart = ({ data, children }: any) => (
   <LineChart data={data} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
     {children}

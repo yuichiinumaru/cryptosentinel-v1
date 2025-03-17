@@ -1,9 +1,9 @@
-
 import { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Bot, Terminal, Cpu, Search, AlertCircle } from 'lucide-react';
+import { api } from '@/services/api';
 
 interface ActivityLog {
   id: number;
@@ -13,94 +13,59 @@ interface ActivityLog {
   details?: string;
 }
 
-const mockActivities: ActivityLog[] = [
-  {
-    id: 1,
-    timestamp: new Date().toISOString(),
-    type: 'scan',
-    message: 'Scanning DexScreener for new tokens',
-    details: 'Filtering by 24h volume > $10,000'
-  },
-  {
-    id: 2,
-    timestamp: new Date(Date.now() - 35000).toISOString(),
-    type: 'analysis',
-    message: 'Analyzing PEPE token price movement',
-    details: 'RSI: 72.4, MACD: Bullish crossover, Volume: Increasing'
-  },
-  {
-    id: 3,
-    timestamp: new Date(Date.now() - 95000).toISOString(),
-    type: 'decision',
-    message: 'Evaluating entry for ShibaGF token',
-    details: 'Contract age: 3 days, Liquidity: $450K, Owner renounced: Yes'
-  },
-  {
-    id: 4,
-    timestamp: new Date(Date.now() - 150000).toISOString(),
-    type: 'action',
-    message: 'Bought ShibaGF token for 0.15 ETH',
-    details: 'Entry price: $0.00000082, Stop loss: $0.00000068, Target: $0.0000012'
-  },
-  {
-    id: 5,
-    timestamp: new Date(Date.now() - 310000).toISOString(),
-    type: 'alert',
-    message: 'Detected suspicious activity in MOON token',
-    details: 'Large dev wallet selling, potential rug pull, blacklisting'
-  },
-  {
-    id: 6,
-    timestamp: new Date(Date.now() - 450000).toISOString(),
-    type: 'scan',
-    message: 'Running RugCheck.xyz verification',
-    details: 'Checking 23 tokens from watchlist'
-  },
-  {
-    id: 7,
-    timestamp: new Date(Date.now() - 610000).toISOString(),
-    type: 'analysis',
-    message: 'Performing pattern recognition on DOGE',
-    details: 'Identified double bottom pattern forming on 4h timeframe'
-  },
-  {
-    id: 8,
-    timestamp: new Date(Date.now() - 920000).toISOString(),
-    type: 'decision',
-    message: 'Calculated optimal entry for FLOKI',
-    details: 'Based on Fibonacci retracement and volume profile'
-  },
-];
-
 const AgentActivityMonitor = () => {
-  const [activities, setActivities] = useState<ActivityLog[]>(mockActivities);
+  const [activities, setActivities] = useState<ActivityLog[]>([]);
   const [newActivities, setNewActivities] = useState<ActivityLog[]>([]);
   const [activeFilter, setActiveFilter] = useState<string>('all');
+  const [isLoading, setIsLoading] = useState(true);
+  const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null);
   
   useEffect(() => {
-    // Simulate new activities coming in
-    const interval = setInterval(() => {
-      const types = ['scan', 'analysis', 'decision', 'action', 'alert'];
-      const type = types[Math.floor(Math.random() * types.length)] as ActivityLog['type'];
-      
-      const newActivity: ActivityLog = {
-        id: Date.now(),
-        timestamp: new Date().toISOString(),
-        type,
-        message: `${type === 'scan' ? 'Scanning' : 
-                  type === 'analysis' ? 'Analyzing' :
-                  type === 'decision' ? 'Evaluating' :
-                  type === 'action' ? 'Trading' :
-                  'Alert for'} ${['BTC', 'ETH', 'DOGE', 'SHIB', 'PEPE'][Math.floor(Math.random() * 5)]}`,
-        details: 'Simulated agent activity'
-      };
-      
-      setNewActivities(prev => [newActivity, ...prev].slice(0, 5));
-      setActivities(prev => [newActivity, ...prev].slice(0, 100));
-    }, 8000);
+    // Initial data fetch
+    fetchActivities();
     
-    return () => clearInterval(interval);
+    // Setup polling for new activities
+    const interval = setInterval(() => {
+      fetchNewActivities();
+    }, 10000); // Poll every 10 seconds
+    
+    setPollingInterval(interval);
+    
+    return () => {
+      if (pollingInterval) clearInterval(pollingInterval);
+    };
   }, []);
+  
+  const fetchActivities = async () => {
+    setIsLoading(true);
+    try {
+      const data = await api.agentActivity.getAll();
+      setActivities(data);
+    } catch (error) {
+      console.error('Failed to fetch agent activities:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  const fetchNewActivities = async () => {
+    try {
+      // Get only the most recent activities
+      const recent = await api.agentActivity.getRecent(5);
+      
+      // Filter out activities we already have
+      const newOnes = recent.filter(activity => 
+        !activities.some(a => a.id === activity.id)
+      );
+      
+      if (newOnes.length > 0) {
+        setNewActivities(newOnes);
+        setActivities(prev => [...newOnes, ...prev].slice(0, 100));
+      }
+    } catch (error) {
+      console.error('Failed to fetch new activities:', error);
+    }
+  };
   
   const filteredActivities = activeFilter === 'all' 
     ? activities 

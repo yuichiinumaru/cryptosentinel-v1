@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -6,41 +5,70 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Newspaper, Zap, ArrowUpRight, ArrowDownRight, Filter, RefreshCw, ExternalLink } from 'lucide-react';
-import { NewsItem, agency } from '@/lib/agencySwarm';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
+import { api } from '@/services/api';
+
+interface NewsItem {
+  id: string;
+  title: string;
+  summary: string;
+  source: string;
+  url?: string;
+  timestamp: Date;
+  sentiment: "positive" | "negative" | "neutral";
+  relevance: number;
+  tags: string[];
+  coins?: string[];
+  agentId: string;
+}
+
+interface NewsAgent {
+  id: string;
+  name: string;
+}
 
 const NewsFeed = () => {
   const [news, setNews] = useState<NewsItem[]>([]);
+  const [agents, setAgents] = useState<Record<string, NewsAgent>>({});
   const [activeTab, setActiveTab] = useState('all');
   const [activeFilter, setActiveFilter] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
   useEffect(() => {
-    // Initial load of news
-    setNews(agency.getNews());
-    setIsLoading(false);
-    
-    // Subscribe to news updates
-    const handleNewsUpdate = (newsItem: NewsItem) => {
-      setNews(prevNews => [newsItem, ...prevNews].slice(0, 100));
-    };
-    
-    agency.on('news', handleNewsUpdate);
-    
-    return () => {
-      agency.off('news', handleNewsUpdate);
-    };
+    fetchNews();
   }, []);
   
-  // Filter news based on active tab and filters
+  const fetchNews = async () => {
+    setIsLoading(true);
+    try {
+      const newsData = await api.news.getAll();
+      setNews(newsData);
+      
+      try {
+        const agentData = await api.config.get();
+        if (agentData && agentData.agents) {
+          const agentsMap: Record<string, NewsAgent> = {};
+          agentData.agents.forEach((agent: any) => {
+            agentsMap[agent.id] = { id: agent.id, name: agent.name };
+          });
+          setAgents(agentsMap);
+        }
+      } catch (error) {
+        console.error('Failed to fetch agent data:', error);
+      }
+    } catch (error) {
+      console.error('Failed to fetch news:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
   const filteredNews = news.filter(item => {
-    // Filter by sentiment tab
     if (activeTab === 'positive' && item.sentiment !== 'positive') return false;
     if (activeTab === 'negative' && item.sentiment !== 'negative') return false;
     if (activeTab === 'neutral' && item.sentiment !== 'neutral') return false;
     
-    // Filter by tags if activeFilter is not empty
     if (activeFilter.length > 0) {
       return item.tags.some(tag => activeFilter.includes(tag)) || 
              (item.coins && item.coins.some(coin => activeFilter.includes(coin)));
@@ -49,17 +77,12 @@ const NewsFeed = () => {
     return true;
   });
   
-  // Get all unique tags for filtering
   const allTags = [...new Set(news.flatMap(item => [...item.tags, ...(item.coins || [])]))]
     .sort()
     .filter(Boolean);
   
   const refreshNews = () => {
-    setIsLoading(true);
-    setTimeout(() => {
-      setNews(agency.getNews());
-      setIsLoading(false);
-    }, 1000);
+    fetchNews();
   };
   
   const toggleFilter = (filter: string) => {
@@ -201,7 +224,7 @@ const NewsFeed = () => {
                       )}
                       <div className="px-6 pb-3">
                         <div className="text-xs text-muted-foreground">
-                          Analyzed by: {agency.getAgent(newsItem.agentId)?.name || "AI Agent"}
+                          Analyzed by: {agents[newsItem.agentId]?.name || "AI Agent"}
                         </div>
                       </div>
                     </Card>
