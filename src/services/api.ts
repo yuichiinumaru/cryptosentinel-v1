@@ -3,7 +3,7 @@ import { toast } from "@/components/ui/use-toast";
 
 // Base API URL - replace with your actual API URL
 // This can be stored in localStorage or configured in the settings
-const DEFAULT_API_URL = "http://localhost:5000"; // Default fallback
+const DEFAULT_API_URL = "http://localhost:8000"; // Default fallback
 
 /**
  * Get the configured API URL from localStorage or use default
