@@ -7,6 +7,7 @@ from typing import List, Dict, Any
 from datetime import datetime, timedelta
 import random
 import json
+import requests
 from fastapi.responses import StreamingResponse
 
 # --- Agent Team Import ---
@@ -124,7 +125,7 @@ def run_agent_with_retry(prompt: str, max_retries: int = 3):
             crypto_trading_team.model.api_key = key_manager.get_key()
 
             response = crypto_trading_team.run(prompt, stream=False)
-            return response
+            return str(response)
         except Exception as e:
             print(f"Agent call failed with key index {key_manager.current_key_index}. Error: {e}")
             # Check if it's a key-related error (this is a heuristic)
@@ -166,20 +167,50 @@ async def get_recent_agent_activities(limit: int = 20, api_key: str = Depends(ge
 
 @app.get("/market/price", response_model=List[PriceDataPoint])
 async def get_market_price(symbol: str = "BTC", period: str = "1D", api_key: str = Depends(get_api_key)):
-    """Generates market price data using the MarketAnalyst agent."""
-    prompt = f"""
-    Generate a realistic-looking but fake time-series dataset for the price of {symbol} over the last {period}.
-    The dataset should have 100 data points.
-    Each data point must be a JSON object with two keys: "time" (a UNIX timestamp as a float) and "price" (a float).
-    Your final output should be ONLY the JSON list of these data points, with no other text or formatting.
     """
+    Fetches real market price data directly from the CoinGecko API.
+    """
+    # Mapping for symbols to CoinGecko IDs
+    symbol_to_id = {
+        "BTC": "bitcoin",
+        "ETH": "ethereum",
+        "DOGE": "dogecoin",
+        # Add other common symbols here
+    }
+    coin_id = symbol_to_id.get(symbol.upper(), symbol.lower())
+
+    # Mapping for period to days
+    period_to_days = {
+        "1D": 1,
+        "7D": 7,
+        "1M": 30,
+        "3M": 90,
+        "1Y": 365,
+    }
+    days = period_to_days.get(period.upper(), 1)
+
+    url = f"https://api.coingecko.com/api/v3/coins/{coin_id}/market_chart"
+    params = {
+        "vs_currency": "usd",
+        "days": days,
+    }
+
     try:
-        response_str = run_agent_with_retry(prompt)
-        price_data = json.loads(response_str)
-        return [PriceDataPoint(**item) for item in price_data]
+        response = requests.get(url, params=params)
+        response.raise_for_status()  # Raise an exception for bad status codes
+        data = response.json()
+
+        # Process the data into the format expected by the frontend
+        price_data = [
+            PriceDataPoint(time=item[0] / 1000, price=item[1])
+            for item in data.get("prices", [])
+        ]
+        return price_data
+    except requests.exceptions.RequestException as e:
+        print(f"Failed to fetch data from CoinGecko: {e}")
+        return []
     except Exception as e:
-        print(f"Agent failed to generate price data. Error: {e}")
-        # Fallback for price data can be an empty list
+        print(f"An error occurred while processing price data: {e}")
         return []
 
 # --- Chat Endpoint ---
