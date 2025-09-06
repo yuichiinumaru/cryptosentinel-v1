@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useTypingEffect } from '@/utils/animations';
+import { api } from '@/services/api';
 
 type MessageType = 'user' | 'agent' | 'system';
 
@@ -15,18 +15,7 @@ interface Message {
   content: string;
   type: MessageType;
   timestamp: Date;
-  isTyping?: boolean;
 }
-
-const mockResponses: Record<string, string> = {
-  learning: "I've analyzed your suggestion on using Fibonacci retracement for short-term trading. From my historical data, this approach has 72% success rate when combined with volume analysis on established tokens. I'll incorporate this insight into my trading strategy. Thank you for the valuable input.",
-  
-  strategy: "Based on my recent performance with RSI-based entries, I've adjusted my strategy to use higher timeframe confirmations before entry. This has reduced false signals by 28% in the last 24 hours of testing.",
-  
-  question: "The current pattern recognition model I'm using has been trained on 2,458 historical patterns across 15,723 unique tokens. For triangle patterns specifically, my accuracy rate is 68% with a 3:1 risk-reward ratio when volume confirms the breakout.",
-  
-  feedback: "I understand your feedback about avoiding tokens with less than $50k liquidity. I've updated my filtering parameters to exclude these tokens. This should help avoid the slippage issues you've experienced with recent trades."
-};
 
 const generateId = () => Math.random().toString(36).substring(2, 9);
 
@@ -45,68 +34,50 @@ const ChatWithAgent = () => {
   const [isAgentThinking, setIsAgentThinking] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   
-  // For typing effect in the latest agent message
-  const latestAgentMessage = [...messages].reverse().find(m => m.type === 'agent' && m.isTyping);
-  const typingEffect = useTypingEffect(latestAgentMessage?.content || '', 20);
-  
   useEffect(() => {
     if (scrollAreaRef.current) {
       scrollAreaRef.current.scrollTo({ top: 100000, behavior: 'smooth' });
     }
   }, [messages]);
   
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (!inputValue.trim()) return;
-    
+
+    const userInput = inputValue;
     const newUserMessage: Message = {
       id: generateId(),
-      content: inputValue,
+      content: userInput,
       type: 'user',
       timestamp: new Date()
     };
     
-    setMessages(prev => [...prev, newUserMessage]);
+    const agentMessageId = generateId();
+    const newAgentMessage: Message = {
+      id: agentMessageId,
+      content: "",
+      type: 'agent',
+      timestamp: new Date(),
+    };
+
+    setMessages(prev => [...prev, newUserMessage, newAgentMessage]);
     setInputValue('');
     setIsAgentThinking(true);
-    
-    // Simulate agent typing response
-    setTimeout(() => {
-      setIsAgentThinking(false);
-      
-      // Determine response type based on content
-      let responseContent = '';
-      
-      if (inputValue.toLowerCase().includes('learn') || inputValue.toLowerCase().includes('study')) {
-        responseContent = mockResponses.learning;
-      } else if (inputValue.toLowerCase().includes('strategy') || inputValue.toLowerCase().includes('approach')) {
-        responseContent = mockResponses.strategy;
-      } else if (inputValue.toLowerCase().includes('?') || inputValue.toLowerCase().includes('how') || inputValue.toLowerCase().includes('what')) {
-        responseContent = mockResponses.question;
-      } else {
-        responseContent = mockResponses.feedback;
-      }
-      
-      const newAgentMessage: Message = {
-        id: generateId(),
-        content: responseContent,
-        type: 'agent',
-        timestamp: new Date(),
-        isTyping: true
-      };
-      
-      setMessages(prev => [...prev, newAgentMessage]);
-      
-      // Remove typing indicator after effect completes
-      setTimeout(() => {
-        setMessages(prev => 
-          prev.map(msg => 
-            msg.id === newAgentMessage.id 
-              ? { ...msg, isTyping: false } 
+
+    await api.chat(
+      userInput,
+      (chunk) => {
+        setMessages(prev =>
+          prev.map(msg =>
+            msg.id === agentMessageId
+              ? { ...msg, content: msg.content + chunk }
               : msg
           )
         );
-      }, responseContent.length * 20 + 500);
-    }, 1500);
+      },
+      () => {
+        setIsAgentThinking(false);
+      }
+    );
   };
   
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -117,8 +88,8 @@ const ChatWithAgent = () => {
   };
   
   const renderMessage = (message: Message) => {
-    const isLatestAgentTyping = message.type === 'agent' && message.isTyping;
-    
+    const isAgentStreaming = isAgentThinking && messages[messages.length - 1]?.id === message.id;
+
     return (
       <div 
         key={message.id} 
@@ -147,8 +118,8 @@ const ChatWithAgent = () => {
                 ? 'bg-primary text-primary-foreground'
                 : 'bg-secondary/40 text-foreground'
             }`}>
-              {isLatestAgentTyping ? typingEffect : message.content}
-              {isLatestAgentTyping && (
+              {message.content}
+              {isAgentStreaming && (
                 <span className="inline-block w-1.5 h-4 ml-0.5 align-middle bg-current animate-pulse"></span>
               )}
             </div>

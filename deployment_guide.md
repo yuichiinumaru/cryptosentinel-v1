@@ -99,5 +99,5 @@ serve -s dist
 1.  Start both the backend and frontend servers as described above.
 2.  Open your web browser and navigate to the frontend URL (e.g., `http://localhost:8080`).
 3.  In the application's "Settings" tab, ensure the "API URL" is set to your backend's address (`http://localhost:8000`).
-4.  Provide a valid API key in the settings. This key will be sent as a Bearer token in the `Authorization` header for all API requests. Although the backend uses the `gemini_api_keys` from the `.env` file for the agent, the frontend requires a key to be set in its configuration to enable the API calls. You can use one of the keys from your `.env` file.
+4.  In the application's "Settings" tab, you must provide a value for the API key. The backend requires an `Authorization` header for all requests, but it uses the `gemini_api_keys` from the `.env` file for all AI agent operations. You can enter any non-empty string (e.g., "placeholder") in the API key field in the frontend settings to proceed.
 5.  The application should now be fully functional.
