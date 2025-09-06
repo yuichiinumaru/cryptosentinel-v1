@@ -96,7 +96,7 @@ CryptoSentinel is designed to work with a Python backend API that handles the ac
 
 1. **Setting Up the Connection**:
    - Navigate to the Settings tab in the dashboard
-   - In the API Configuration section, enter your backend API URL (default is http://localhost:5000)
+   - In the API Configuration section, enter your backend API URL (default is http://localhost:8000)
    - Click "Test" to verify the connection
    - Provide your OpenAI API key for the AI agents functionality
    - Optionally, enter a custom OpenAI endpoint if you're using an alternative service
@@ -117,33 +117,24 @@ The frontend expects the following API endpoints to be available on your Python 
 
 #### News Endpoints
 - `GET /news`: Get all stored news items
-- `GET /news/latest?limit={limit}`: Get the latest news items, limited by the specified number
-- `GET /news/tags/{tag}`: Get news items filtered by specific tag
-- `GET /news/sentiment/{sentiment}`: Get news items filtered by sentiment (positive/negative/neutral)
+- `GET /news/latest?limit={limit}`: Get the latest news items from DuckDuckGo News.
 
 #### Trade Endpoints
-- `GET /trades`: Get all trade history
-- `GET /trades/recent?limit={limit}`: Get recent trades, limited by the specified number
-- `POST /trades/execute`: Execute a new trade (requires trade data in the request body)
+- `GET /trades/recent?limit={limit}`: Get recent trades from the in-memory database, populated by the Trader agent.
+- Other trade-related endpoints are available for more detailed history and execution.
 
 #### Agent Activity Endpoints
-- `GET /agent/activities`: Get all agent activities
-- `GET /agent/activities/type/{type}`: Get activities filtered by type
-- `GET /agent/activities/recent?limit={limit}`: Get recent agent activities
-
-#### AI Learning System Endpoints
-- `GET /ai/learnings`: Get insights from the AI learning system
-- `GET /ai/knowledge`: Get the current AI knowledge database
-- `POST /ai/train`: Trigger AI model training
+- `GET /agent/activities/recent?limit={limit}`: Get recent agent activities from the in-memory database.
 
 #### Market Data Endpoints
-- `GET /market/price?symbol={symbol}&period={period}`: Get price data for a specific symbol and time period
-- `GET /market/price/current?symbol={symbol}`: Get the current price of a specific symbol
+- `GET /market/price?symbol={symbol}&period={period}`: Get historical price data for a specific symbol and time period from CoinGecko.
+
+#### Chat Endpoint
+- `POST /chat`: A streaming endpoint to interact with the AI agent team.
 
 #### Configuration Endpoints
-- `GET /config`: Get the current system configuration
-- `POST /config`: Update the system configuration
-- `POST /config/openai`: Update OpenAI-specific configuration
+- `GET /config`: Get the current system configuration.
+- `POST /config`: Update the system configuration.
 
 ### Authentication
 
@@ -172,65 +163,76 @@ When implementing your Python backend, consider the following:
 
 6. **State Management**: The backend should maintain state for the agent system, trading history, and configuration.
 
-### Example Python Backend Skeleton
+### Python Backend Implementation
+
+The backend is a FastAPI application that uses the `agno` library for its multi-agent system. Here is a summary of the main implementation:
 
 ```python
+import os
 from fastapi import FastAPI, Depends, HTTPException, Header
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import uvicorn
+from typing import List, Dict, Any
+from datetime import datetime
+import json
+import requests
+from fastapi.responses import StreamingResponse
+from agno.tools.duckduckgo import DuckDuckGoTools
+
+# --- Agent Team Import ---
+from backend.agents import (
+    crypto_trading_team,
+    get_recent_trades as db_get_recent_trades,
+    get_recent_activities as db_get_recent_activities,
+    key_manager
+)
 
 app = FastAPI(title="CryptoSentinel API")
 
 # Add CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # Restrict in production
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# ... (CORS configuration)
 
-# Authentication dependency
-async def get_api_key(authorization: str = Header(None)):
-    if not authorization:
-        raise HTTPException(status_code=401, detail="API key is required")
-    try:
-        scheme, api_key = authorization.split()
-        if scheme.lower() != "bearer":
-            raise HTTPException(status_code=401, detail="Invalid authentication scheme")
-        return api_key
-    except ValueError:
-        raise HTTPException(status_code=401, detail="Invalid authorization header")
+# --- Authentication & Pydantic Models ---
+# ... (API key dependency and Pydantic models)
 
-# Health endpoint
-@app.get("/health")
-async def health_check():
-    return {"status": "ok"}
+# --- API Endpoints ---
 
-# News endpoints
-@app.get("/news/latest")
+@app.get("/news/latest", response_model=List[NewsItem])
 async def get_latest_news(limit: int = 20, api_key: str = Depends(get_api_key)):
-    # Implement news retrieval logic
-    return []  # Return list of news items
+    """
+    Fetches the latest cryptocurrency news using DuckDuckGo search.
+    """
+    # ... (Implementation uses DuckDuckGoTools)
 
-# Trade endpoints
-@app.get("/trades/recent")
-async def get_recent_trades(limit: int = 10, api_key: str = Depends(get_api_key)):
-    # Implement trade retrieval logic
-    return []  # Return list of trades
+@app.get("/trades/recent", response_model=List[Trade])
+async def get_recent_trades(limit: int = 15, api_key: str = Depends(get_api_key)):
+    """Returns the most recent trades from the in-memory database."""
+    return db_get_recent_trades(limit)
 
-# Agent activity endpoints
-@app.get("/agent/activities/recent")
-async def get_recent_activities(limit: int = 20, api_key: str = Depends(get_api_key)):
-    # Implement activity retrieval logic
-    return []  # Return list of activities
+@app.get("/agent/activities/recent", response_model=List[AgentActivity])
+async def get_recent_agent_activities(limit: int = 20, api_key: str = Depends(get_api_key)):
+    """Returns the most recent agent activities from the in-memory database."""
+    return db_get_recent_activities(limit)
 
-# Main execution point
+@app.get("/market/price", response_model=List[PriceDataPoint])
+async def get_market_price(symbol: str = "BTC", period: str = "1D", api_key: str = Depends(get_api_key)):
+    """
+    Fetches real market price data directly from the CoinGecko API.
+    """
+    # ... (Implementation uses requests to call CoinGecko)
+
+@app.post("/chat")
+async def chat_with_agent(request: ChatRequest, api_key: str = Depends(get_api_key)):
+    """
+    Handles streaming chat with the AI agent team.
+    """
+    # ... (Implementation for streaming response)
+
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=5000)
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
 ```
 
 ## Project Status
 
-This project is under active development. The frontend is complete and ready to connect to your Python backend.
+This project is fully functional. The frontend is complete and the backend provides live data for all main features.

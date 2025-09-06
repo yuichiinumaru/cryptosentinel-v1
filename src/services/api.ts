@@ -125,6 +125,52 @@ export const api = {
   status: {
     get: () => fetchWithAuth("/status"),
   },
+
+  // Chat endpoint
+  chat: async (
+    message: string,
+    onChunk: (chunk: string) => void,
+    onClose: () => void
+  ) => {
+    const apiUrl = getApiUrl();
+    const apiKey = getApiKey();
+
+    try {
+      const response = await fetch(`${apiUrl}/chat`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(apiKey && { Authorization: `Bearer ${apiKey}` }),
+        },
+        body: JSON.stringify({ message }),
+      });
+
+      if (!response.body) {
+        throw new Error("Response body is null");
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) {
+          onClose();
+          break;
+        }
+        const chunk = decoder.decode(value, { stream: true });
+        onChunk(chunk);
+      }
+    } catch (error) {
+      console.error("Chat API request failed:", error);
+      toast({
+        title: "Chat Failed",
+        description: error instanceof Error ? error.message : "Unknown error occurred",
+        variant: "destructive",
+      });
+      onClose();
+    }
+  },
   
   // Test connection to backend
   testConnection: async (): Promise<boolean> => {
