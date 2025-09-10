@@ -4,23 +4,31 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import uvicorn
 from typing import List, Dict, Any
-from datetime import datetime, timedelta
-import random
+from datetime import datetime
 import json
 import requests
 from fastapi.responses import StreamingResponse
 
-# --- Agent Team Import ---
+from agno.agency import Agency
 from agno.tools.duckduckgo import DuckDuckGoTools
-from backend.agents import (
-    crypto_trading_team,
-    get_recent_trades as db_get_recent_trades,
-    get_recent_activities as db_get_recent_activities,
-    key_manager
-)
+from backend.storage.models import TradeData, ActivityData
+from backend.agents import storage, key_manager
+
+from backend.MarketAnalyst.MarketAnalyst import market_analyst
+from backend.Trader.Trader import trader_agent
+from backend.DeepTraderManager.DeepTraderManager import deep_trader_manager
+from backend.PortfolioManager.PortfolioManager import portfolio_manager
+from backend.AnalistaFundamentalista.AnalistaFundamentalista import analista_fundamentalista
+from backend.AnalistaDeSentimento.AnalistaDeSentimento import analista_de_sentimento
+from backend.RiskAnalyst.RiskAnalyst import risk_analyst
+from backend.StrategyAgent.StrategyAgent import strategy_agent
+from backend.AssetManager.AssetManager import asset_manager
+from backend.ComplianceOfficer.ComplianceOfficer import compliance_officer
+from backend.LearningCoordinator.LearningCoordinator import learning_coordinator
+from backend.Dev.Dev import dev_agent
 
 
-app = FastAPI(title="CryptoSentinel API")
+app = FastAPI(title="DeepTrader API")
 
 # Add CORS middleware
 app.add_middleware(
@@ -30,6 +38,45 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# --- Pydantic Models ---
+class ChatRequest(BaseModel):
+    message: str
+
+class NewsItem(BaseModel):
+    id: str
+    title: str
+    summary: str
+    source: str
+    url: str
+    timestamp: datetime
+    sentiment: str
+    relevance: float
+    tags: List[str]
+    coins: List[str]
+    agentId: str
+
+class PriceDataPoint(BaseModel):
+    time: float
+    price: float
+
+
+# --- Agency Setup ---
+agency = Agency([
+    deep_trader_manager,
+    market_analyst,
+    trader_agent,
+    portfolio_manager,
+    analista_fundamentalista,
+    analista_de_sentimento,
+    risk_analyst,
+    strategy_agent,
+    asset_manager,
+    compliance_officer,
+    learning_coordinator,
+    dev_agent,
+])
+
 
 # --- Authentication Dependency ---
 async def get_api_key(authorization: str = Header(None)):
@@ -54,49 +101,11 @@ async def get_api_key(authorization: str = Header(None)):
     os.environ['OPENAI_API_KEY'] = api_key
     return api_key
 
-# --- Pydantic Models ---
-class ChatRequest(BaseModel):
-    message: str
-
-class NewsItem(BaseModel):
-    id: str
-    title: str
-    summary: str
-    source: str
-    url: str
-    timestamp: datetime
-    sentiment: str
-    relevance: float
-    tags: List[str]
-    coins: List[str]
-    agentId: str
-
-# ... (Other Pydantic models are the same)
-class Trade(BaseModel):
-    id: str
-    token: str
-    action: str
-    amount: float
-    price: float
-    timestamp: datetime
-    profit: float
-    status: str
-
-class AgentActivity(BaseModel):
-    id: str
-    timestamp: datetime
-    type: str
-    message: str
-    details: Dict[str, Any]
-
-class PriceDataPoint(BaseModel):
-    time: float
-    price: float
 
 # --- API Endpoints ---
 @app.get("/")
 async def root():
-    return {"message": "CryptoSentinel API is running"}
+    return {"message": "DeepTrader API is running"}
 
 @app.get("/health")
 async def health_check():
@@ -105,31 +114,6 @@ async def health_check():
 @app.get("/status")
 async def get_status(api_key: str = Depends(get_api_key)):
     return {"status": "connected", "message": "Authenticated successfully"}
-
-# --- Helper for Agent API Calls with Retries ---
-def run_agent_with_retry(prompt: str, max_retries: int = 3):
-    """
-    Runs an agent prompt, rotating API keys on failure.
-    """
-    # The number of keys provides a natural limit for retries.
-    num_keys = len(key_manager.api_keys)
-    for i in range(min(max_retries, num_keys)):
-        try:
-            # Set the current key for the model to use
-            crypto_trading_team.model.api_key = key_manager.get_key()
-
-            response = crypto_trading_team.run(prompt, stream=False)
-            return str(response)
-        except Exception as e:
-            print(f"Agent call failed with key index {key_manager.current_key_index}. Error: {e}")
-            # Check if it's a key-related error (this is a heuristic)
-            if "api key" in str(e).lower() or "resource has been exhausted" in str(e).lower():
-                key_manager.rotate_key()
-                print("Retrying with new key...")
-            else:
-                # For other errors, don't retry, just raise
-                raise e
-    raise Exception("Agent call failed after multiple retries with different keys.")
 
 
 # --- Core Data Endpoints ---
@@ -186,15 +170,15 @@ async def get_latest_news(limit: int = 20, api_key: str = Depends(get_api_key)):
         print(f"Failed to fetch news from DuckDuckGo: {e}")
         return []
 
-@app.get("/trades/recent", response_model=List[Trade])
+@app.get("/trades/recent", response_model=List[TradeData])
 async def get_recent_trades(limit: int = 15, api_key: str = Depends(get_api_key)):
-    """Returns the most recent trades from the in-memory database."""
-    return db_get_recent_trades(limit)
+    """Returns the most recent trades from the database."""
+    return storage.get_recent_trades(limit)
 
-@app.get("/agent/activities/recent", response_model=List[AgentActivity])
+@app.get("/agent/activities/recent", response_model=List[ActivityData])
 async def get_recent_agent_activities(limit: int = 20, api_key: str = Depends(get_api_key)):
-    """Returns the most recent agent activities from the in-memory database."""
-    return db_get_recent_activities(limit)
+    """Returns the most recent agent activities from the database."""
+    return storage.get_recent_activities(limit)
 
 @app.get("/market/price", response_model=List[PriceDataPoint])
 async def get_market_price(symbol: str = "BTC", period: str = "1D", api_key: str = Depends(get_api_key)):
@@ -244,28 +228,12 @@ async def get_market_price(symbol: str = "BTC", period: str = "1D", api_key: str
         print(f"An error occurred while processing price data: {e}")
         return []
 
-# --- Chat Endpoint ---
+
 @app.post("/chat")
-async def chat_with_agent(request: ChatRequest, api_key: str = Depends(get_api_key)):
-    try:
-        response_generator = crypto_trading_team.run(request.message, stream=True)
+async def chat_with_agent(request: ChatRequest):
+    response = agency.get_response(request.message)
+    return {"response": response}
 
-        async def stream_output():
-            for chunk in response_generator:
-                # The generator can yield strings or event objects.
-                # We only want to stream the string responses to the client.
-                if isinstance(chunk, str):
-                    yield chunk
-                else:
-                    # For debugging, we can see the events happening
-                    print(f"AGENT_EVENT: {chunk}")
-
-        return StreamingResponse(stream_output(), media_type="text/event-stream")
-    except Exception as e:
-        print(f"Error during chat: {e}")
-        async def error_stream():
-            yield f"Error: Could not get response from agent. {e}"
-        return StreamingResponse(error_stream(), media_type="text/event-stream", status_code=500)
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

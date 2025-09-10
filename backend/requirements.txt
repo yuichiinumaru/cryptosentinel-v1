@@ -6,3 +6,15 @@ requests
 google-genai
 openai
 ddgs
+pycoingecko
+pandas
+numpy
+TA-Lib
+pandas-ta
+ccxt
+backtrader
+optuna
+chromadb
+langchain
+web3
+nltk
