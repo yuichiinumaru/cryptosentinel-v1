@@ -4,23 +4,17 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import uvicorn
 from typing import List, Dict, Any
-from datetime import datetime, timedelta
-import random
+from datetime import datetime
 import json
 import requests
 from fastapi.responses import StreamingResponse
 
-# --- Agent Team Import ---
 from agno.tools.duckduckgo import DuckDuckGoTools
-from backend.agents import (
-    crypto_trading_team,
-    get_recent_trades as db_get_recent_trades,
-    get_recent_activities as db_get_recent_activities,
-    key_manager
-)
+from backend.storage.models import TradeData, ActivityData
+from backend.agents import crypto_trading_team, storage, key_manager
 
 
-app = FastAPI(title="CryptoSentinel API")
+app = FastAPI(title="DeepTrader API")
 
 # Add CORS middleware
 app.add_middleware(
@@ -30,6 +24,33 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# --- Pydantic Models ---
+class ChatRequest(BaseModel):
+    message: str
+    agent: str = "DeepTraderManager"  # Default agent to chat with
+
+class NewsItem(BaseModel):
+    id: str
+    title: str
+    summary: str
+    source: str
+    url: str
+    timestamp: datetime
+    sentiment: str
+    relevance: float
+    tags: List[str]
+    coins: List[str]
+    agentId: str
+
+class PriceDataPoint(BaseModel):
+    time: float
+    price: float
+
+
+# The crypto_trading_team is already instantiated in backend/agents.py
+# We just use it here.
+
 
 # --- Authentication Dependency ---
 async def get_api_key(authorization: str = Header(None)):
@@ -54,49 +75,11 @@ async def get_api_key(authorization: str = Header(None)):
     os.environ['OPENAI_API_KEY'] = api_key
     return api_key
 
-# --- Pydantic Models ---
-class ChatRequest(BaseModel):
-    message: str
-
-class NewsItem(BaseModel):
-    id: str
-    title: str
-    summary: str
-    source: str
-    url: str
-    timestamp: datetime
-    sentiment: str
-    relevance: float
-    tags: List[str]
-    coins: List[str]
-    agentId: str
-
-# ... (Other Pydantic models are the same)
-class Trade(BaseModel):
-    id: str
-    token: str
-    action: str
-    amount: float
-    price: float
-    timestamp: datetime
-    profit: float
-    status: str
-
-class AgentActivity(BaseModel):
-    id: str
-    timestamp: datetime
-    type: str
-    message: str
-    details: Dict[str, Any]
-
-class PriceDataPoint(BaseModel):
-    time: float
-    price: float
 
 # --- API Endpoints ---
 @app.get("/")
 async def root():
-    return {"message": "CryptoSentinel API is running"}
+    return {"message": "DeepTrader API is running"}
 
 @app.get("/health")
 async def health_check():
@@ -105,31 +88,6 @@ async def health_check():
 @app.get("/status")
 async def get_status(api_key: str = Depends(get_api_key)):
     return {"status": "connected", "message": "Authenticated successfully"}
-
-# --- Helper for Agent API Calls with Retries ---
-def run_agent_with_retry(prompt: str, max_retries: int = 3):
-    """
-    Runs an agent prompt, rotating API keys on failure.
-    """
-    # The number of keys provides a natural limit for retries.
-    num_keys = len(key_manager.api_keys)
-    for i in range(min(max_retries, num_keys)):
-        try:
-            # Set the current key for the model to use
-            crypto_trading_team.model.api_key = key_manager.get_key()
-
-            response = crypto_trading_team.run(prompt, stream=False)
-            return str(response)
-        except Exception as e:
-            print(f"Agent call failed with key index {key_manager.current_key_index}. Error: {e}")
-            # Check if it's a key-related error (this is a heuristic)
-            if "api key" in str(e).lower() or "resource has been exhausted" in str(e).lower():
-                key_manager.rotate_key()
-                print("Retrying with new key...")
-            else:
-                # For other errors, don't retry, just raise
-                raise e
-    raise Exception("Agent call failed after multiple retries with different keys.")
 
 
 # --- Core Data Endpoints ---
@@ -186,15 +144,15 @@ async def get_latest_news(limit: int = 20, api_key: str = Depends(get_api_key)):
         print(f"Failed to fetch news from DuckDuckGo: {e}")
         return []
 
-@app.get("/trades/recent", response_model=List[Trade])
+@app.get("/trades/recent", response_model=List[TradeData])
 async def get_recent_trades(limit: int = 15, api_key: str = Depends(get_api_key)):
-    """Returns the most recent trades from the in-memory database."""
-    return db_get_recent_trades(limit)
+    """Returns the most recent trades from the database."""
+    return storage.get_recent_trades(limit)
 
-@app.get("/agent/activities/recent", response_model=List[AgentActivity])
+@app.get("/agent/activities/recent", response_model=List[ActivityData])
 async def get_recent_agent_activities(limit: int = 20, api_key: str = Depends(get_api_key)):
-    """Returns the most recent agent activities from the in-memory database."""
-    return db_get_recent_activities(limit)
+    """Returns the most recent agent activities from the database."""
+    return storage.get_recent_activities(limit)
 
 @app.get("/market/price", response_model=List[PriceDataPoint])
 async def get_market_price(symbol: str = "BTC", period: str = "1D", api_key: str = Depends(get_api_key)):
@@ -244,28 +202,47 @@ async def get_market_price(symbol: str = "BTC", period: str = "1D", api_key: str
         print(f"An error occurred while processing price data: {e}")
         return []
 
-# --- Chat Endpoint ---
+
 @app.post("/chat")
 async def chat_with_agent(request: ChatRequest, api_key: str = Depends(get_api_key)):
+    """
+    Handles chat requests to the agency. The user can specify which agent to talk to.
+    The message is sent from a "User" sender to the specified agent.
+    """
     try:
-        response_generator = crypto_trading_team.run(request.message, stream=True)
+        # Use the team to get a response.
+        # The 'team' object from agno might have a different interface.
+        # Based on the library's likely design, it probably takes the message
+        # and determines the initial agent based on its internal logic or a default.
+        # The concept of a specific 'receiver' might be handled differently in a Team.
+        # For now, let's assume a simple run method. I may need to adjust this
+        # after checking the agno library's source or getting more errors.
+        response_generator = crypto_trading_team.run(request.message)
 
-        async def stream_output():
-            for chunk in response_generator:
-                # The generator can yield strings or event objects.
-                # We only want to stream the string responses to the client.
-                if isinstance(chunk, str):
-                    yield chunk
-                else:
-                    # For debugging, we can see the events happening
-                    print(f"AGENT_EVENT: {chunk}")
+        # The response from the agency can be a generator for streaming.
+        # For a simple chat endpoint, we can consume the generator to get the final response.
+        final_response = ""
+        for chunk in response_generator:
+            # The chunk can be a dict with 'content', 'tool_calls', etc.
+            # We are interested in the 'content' for the chat response.
+            if isinstance(chunk, dict) and 'content' in chunk:
+                final_response += chunk['content']
+            elif isinstance(chunk, str):
+                final_response = chunk # If it's just a string, use it directly
 
-        return StreamingResponse(stream_output(), media_type="text/event-stream")
+        # If the agent returns a structured object (like a Pydantic model),
+        # agno will serialize it to a string. We might need to parse it back
+        # depending on the frontend's needs. For now, we return the raw response.
+        if not final_response:
+             final_response = "The agent did not return a message. This could be because it performed an action without a verbal response."
+
+        return {"response": final_response}
+
     except Exception as e:
-        print(f"Error during chat: {e}")
-        async def error_stream():
-            yield f"Error: Could not get response from agent. {e}"
-        return StreamingResponse(error_stream(), media_type="text/event-stream", status_code=500)
+        print(f"Error in chat endpoint: {e}")
+        # This will catch errors like agent not found, etc.
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

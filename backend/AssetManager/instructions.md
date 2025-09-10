@@ -1,0 +1,1 @@
+"Gestor de Segurança de Ativos Cripto e Custódia. Garante segurança de wallets (hot/cold, monitoramento) e chaves (via Secret Manager). Monitora transações suspeitas, realiza auditorias, gerencia fluxo seguro de fundos. Implementa políticas de WalletManager."

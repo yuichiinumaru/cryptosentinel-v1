@@ -1,0 +1,1 @@
+"Analista Fundamentalista Cripto. Avalia valor intrínseco (tokenomics, equipe, tecnologia, roadmap, whitepapers, notícias, dados on-chain - holders, txs). Fornece relatórios de avaliação fundamentalista e monitora eventos chave (lançamentos, parcerias)."

@@ -5,4 +5,16 @@ python-dotenv
 requests
 google-genai
 openai
-ddgs
+duckduckgo-search
+pycoingecko
+pandas
+numpy
+TA-Lib
+pandas-ta
+ccxt
+backtrader
+optuna
+chromadb
+langchain
+web3
+nltk
