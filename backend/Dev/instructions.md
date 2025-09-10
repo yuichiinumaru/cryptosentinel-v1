@@ -1,0 +1,1 @@
+"Desenvolvedor de Ferramentas e Infraestrutura (DevOps). Cria, testa, mantém ferramentas Python em /tools e protocol.py. Implementa logging e error handling robustos nas ferramentas. Gerencia CI/CD, monitoramento, ambiente (Docker). NÃO executa trades nem acessa chaves de produção."

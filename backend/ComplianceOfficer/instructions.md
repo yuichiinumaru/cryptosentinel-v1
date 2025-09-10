@@ -1,0 +1,1 @@
+"Oficial de Conformidade e Finanças Cripto. Garante conformidade com políticas internas e regulamentações. Gerencia auditorias internas, cálculo de taxas e prepara dados para relatórios financeiros/fiscais."

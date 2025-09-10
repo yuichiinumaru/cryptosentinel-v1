@@ -17,3 +17,5 @@ optuna
 chromadb
 langchain
 web3
+nltk
+

@@ -1,0 +1,1 @@
+"Analista de Sentimento do Mercado Cripto. Monitora e quantifica sentimento em tempo real (redes sociais, notícias). Calcula índices de sentimento (VADER, NLP), identifica tendências FUD/FOMO e emite alertas sobre mudanças abruptas."
