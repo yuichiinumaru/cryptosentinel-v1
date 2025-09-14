@@ -1,33 +1,39 @@
 from pydantic import BaseModel, Field
 from typing import Dict, Any
-from agno.tools import tool
+from agno.tools.toolkit import Toolkit
 
-
-class VisualizePortfolioInput(BaseModel):
+class CalculatePortfolioMetricsInput(BaseModel):
     pass
 
-class VisualizePortfolioOutput(BaseModel):
-    image_path: str = Field(..., description="The path to the portfolio visualization image.")
+class CalculatePortfolioMetricsOutput(BaseModel):
+    roi: float = Field(..., description="The Return on Investment.")
+    pnl: float = Field(..., description="The Profit and Loss.")
+    max_drawdown: float = Field(..., description="The maximum drawdown.")
 
-@tool(input_schema=VisualizePortfolioInput, output_schema=VisualizePortfolioOutput)
-def VisualizePortfolioTool() -> Dict[str, Any]:
+@tool
+def calculate_portfolio_metrics() -> CalculatePortfolioMetricsOutput:
     """
-    Generates a visualization of the portfolio.
+    Calculates portfolio performance metrics.
     """
     # ... (Placeholder implementation)
-    return {"image_path": "placeholder.png"}
+    return CalculatePortfolioMetricsOutput(roi=0.1, pnl=1000, max_drawdown=0.05)
 
-
-class PortfolioOptimizationInput(BaseModel):
+class CalculatePortfolioRiskInput(BaseModel):
     pass
 
-class PortfolioOptimizationOutput(BaseModel):
-    optimized_portfolio: Dict[str, Any] = Field(..., description="The optimized portfolio.")
+class CalculatePortfolioRiskOutput(BaseModel):
+    volatility: float = Field(..., description="The portfolio volatility.")
+    var: float = Field(..., description="The Value at Risk (VaR).")
+    exposure: Dict[str, float] = Field(..., description="The exposure per asset.")
 
-@tool(input_schema=PortfolioOptimizationInput, output_schema=PortfolioOptimizationOutput)
-def PortfolioOptimizationTool() -> Dict[str, Any]:
+@tool
+def calculate_portfolio_risk() -> CalculatePortfolioRiskOutput:
     """
-    Optimizes the portfolio based on a given strategy.
+    Calculates portfolio risk metrics.
     """
     # ... (Placeholder implementation)
-    return {"optimized_portfolio": {}}
+    return CalculatePortfolioRiskOutput(volatility=0.2, var=100, exposure={"BTC": 0.5, "ETH": 0.5})
+
+portfolio_analysis_toolkit = Toolkit(name="portfolio_analysis")
+portfolio_analysis_toolkit.register(calculate_portfolio_metrics)
+portfolio_analysis_toolkit.register(calculate_portfolio_risk)

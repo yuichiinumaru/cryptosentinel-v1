@@ -1,6 +1,7 @@
 import sqlite3
 import json
 from typing import List, Optional
+from urllib.parse import urlparse
 
 from .base import Storage
 from .models import Team, Workflow, TradeData, ActivityData
@@ -8,7 +9,15 @@ from .models import Team, Workflow, TradeData, ActivityData
 
 class SqliteStorage(Storage):
     def __init__(self, url: str):
-        self.conn = sqlite3.connect(url)
+        parsed_url = urlparse(url)
+        # The path will be '/path/to/db.sqlite' for sqlite:///path/to/db.sqlite
+        # or 'path/to/db.sqlite' for sqlite://path/to/db.sqlite
+        # or ':memory:' for sqlite:///:memory:
+        db_path = parsed_url.path
+        if parsed_url.scheme == "sqlite" and db_path.startswith("/"):
+            db_path = db_path[1:]
+
+        self.conn = sqlite3.connect(db_path)
         self.conn.row_factory = self._dict_factory
         self._create_tables()
 

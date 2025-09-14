@@ -5,7 +5,7 @@ python-dotenv
 requests
 google-genai
 openai
-ddgs
+duckduckgo-search
 pycoingecko
 pandas
 numpy
@@ -18,4 +18,3 @@ chromadb
 langchain
 web3
 nltk
-

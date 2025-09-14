@@ -1,41 +1,37 @@
 from pydantic import BaseModel, Field
-from typing import Dict, Any
-from agno.tools import tool
-
+from agno.tools.toolkit import Toolkit
 
 class ApproveTradeInput(BaseModel):
     trade_id: str = Field(..., description="The ID of the trade to approve.")
-    reason: str = Field("Approved", description="The reason for the approval.")
-
 
 class ApproveTradeOutput(BaseModel):
-    status: str = Field("approved", description="The approval status.")
-    trade_id: str = Field(..., description="The ID of the approved trade.")
-    reason: str = Field(..., description="The reason for the approval.")
+    success: bool = Field(..., description="Whether the trade was approved successfully.")
 
-
-@tool(input_schema=ApproveTradeInput, output_schema=ApproveTradeOutput)
-def ApproveTradeTool(trade_id: str, reason: str = "Approved") -> Dict[str, Any]:
+@tool
+def approve_trade(input: ApproveTradeInput) -> ApproveTradeOutput:
     """
     Approves a trade.
     """
-    return {"status": "approved", "trade_id": trade_id, "reason": reason}
-
+    # This is a placeholder implementation. A real implementation would send a message to the Trader agent.
+    print(f"Trade {input.trade_id} approved.")
+    return ApproveTradeOutput(success=True)
 
 class RejectTradeInput(BaseModel):
     trade_id: str = Field(..., description="The ID of the trade to reject.")
-    reason: str = Field(..., description="The reason for the rejection.")
-
+    reason: str = Field(..., description="The reason for rejecting the trade.")
 
 class RejectTradeOutput(BaseModel):
-    status: str = Field("rejected", description="The rejection status.")
-    trade_id: str = Field(..., description="The ID of the rejected trade.")
-    reason: str = Field(..., description="The reason for the rejection.")
+    success: bool = Field(..., description="Whether the trade was rejected successfully.")
 
-
-@tool(input_schema=RejectTradeInput, output_schema=RejectTradeOutput)
-def RejectTradeTool(trade_id: str, reason: str) -> Dict[str, Any]:
+@tool
+def reject_trade(input: RejectTradeInput) -> RejectTradeOutput:
     """
     Rejects a trade.
     """
-    return {"status": "rejected", "trade_id": trade_id, "reason": reason}
+    # This is a placeholder implementation. A real implementation would send a message to the MarketAnalyst agent.
+    print(f"Trade {input.trade_id} rejected. Reason: {input.reason}")
+    return RejectTradeOutput(success=True)
+
+communication_toolkit = Toolkit(name="communication")
+communication_toolkit.register(approve_trade)
+communication_toolkit.register(reject_trade)

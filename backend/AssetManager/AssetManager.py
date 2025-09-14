@@ -1,46 +1,23 @@
+import os
 from agno.agent import Agent
 from agno.models.google import Gemini
-import os
+from backend.tools.portfolio import get_portfolio
+from backend.tools.wallet import get_account_balance
+from backend.tools.alerting import alerting_toolkit
 
-from backend.tools.asset_management import MonitorTransactionsTool, CheckWalletSecurityTool, SystemMonitoringTool, SecureTransferTool, FetchSecretTool
-from backend.tools.wallet import GetAccountBalance
-
-# Load environment variables
-from dotenv import load_dotenv
-load_dotenv()
-
-# Agent Configuration
-model_name = os.getenv("gemini_model", "gemini-1.5-flash-latest")
-temperature = float(os.getenv("temperature", 0.7))
-api_key = os.getenv("GEMINI_API_KEY")
-
-shared_model = Gemini(
-    id=model_name,
-    api_key=api_key,
-    temperature=temperature,
-)
-
-# Load instructions from file
-with open("backend/AssetManager/instructions.md", "r") as f:
+# Load instructions from the markdown file
+with open(os.path.join(os.path.dirname(__file__), 'instructions.md'), 'r') as f:
     instructions = f.read()
 
 asset_manager = Agent(
-    name="AssetManager",
-    model=shared_model,
-    tools=[
-        MonitorTransactionsTool,
-        CheckWalletSecurityTool,
-        SystemMonitoringTool,
-        SecureTransferTool,
-        GetAccountBalance,
-        FetchSecretTool,
-    ],
+    id="asset_manager",
+    name="Asset Manager",
+    description="Gerencia os ativos da carteira, como alocação e rebalanceamento.",
     instructions=instructions,
-    file_search=True,
-    code_interpreter=False,
+    tools=[get_portfolio, get_account_balance, alerting_toolkit],
+    model=Gemini(
+        id=os.getenv("gemini_model", "gemini-1.5-flash-latest"),
+        api_key=os.getenv("gemini_api_key"),
+        temperature=float(os.getenv("temperature", 0.7)),
+    ),
 )
-
-if __name__ == "__main__":
-    # Example usage
-    response = asset_manager.run("Check the security of the main wallet.")
-    print(response)

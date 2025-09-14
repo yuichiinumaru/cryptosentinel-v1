@@ -1,80 +1,69 @@
-import os
-import requests
 from pydantic import BaseModel, Field
-from typing import Dict, Any
+from typing import Optional, List
 from agno.tools import tool
+import requests
+import os
 from web3 import Web3
 
+# Simplified ERC-20 ABI for totalSupply
+ERC20_ABI = '[{"constant":true,"inputs":[],"name":"totalSupply","outputs":[{"name":"","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"}]'
 
 class CheckTokenSecurityInput(BaseModel):
-    token_address: str = Field(..., description="The address of the token contract.")
-    chain: str = Field("ethereum", description="The blockchain to check the token on.")
-
+    token_address: str = Field(..., description="The token contract address.")
+    chain: str = Field(..., description="The blockchain where the token is deployed (e.g., 'ethereum', 'bsc').")
 
 class CheckTokenSecurityOutput(BaseModel):
-    is_safe: bool = Field(..., description="Whether the token is considered safe.")
-    details: Dict[str, Any] = Field(..., description="A dictionary containing the security details.")
-    reasons: str = Field(..., description="A summary of the reasons for the safety assessment.")
+    is_safe: bool = Field(..., description="Overall safety assessment.")
+    total_supply: Optional[int] = Field(None, description="Total supply of the token.")
+    is_contract_verified: Optional[bool] = Field(None, description="Whether the contract source code is verified.")
+    rugcheck_score: Optional[int] = Field(None, description="Security score from Rugcheck.xyz.")
+    reasons: List[str] = Field([], description="List of reasons if the token is not safe.")
 
-
-@tool(input_schema=CheckTokenSecurityInput, output_schema=CheckTokenSecurityOutput)
-def CheckTokenSecurity(token_address: str, chain: str = "ethereum") -> Dict[str, Any]:
+@tool
+def check_token_security(input: CheckTokenSecurityInput) -> CheckTokenSecurityOutput:
     """
-    Checks the security of a token contract against rug pulls, honeypots, etc.
+    Checks the security of a token contract by verifying its total supply and using Rugcheck.xyz.
     """
-    goplus_api_key = os.getenv("GOPLUS_API_KEY")
-    rugcheck_api_key = os.getenv("RUGCHECK_API_KEY")
-    infura_url = os.getenv("INFURA_URL")
-
-    w3 = Web3(Web3.HTTPProvider(infura_url))
-
-    details = {}
     reasons = []
     is_safe = True
+    total_supply = None
+    is_contract_verified = None  # This would require an Etherscan/BscScan API
+    rugcheck_score = None
 
-    # Basic on-chain checks
+    # 1. Check Total Supply
     try:
-        token_address = w3.to_checksum_address(token_address)
-        contract = w3.eth.contract(address=token_address, abi=[{"constant": True, "inputs": [], "name": "totalSupply", "outputs": [{"name": "", "type": "uint256"}], "payable": False, "stateMutability": "view", "type": "function"}])
+        rpc_url = os.getenv(f"{input.chain.upper()}_RPC_URL")
+        if not rpc_url:
+            raise ValueError(f"RPC_URL for chain {input.chain} not found in environment variables.")
+        w3 = Web3(Web3.HTTPProvider(rpc_url))
+        contract = w3.eth.contract(address=w3.to_checksum_address(input.token_address), abi=ERC20_ABI)
         total_supply = contract.functions.totalSupply().call()
-        details["total_supply"] = total_supply
     except Exception as e:
+        reasons.append(f"Could not retrieve total supply: {e}")
         is_safe = False
-        reasons.append(f"On-chain check failed: {e}")
-        details["on_chain_check"] = f"Failed: {e}"
 
-    # GoPlus Security
-    if goplus_api_key:
-        try:
-            url = f"https://api.gopluslabs.io/api/v1/token_security/{chain}?contract_addresses={token_address}"
-            headers = {"X-API-KEY": goplus_api_key}
-            response = requests.get(url, headers=headers)
-            response.raise_for_status()
-            data = response.json()
-            details["goplus"] = data
-            if data.get("result", {}).get(token_address.lower(), {}).get("is_honeypot") == "1":
-                is_safe = False
-                reasons.append("GoPlus detected a honeypot.")
-        except Exception as e:
-            details["goplus"] = f"Failed to fetch data: {e}"
-
-    # Rugcheck.xyz
+    # 2. Check Rugcheck.xyz
+    rugcheck_api_key = os.getenv("RUGCHECK_API_KEY")
     if rugcheck_api_key:
         try:
-            url = f"https://api.rugcheck.xyz/v1/tokens/{token_address}/report"
-            headers = {"X-API-KEY": rugcheck_api_key}
-            response = requests.get(url, headers=headers)
+            response = requests.get(
+                f"https://api.rugcheck.xyz/v1/check/{input.chain}/{input.token_address}",
+                headers={"Authorization": f"Bearer {rugcheck_api_key}"}
+            )
             response.raise_for_status()
-            data = response.json()
-            details["rugcheck"] = data
-            if data.get("risks", []):
+            rugcheck_data = response.json()
+            rugcheck_score = rugcheck_data.get('score')
+            if rugcheck_score is not None and rugcheck_score < 85:
                 is_safe = False
-                reasons.append("Rugcheck detected risks.")
+                reasons.append(f"Low Rugcheck.xyz score: {rugcheck_score}")
         except Exception as e:
-            details["rugcheck"] = f"Failed to fetch data: {e}"
+            reasons.append(f"Error calling Rugcheck.xyz API: {e}")
+            is_safe = False
 
-    return {
-        "is_safe": is_safe,
-        "details": details,
-        "reasons": " ".join(reasons) if reasons else "No immediate risks found."
-    }
+    return CheckTokenSecurityOutput(
+        is_safe=is_safe,
+        total_supply=total_supply,
+        is_contract_verified=is_contract_verified,
+        rugcheck_score=rugcheck_score,
+        reasons=reasons,
+    )

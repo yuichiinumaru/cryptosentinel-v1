@@ -9,23 +9,9 @@ import json
 import requests
 from fastapi.responses import StreamingResponse
 
-from agno.agency import Agency
 from agno.tools.duckduckgo import DuckDuckGoTools
 from backend.storage.models import TradeData, ActivityData
-from backend.agents import storage, key_manager
-
-from backend.MarketAnalyst.MarketAnalyst import market_analyst
-from backend.Trader.Trader import trader_agent
-from backend.DeepTraderManager.DeepTraderManager import deep_trader_manager
-from backend.PortfolioManager.PortfolioManager import portfolio_manager
-from backend.AnalistaFundamentalista.AnalistaFundamentalista import analista_fundamentalista
-from backend.AnalistaDeSentimento.AnalistaDeSentimento import analista_de_sentimento
-from backend.RiskAnalyst.RiskAnalyst import risk_analyst
-from backend.StrategyAgent.StrategyAgent import strategy_agent
-from backend.AssetManager.AssetManager import asset_manager
-from backend.ComplianceOfficer.ComplianceOfficer import compliance_officer
-from backend.LearningCoordinator.LearningCoordinator import learning_coordinator
-from backend.Dev.Dev import dev_agent
+from backend.agents import crypto_trading_team, storage, key_manager
 
 
 app = FastAPI(title="DeepTrader API")
@@ -42,6 +28,7 @@ app.add_middleware(
 # --- Pydantic Models ---
 class ChatRequest(BaseModel):
     message: str
+    agent: str = "DeepTraderManager"  # Default agent to chat with
 
 class NewsItem(BaseModel):
     id: str
@@ -61,21 +48,8 @@ class PriceDataPoint(BaseModel):
     price: float
 
 
-# --- Agency Setup ---
-agency = Agency([
-    deep_trader_manager,
-    market_analyst,
-    trader_agent,
-    portfolio_manager,
-    analista_fundamentalista,
-    analista_de_sentimento,
-    risk_analyst,
-    strategy_agent,
-    asset_manager,
-    compliance_officer,
-    learning_coordinator,
-    dev_agent,
-])
+# The crypto_trading_team is already instantiated in backend/agents.py
+# We just use it here.
 
 
 # --- Authentication Dependency ---
@@ -230,9 +204,44 @@ async def get_market_price(symbol: str = "BTC", period: str = "1D", api_key: str
 
 
 @app.post("/chat")
-async def chat_with_agent(request: ChatRequest):
-    response = agency.get_response(request.message)
-    return {"response": response}
+async def chat_with_agent(request: ChatRequest, api_key: str = Depends(get_api_key)):
+    """
+    Handles chat requests to the agency. The user can specify which agent to talk to.
+    The message is sent from a "User" sender to the specified agent.
+    """
+    try:
+        # Use the team to get a response.
+        # The 'team' object from agno might have a different interface.
+        # Based on the library's likely design, it probably takes the message
+        # and determines the initial agent based on its internal logic or a default.
+        # The concept of a specific 'receiver' might be handled differently in a Team.
+        # For now, let's assume a simple run method. I may need to adjust this
+        # after checking the agno library's source or getting more errors.
+        response_generator = crypto_trading_team.run(request.message)
+
+        # The response from the agency can be a generator for streaming.
+        # For a simple chat endpoint, we can consume the generator to get the final response.
+        final_response = ""
+        for chunk in response_generator:
+            # The chunk can be a dict with 'content', 'tool_calls', etc.
+            # We are interested in the 'content' for the chat response.
+            if isinstance(chunk, dict) and 'content' in chunk:
+                final_response += chunk['content']
+            elif isinstance(chunk, str):
+                final_response = chunk # If it's just a string, use it directly
+
+        # If the agent returns a structured object (like a Pydantic model),
+        # agno will serialize it to a string. We might need to parse it back
+        # depending on the frontend's needs. For now, we return the raw response.
+        if not final_response:
+             final_response = "The agent did not return a message. This could be because it performed an action without a verbal response."
+
+        return {"response": final_response}
+
+    except Exception as e:
+        print(f"Error in chat endpoint: {e}")
+        # This will catch errors like agent not found, etc.
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 if __name__ == "__main__":

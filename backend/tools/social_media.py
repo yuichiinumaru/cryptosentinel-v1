@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 from typing import List, Dict, Any
-from agno.tools import tool
+from agno.tools.toolkit import Toolkit
 
 
 class FetchSocialMediaInput(BaseModel):
@@ -12,10 +12,12 @@ class FetchSocialMediaOutput(BaseModel):
     posts: List[Dict[str, Any]] = Field(..., description="A list of social media posts.")
 
 
-@tool(input_schema=FetchSocialMediaInput, output_schema=FetchSocialMediaOutput)
-def FetchSocialMediaTool(query: str, platform: str = "twitter") -> Dict[str, Any]:
+def fetch_social_media(input: FetchSocialMediaInput) -> FetchSocialMediaOutput:
     """
     Fetches data from social media platforms like X (Twitter) and Reddit.
     """
     # ... (Placeholder implementation)
-    return {"posts": [{"text": "This is a placeholder tweet.", "user": "placeholder_user"}]}
+    return FetchSocialMediaOutput(posts=[{"text": f"Social media post about {input.query} on {input.platform}", "user": "placeholder_user"}])
+
+social_media_toolkit = Toolkit(name="social_media")
+social_media_toolkit.register(fetch_social_media)

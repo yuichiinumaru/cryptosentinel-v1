@@ -1,123 +1,56 @@
 from pydantic import BaseModel, Field
 from typing import Dict, Any
-from agno.tools import tool
+from agno.tools.toolkit import Toolkit
+from agno.tools.function import Function
 
+class CodeWriterInput(BaseModel):
+    task: str = Field(..., description="The task to write code for.")
 
-class DevelopmentEnvironmentToolInput(BaseModel):
-    command: str = Field(..., description="The command to execute in the development environment.")
+class CodeWriterOutput(BaseModel):
+    code: str = Field(..., description="The generated code.")
 
-class DevelopmentEnvironmentToolOutput(BaseModel):
-    output: str = Field(..., description="The output of the command.")
-
-@tool(input_schema=DevelopmentEnvironmentToolInput, output_schema=DevelopmentEnvironmentToolOutput)
-def DevelopmentEnvironmentTool(command: str) -> Dict[str, Any]:
+def code_writer_func(input: CodeWriterInput) -> CodeWriterOutput:
     """
-    Represents the local/dev environment.
-    """
-    # ... (Placeholder implementation)
-    return {"output": f"Executed command: {command}"}
-
-
-class VersionControlToolInput(BaseModel):
-    command: str = Field(..., description="The version control command to execute.")
-
-class VersionControlToolOutput(BaseModel):
-    output: str = Field(..., description="The output of the command.")
-
-@tool(input_schema=VersionControlToolInput, output_schema=VersionControlToolOutput)
-def VersionControlTool(command: str) -> Dict[str, Any]:
-    """
-    Interacts with a version control system like Git.
+    Writes code for a given task.
     """
     # ... (Placeholder implementation)
-    return {"output": f"Executed command: {command}"}
+    return CodeWriterOutput(code=f"print('Code for {input.task}')")
 
+code_writer = Function.from_callable(code_writer_func)
 
-class ContainerizationToolInput(BaseModel):
-    command: str = Field(..., description="The containerization command to execute.")
+class CodeTesterInput(BaseModel):
+    code: str = Field(..., description="The code to test.")
 
-class ContainerizationToolOutput(BaseModel):
-    output: str = Field(..., description="The output of the command.")
+class CodeTesterOutput(BaseModel):
+    success: bool = Field(..., description="Whether the tests passed.")
+    results: str = Field(..., description="The test results.")
 
-@tool(input_schema=ContainerizationToolInput, output_schema=ContainerizationToolOutput)
-def ContainerizationTool(command: str) -> Dict[str, Any]:
+def code_tester_func(input: CodeTesterInput) -> CodeTesterOutput:
     """
-    Interacts with a containerization tool like Docker.
-    """
-    # ... (Placeholder implementation)
-    return {"output": f"Executed command: {command}"}
-
-
-class CICDToolInput(BaseModel):
-    command: str = Field(..., description="The CI/CD command to execute.")
-
-class CICDToolOutput(BaseModel):
-    output: str = Field(..., description="The output of the command.")
-
-@tool(input_schema=CICDToolInput, output_schema=CICDToolOutput)
-def CICDTool(command: str) -> Dict[str, Any]:
-    """
-    Interacts with a CI/CD pipeline.
+    Tests a given piece of code.
     """
     # ... (Placeholder implementation)
-    return {"output": f"Executed command: {command}"}
+    return CodeTesterOutput(success=True, results="All tests passed.")
 
+code_tester = Function.from_callable(code_tester_func)
 
-class DependencyManagementToolInput(BaseModel):
-    command: str = Field(..., description="The dependency management command to execute.")
+class DeployInput(BaseModel):
+    code: str = Field(..., description="The code to deploy.")
 
-class DependencyManagementToolOutput(BaseModel):
-    output: str = Field(..., description="The output of the command.")
+class DeployOutput(BaseModel):
+    success: bool = Field(..., description="Whether the deployment was successful.")
+    message: str = Field(..., description="A message about the deployment.")
 
-@tool(input_schema=DependencyManagementToolInput, output_schema=DependencyManagementToolOutput)
-def DependencyManagementTool(command: str) -> Dict[str, Any]:
+def deploy_func(input: DeployInput) -> DeployOutput:
     """
-    Manages dependencies using a tool like Poetry or PDM.
-    """
-    # ... (Placeholder implementation)
-    return {"output": f"Executed command: {command}"}
-
-
-class TestingFrameworkToolInput(BaseModel):
-    command: str = Field(..., description="The testing framework command to execute.")
-
-class TestingFrameworkToolOutput(BaseModel):
-    output: str = Field(..., description="The output of the command.")
-
-@tool(input_schema=TestingFrameworkToolInput, output_schema=TestingFrameworkToolOutput)
-def TestingFrameworkTool(command: str) -> Dict[str, Any]:
-    """
-    Interacts with a testing framework like pytest.
+    Deploys a given piece of code.
     """
     # ... (Placeholder implementation)
-    return {"output": f"Executed command: {command}"}
+    return DeployOutput(success=True, message="Deployment successful.")
 
+deploy = Function.from_callable(deploy_func)
 
-class ProjectManagementToolInput(BaseModel):
-    command: str = Field(..., description="The project management command to execute.")
-
-class ProjectManagementToolOutput(BaseModel):
-    output: str = Field(..., description="The output of the command.")
-
-@tool(input_schema=ProjectManagementToolInput, output_schema=ProjectManagementToolOutput)
-def ProjectManagementTool(command: str) -> Dict[str, Any]:
-    """
-    Interacts with a project management tool like Taiga or Jira.
-    """
-    # ... (Placeholder implementation)
-    return {"output": f"Executed command: {command}"}
-
-
-class DocumentationGeneratorToolInput(BaseModel):
-    command: str = Field(..., description="The documentation generator command to execute.")
-
-class DocumentationGeneratorToolOutput(BaseModel):
-    output: str = Field(..., description="The output of the command.")
-
-@tool(input_schema=DocumentationGeneratorToolInput, output_schema=DocumentationGeneratorToolOutput)
-def DocumentationGeneratorTool(command: str) -> Dict[str, Any]:
-    """
-    Generates documentation using a tool like mkdocs or Sphinx.
-    """
-    # ... (Placeholder implementation)
-    return {"output": f"Executed command: {command}"}
+dev_toolkit = Toolkit(name="dev")
+dev_toolkit.register(code_writer)
+dev_toolkit.register(code_tester)
+dev_toolkit.register(deploy)

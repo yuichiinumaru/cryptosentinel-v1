@@ -1,54 +1,53 @@
 from pydantic import BaseModel, Field
 from typing import Dict, Any, List
-from agno.tools import tool
+from agno.tools.toolkit import Toolkit
+from agno.tools.function import Function
 
+class GetTradeHistoryInput(BaseModel):
+    limit: int = Field(100, description="The maximum number of trades to retrieve.")
 
-class KnowledgeStorageInput(BaseModel):
-    action: str = Field(..., description="The action to perform ('add', 'update', 'delete').")
-    document: Dict[str, Any] = Field(..., description="The document to add, update, or delete.")
+class GetTradeHistoryOutput(BaseModel):
+    trades: List[Dict[str, Any]] = Field(..., description="A list of trades.")
 
-class KnowledgeStorageOutput(BaseModel):
-    success: bool = Field(..., description="Whether the action was successful.")
-
-@tool(input_schema=KnowledgeStorageInput, output_schema=KnowledgeStorageOutput)
-def KnowledgeStorageTool(action: str, document: Dict[str, Any]) -> Dict[str, Any]:
+def get_trade_history_func(input: GetTradeHistoryInput) -> GetTradeHistoryOutput:
     """
-    Manages the knowledge base for RAG.
+    Gets the trade history from the database.
     """
     # ... (Placeholder implementation)
-    return {"success": True}
+    return GetTradeHistoryOutput(trades=[])
 
+get_trade_history = Function.from_callable(get_trade_history_func)
 
-class AnalyzeAgentPerformanceInput(BaseModel):
-    agent_name: str = Field(..., description="The name of the agent to analyze.")
+class AnalyzePerformanceInput(BaseModel):
+    trades: List[Dict[str, Any]] = Field(..., description="A list of trades to analyze.")
 
-class AnalyzeAgentPerformanceOutput(BaseModel):
-    analysis: Dict[str, Any] = Field(..., description="The analysis of the agent's performance.")
+class AnalyzePerformanceOutput(BaseModel):
+    performance_metrics: Dict[str, Any] = Field(..., description="A dictionary of performance metrics.")
 
-@tool(input_schema=AnalyzeAgentPerformanceInput, output_schema=AnalyzeAgentPerformanceOutput)
-def AnalyzeAgentPerformanceTool(agent_name: str) -> Dict[str, Any]:
+def analyze_performance_func(input: AnalyzePerformanceInput) -> AnalyzePerformanceOutput:
     """
-    Analyzes the performance of an agent.
+    Analyzes the performance of a list of trades.
     """
     # ... (Placeholder implementation)
-    return {"analysis": {"trades_made": 10, "win_rate": 0.6}}
+    return AnalyzePerformanceOutput(performance_metrics={"roi": 0.1})
 
+analyze_performance = Function.from_callable(analyze_performance_func)
 
 class AdjustAgentInstructionsInput(BaseModel):
-    agent_name: str = Field(..., description="The name of the agent to adjust.")
+    agent_id: str = Field(..., description="The ID of the agent to adjust.")
     new_instructions: str = Field(..., description="The new instructions for the agent.")
 
 class AdjustAgentInstructionsOutput(BaseModel):
     success: bool = Field(..., description="Whether the instructions were adjusted successfully.")
 
-@tool(input_schema=AdjustAgentInstructionsInput, output_schema=AdjustAgentInstructionsOutput)
-def AdjustAgentInstructionsTool(agent_name: str, new_instructions: str) -> Dict[str, Any]:
+def adjust_agent_instructions_func(input: AdjustAgentInstructionsInput) -> AdjustAgentInstructionsOutput:
     """
-    Adjusts the instructions for an agent.
+    Adjusts the instructions of an agent.
     """
     # ... (Placeholder implementation)
-    return {"success": True}
+    return AdjustAgentInstructionsOutput(success=True)
 
+adjust_agent_instructions = Function.from_callable(adjust_agent_instructions_func)
 
 class AdjustToolParametersInput(BaseModel):
     tool_name: str = Field(..., description="The name of the tool to adjust.")
@@ -57,10 +56,17 @@ class AdjustToolParametersInput(BaseModel):
 class AdjustToolParametersOutput(BaseModel):
     success: bool = Field(..., description="Whether the parameters were adjusted successfully.")
 
-@tool(input_schema=AdjustToolParametersInput, output_schema=AdjustToolParametersOutput)
-def AdjustToolParametersTool(tool_name: str, new_parameters: Dict[str, Any]) -> Dict[str, Any]:
+def adjust_tool_parameters_func(input: AdjustToolParametersInput) -> AdjustToolParametersOutput:
     """
-    Adjusts the parameters for a tool.
+    Adjusts the parameters of a tool.
     """
     # ... (Placeholder implementation)
-    return {"success": True}
+    return AdjustToolParametersOutput(success=True)
+
+adjust_tool_parameters = Function.from_callable(adjust_tool_parameters_func)
+
+learning_toolkit = Toolkit(name="learning")
+learning_toolkit.register(get_trade_history)
+learning_toolkit.register(analyze_performance)
+learning_toolkit.register(adjust_agent_instructions)
+learning_toolkit.register(adjust_tool_parameters)

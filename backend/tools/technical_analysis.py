@@ -1,38 +1,48 @@
 from pydantic import BaseModel, Field
 from typing import Dict, Any, List
-from agno.tools import tool
+from agno.tools.toolkit import Toolkit
+from agno.tools.function import Function
 import pandas as pd
 import pandas_ta as ta
 
-
 class CalculateTechnicalIndicatorInput(BaseModel):
-    data: List[Dict[str, float]] = Field(..., description="A list of dictionaries containing the historical data (e.g., ohlcv).")
-    indicator: str = Field(..., description="The name of the technical indicator to calculate (e.g., 'rsi', 'macd').")
-    params: Dict[str, Any] = Field({}, description="A dictionary of parameters for the indicator.")
-
+    data: List[Dict[str, float]] = Field(..., description="A list of dictionaries containing the OHLCV data.")
+    indicator: str = Field(..., description="The technical indicator to calculate (e.g., 'sma', 'rsi', 'macd').")
+    params: Dict[str, Any] = Field({}, description="The parameters for the indicator.")
 
 class CalculateTechnicalIndicatorOutput(BaseModel):
-    result: Any = Field(..., description="The result of the technical indicator calculation.")
+    result: List[float] = Field(..., description="The result of the indicator calculation.")
 
-
-@tool(input_schema=CalculateTechnicalIndicatorInput, output_schema=CalculateTechnicalIndicatorOutput)
-def CalculateTechnicalIndicator(data: List[Dict[str, float]], indicator: str, params: Dict[str, Any] = {}) -> Dict[str, Any]:
+def calculate_technical_indicator_func(input: CalculateTechnicalIndicatorInput) -> CalculateTechnicalIndicatorOutput:
     """
-    Calculates a technical indicator from historical data.
+    Calculates a technical indicator on the given data.
     """
-    df = pd.DataFrame(data)
+    df = pd.DataFrame(input.data)
+    # This is a simplified implementation. A real implementation would need to handle different indicators and parameters.
+    if 'close' not in df.columns:
+        raise ValueError("Data must contain a 'close' column.")
 
-    # Ensure the required columns are present
-    if not all(col in df.columns for col in ['open', 'high', 'low', 'close', 'volume']):
-        raise ValueError("Data must contain 'open', 'high', 'low', 'close', and 'volume' columns.")
+    if input.indicator == "sma":
+        result = df.ta.sma(length=input.params.get("length", 14), close=df['close'], append=False)
+    elif input.indicator == "rsi":
+        result = df.ta.rsi(length=input.params.get("length", 14), close=df['close'], append=False)
+    elif input.indicator == "macd":
+        result = df.ta.macd(fast=input.params.get("fast", 12), slow=input.params.get("slow", 26), signal=input.params.get("signal", 9), close=df['close'], append=False)
+    else:
+        raise ValueError(f"Indicator {input.indicator} not supported.")
 
-    # Get the indicator function from pandas_ta
-    indicator_func = getattr(ta, indicator, None)
+    # The result from pandas_ta can be a DataFrame, so we need to handle it correctly
+    if isinstance(result, pd.DataFrame):
+        # For MACD, it returns a DataFrame with multiple columns. We can return the main line.
+        if input.indicator == "macd":
+            result = result[f"MACD_{input.params.get('fast', 12)}_{input.params.get('slow', 26)}_{input.params.get('signal', 9)}"]
 
-    if indicator_func is None:
-        raise ValueError(f"Indicator '{indicator}' not found in pandas_ta.")
+    if result is None:
+        return CalculateTechnicalIndicatorOutput(result=[])
 
-    # Calculate the indicator
-    result = indicator_func(df['close'], **params) # This is a simplification, many indicators need more than just close
+    return CalculateTechnicalIndicatorOutput(result=result.dropna().tolist())
 
-    return {"result": result.to_json() if isinstance(result, pd.Series) else result}
+calculate_technical_indicator = Function.from_callable(calculate_technical_indicator_func)
+
+technical_analysis_toolkit = Toolkit(name="technical_analysis")
+technical_analysis_toolkit.register(calculate_technical_indicator)

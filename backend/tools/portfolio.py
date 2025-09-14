@@ -1,103 +1,52 @@
 from pydantic import BaseModel, Field
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from agno.tools import tool
-import numpy as np
-
 from backend.storage.sqlite import SqliteStorage
-from .market_data import FetchMarketData
 
-
-class GetPortfolioInput(BaseModel):
-    pass
-
+class PortfolioItem(BaseModel):
+    token_address: str
+    symbol: str
+    amount: float
+    current_price: Optional[float] = None
+    value_usd: Optional[float] = None
 
 class GetPortfolioOutput(BaseModel):
-    items: List[Dict[str, Any]] = Field(..., description="A list of portfolio items.")
-    total_value_usd: float = Field(..., description="The total value of the portfolio in USD.")
+    items: List[PortfolioItem]
+    total_value_usd: float = 0.0
 
-
-@tool(input_schema=GetPortfolioInput, output_schema=GetPortfolioOutput)
-def GetPortfolio() -> Dict[str, Any]:
+@tool
+def get_portfolio() -> GetPortfolioOutput:
     """
-    Gets the current state of the portfolio from the database.
+    Retrieves the current portfolio from the database and calculates its total value.
     """
-    storage = SqliteStorage("sqlite.db")
-    trades = storage.get_recent_trades(limit=1000) # Get all trades for now
+    storage = SqliteStorage()
+    portfolio_items = storage.get_all_portfolio_items()
 
-    # This is a simplified portfolio calculation. A real implementation would be more complex.
-    portfolio = {}
-    for trade in trades:
-        if trade.action == "buy":
-            portfolio[trade.token] = portfolio.get(trade.token, 0) + trade.amount
-        elif trade.action == "sell":
-            portfolio[trade.token] = portfolio.get(trade.token, 0) - trade.amount
+    # In a real implementation, you would fetch the current prices for each token
+    # and calculate the total value. For this example, we'll use placeholder values.
+    for item in portfolio_items:
+        item.current_price = 1.0 # Placeholder
+        item.value_usd = item.amount * item.current_price
 
-    # Get current prices
-    coin_ids = list(portfolio.keys())
-    market_data = FetchMarketData(coin_ids=coin_ids)
+    total_value = sum(item.value_usd for item in portfolio_items if item.value_usd is not None)
 
-    items = []
-    total_value_usd = 0
-    for token, amount in portfolio.items():
-        price = market_data.get("market_data", {}).get(token, {}).get("usd", 0)
-        value = amount * price
-        items.append({"token": token, "amount": amount, "value_usd": value})
-        total_value_usd += value
+    return GetPortfolioOutput(items=portfolio_items, total_value_usd=total_value)
 
-    return {"items": items, "total_value_usd": total_value_usd}
+class UpdatePortfolioInput(BaseModel):
+    token_address: str
+    symbol: str
+    amount_change: float
+    price: float
 
-
-class CalculatePortfolioMetricsInput(BaseModel):
-    pass
-
-
-class CalculatePortfolioMetricsOutput(BaseModel):
-    roi: float = Field(..., description="The Return on Investment.")
-    pnl: float = Field(..., description="The Profit and Loss.")
-    max_drawdown: float = Field(..., description="The maximum drawdown.")
-
-
-@tool(input_schema=CalculatePortfolioMetricsInput, output_schema=CalculatePortfolioMetricsOutput)
-def CalculatePortfolioMetrics() -> Dict[str, Any]:
+@tool
+def update_portfolio(input: UpdatePortfolioInput) -> None:
     """
-    Calculates portfolio performance metrics.
+    Updates the portfolio in the database after a trade.
     """
-    # ... (Simplified implementation)
-    return {"roi": 0.1, "pnl": 1000, "max_drawdown": 0.05}
-
-
-class CalculatePortfolioRiskInput(BaseModel):
-    pass
-
-
-class CalculatePortfolioRiskOutput(BaseModel):
-    volatility: float = Field(..., description="The portfolio volatility.")
-    var: float = Field(..., description="The Value at Risk (VaR).")
-    exposure: Dict[str, float] = Field(..., description="The exposure per asset.")
-
-
-@tool(input_schema=CalculatePortfolioRiskInput, output_schema=CalculatePortfolioRiskOutput)
-def CalculatePortfolioRisk() -> Dict[str, Any]:
-    """
-    Calculates portfolio risk metrics.
-    """
-    # ... (Simplified implementation)
-    return {"volatility": 0.2, "var": 100, "exposure": {"BTC": 0.5, "ETH": 0.5}}
-
-
-class GetTradeHistoryFromDBInput(BaseModel):
-    limit: int = Field(100, description="The maximum number of trades to retrieve.")
-
-
-class GetTradeHistoryFromDBOutput(BaseModel):
-    trades: List[Dict[str, Any]] = Field(..., description="A list of trades.")
-
-
-@tool(input_schema=GetTradeHistoryFromDBInput, output_schema=GetTradeHistoryFromDBOutput)
-def GetTradeHistoryFromDB(limit: int = 100) -> Dict[str, Any]:
-    """
-    Gets the trade history from the database.
-    """
-    storage = SqliteStorage("sqlite.db")
-    trades = storage.get_recent_trades(limit=limit)
-    return {"trades": [trade.dict() for trade in trades]}
+    storage = SqliteStorage()
+    storage.update_portfolio_item(
+        token_address=input.token_address,
+        symbol=input.symbol,
+        amount_change=input.amount_change,
+        price=input.price
+    )

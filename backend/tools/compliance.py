@@ -1,64 +1,72 @@
 from pydantic import BaseModel, Field
 from typing import Dict, Any, List
-from agno.tools import tool
-
+from agno.tools.toolkit import Toolkit
+from agno.tools.function import Function
 
 class ComplianceCheckInput(BaseModel):
-    trade_id: str = Field(..., description="The ID of the trade to check.")
+    trade_details: Dict[str, Any] = Field(..., description="The details of the trade to check.")
 
 class ComplianceCheckOutput(BaseModel):
     is_compliant: bool = Field(..., description="Whether the trade is compliant.")
-    details: Dict[str, Any] = Field(..., description="A dictionary containing the compliance details.")
+    reasons: List[str] = Field([], description="A list of reasons if the trade is not compliant.")
 
-@tool(input_schema=ComplianceCheckInput, output_schema=ComplianceCheckOutput)
-def ComplianceCheckTool(trade_id: str) -> Dict[str, Any]:
+def compliance_check_func(input: ComplianceCheckInput) -> ComplianceCheckOutput:
     """
-    Checks if a trade is compliant with internal policies.
+    Checks if a trade is compliant with regulations.
     """
     # ... (Placeholder implementation)
-    return {"is_compliant": True, "details": {}}
+    return ComplianceCheckOutput(is_compliant=True)
 
+compliance_check = Function.from_callable(compliance_check_func)
 
 class CalculateFeesInput(BaseModel):
-    trade_id: str = Field(..., description="The ID of the trade to calculate fees for.")
+    trade_details: Dict[str, Any] = Field(..., description="The details of the trade.")
 
 class CalculateFeesOutput(BaseModel):
-    fees: float = Field(..., description="The total fees for the trade.")
+    fees: float = Field(..., description="The calculated fees for the trade.")
 
-@tool(input_schema=CalculateFeesInput, output_schema=CalculateFeesOutput)
-def CalculateFeesTool(trade_id: str) -> Dict[str, Any]:
+def calculate_fees_func(input: CalculateFeesInput) -> CalculateFeesOutput:
     """
-    Calculates the fees for a trade.
+    Calculates the fees for a given trade.
     """
     # ... (Placeholder implementation)
-    return {"fees": 0.01}
+    return CalculateFeesOutput(fees=0.01)
 
+calculate_fees = Function.from_callable(calculate_fees_func)
 
 class GenerateFinancialReportsInput(BaseModel):
-    period: str = Field("monthly", description="The period for the report ('daily', 'weekly', 'monthly').")
+    pass
 
 class GenerateFinancialReportsOutput(BaseModel):
-    report: Dict[str, Any] = Field(..., description="A dictionary containing the financial report.")
+    report: str = Field(..., description="The generated financial report.")
 
-@tool(input_schema=GenerateFinancialReportsInput, output_schema=GenerateFinancialReportsOutput)
-def GenerateFinancialReportsTool(period: str = "monthly") -> Dict[str, Any]:
+def generate_financial_reports_func() -> GenerateFinancialReportsOutput:
     """
     Generates financial reports.
     """
     # ... (Placeholder implementation)
-    return {"report": {"pnl": 1000, "volume": 100000}}
+    return GenerateFinancialReportsOutput(report="This is a financial report.")
 
+generate_financial_reports = Function.from_callable(generate_financial_reports_func)
 
 class RegulatoryWatchInput(BaseModel):
-    query: str = Field(..., description="The query to search for regulatory news.")
+    pass
 
 class RegulatoryWatchOutput(BaseModel):
-    news: List[Dict[str, Any]] = Field(..., description="A list of regulatory news articles.")
+    updates: List[str] = Field(..., description="A list of recent regulatory updates.")
 
-@tool(input_schema=RegulatoryWatchInput, output_schema=RegulatoryWatchOutput)
-def RegulatoryWatchTool(query: str) -> Dict[str, Any]:
+def regulatory_watch_func() -> RegulatoryWatchOutput:
     """
-    Monitors regulatory news for cryptocurrencies.
+    Watches for regulatory updates.
     """
     # ... (Placeholder implementation)
-    return {"news": []}
+    return RegulatoryWatchOutput(updates=["No new updates."])
+
+regulatory_watch = Function.from_callable(regulatory_watch_func)
+
+
+compliance_toolkit = Toolkit(name="compliance")
+compliance_toolkit.register(compliance_check)
+compliance_toolkit.register(calculate_fees)
+compliance_toolkit.register(generate_financial_reports)
+compliance_toolkit.register(regulatory_watch)

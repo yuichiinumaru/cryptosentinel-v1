@@ -15,8 +15,8 @@ class FetchMarketDataOutput(BaseModel):
     market_data: Dict[str, Any] = Field(..., description="A dictionary containing the market data.")
 
 
-@tool(input_schema=FetchMarketDataInput, output_schema=FetchMarketDataOutput)
-def FetchMarketData(coin_ids: List[str], vs_currency: str = "usd", include_history: bool = False, days: int = 7) -> Dict[str, Any]:
+@tool
+def fetch_market_data(input: FetchMarketDataInput) -> FetchMarketDataOutput:
     """
     Fetches market data (price, volume, history) for a list of cryptocurrencies from CoinGecko.
     """
@@ -24,15 +24,22 @@ def FetchMarketData(coin_ids: List[str], vs_currency: str = "usd", include_histo
     market_data = {}
 
     # Fetch current prices
-    prices = cg.get_price(ids=coin_ids, vs_currencies=vs_currency)
+    prices = cg.get_price(ids=input.coin_ids, vs_currencies=input.vs_currency)
     market_data.update(prices)
 
-    if include_history:
-        for coin_id in coin_ids:
+    if input.include_history:
+        for coin_id in input.coin_ids:
             try:
-                history = cg.get_coin_market_chart_by_id(id=coin_id, vs_currency=vs_currency, days=days)
-                market_data[coin_id]['history'] = history
+                history = cg.get_coin_market_chart_by_id(id=coin_id, vs_currency=input.vs_currency, days=input.days)
+                if coin_id in market_data:
+                    market_data[coin_id]['history'] = history
+                else:
+                    market_data[coin_id] = {'history': history}
             except Exception as e:
-                market_data[coin_id]['history'] = f"Could not fetch history: {e}"
+                if coin_id in market_data:
+                    market_data[coin_id]['history'] = f"Could not fetch history: {e}"
+                else:
+                    market_data[coin_id] = {'history': f"Could not fetch history: {e}"}
 
-    return {"market_data": market_data}
+
+    return FetchMarketDataOutput(market_data=market_data)

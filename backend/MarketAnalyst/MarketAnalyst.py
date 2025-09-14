@@ -1,44 +1,24 @@
+import os
 from agno.agent import Agent
 from agno.models.google import Gemini
-import os
+from backend.tools.market_data import fetch_market_data
+from backend.tools.token_security import check_token_security
+from backend.tools.technical_analysis import technical_analysis_toolkit
+from backend.tools.alerting import alerting_toolkit
 
-from backend.tools.market_data import FetchMarketData
-from backend.tools.token_security import CheckTokenSecurity
-from backend.tools.technical_analysis import CalculateTechnicalIndicator
-
-# Load environment variables
-from dotenv import load_dotenv
-load_dotenv()
-
-# Agent Configuration
-model_name = os.getenv("gemini_model", "gemini-1.5-flash-latest")
-temperature = float(os.getenv("temperature", 0.7))
-api_key = os.getenv("GEMINI_API_KEY")
-
-shared_model = Gemini(
-    id=model_name,
-    api_key=api_key,
-    temperature=temperature,
-)
-
-# Load instructions from file
-with open("backend/MarketAnalyst/instructions.md", "r") as f:
+# Load instructions from the markdown file
+with open(os.path.join(os.path.dirname(__file__), 'instructions.md'), 'r') as f:
     instructions = f.read()
 
 market_analyst = Agent(
+    id="market_analyst",
     name="MarketAnalyst",
-    model=shared_model,
-    tools=[
-        FetchMarketData,
-        CheckTokenSecurity,
-        CalculateTechnicalIndicator,
-    ],
+    description="Analisa dados de mercado, verifica a segurança dos tokens e fornece recomendações de trading.",
     instructions=instructions,
-    file_search=True,
-    code_interpreter=False,
+    tools=[fetch_market_data, check_token_security, technical_analysis_toolkit, alerting_toolkit],
+    model=Gemini(
+        id=os.getenv("gemini_model", "gemini-1.5-flash-latest"),
+        api_key=os.getenv("gemini_api_key"),
+        temperature=float(os.getenv("temperature", 0.7)),
+    ),
 )
-
-if __name__ == "__main__":
-    # Example usage
-    response = market_analyst.run("Analyze the market for BTC and ETH.")
-    print(response)

@@ -1,73 +1,56 @@
 from pydantic import BaseModel, Field
 from typing import Dict, Any, List
-from agno.tools import tool
-import ccxt
-from .market_data import FetchMarketData
+from agno.tools.toolkit import Toolkit
+from agno.tools.function import Function
 
+class BacktestingInput(BaseModel):
+    strategy: str = Field(..., description="The strategy to backtest.")
+    data: list = Field(..., description="The historical data to backtest on.")
 
-class AnalyzePerformanceInput(BaseModel):
-    results: Dict[str, Any] = Field(..., description="The results of a backtest.")
+class BacktestingOutput(BaseModel):
+    results: Dict[str, Any] = Field(..., description="The backtesting results.")
 
-class AnalyzePerformanceOutput(BaseModel):
-    analysis: Dict[str, Any] = Field(..., description="The analysis of the backtest results.")
-
-@tool(input_schema=AnalyzePerformanceInput, output_schema=AnalyzePerformanceOutput)
-def AnalyzePerformanceTool(results: Dict[str, Any]) -> Dict[str, Any]:
+def backtesting_func(input: BacktestingInput) -> BacktestingOutput:
     """
-    Analyzes the results of a backtest.
+    Backtests a trading strategy.
     """
     # ... (Placeholder implementation)
-    return {"analysis": {"sharpe_ratio": 1.5, "max_drawdown": 0.1}}
+    return BacktestingOutput(results={"pnl": 1000})
 
+backtesting = Function.from_callable(backtesting_func)
 
-class FetchHistoricalDataInput(BaseModel):
-    symbol: str = Field(..., description="The symbol to fetch data for.")
-    timeframe: str = Field("1d", description="The timeframe to fetch data for.")
-    limit: int = Field(100, description="The number of data points to fetch.")
-    exchange: str = Field("binance", description="The exchange to fetch data from.")
+class StrategyOptimizationInput(BaseModel):
+    strategy: str = Field(..., description="The strategy to optimize.")
+    data: list = Field(..., description="The historical data to optimize on.")
 
-class FetchHistoricalDataOutput(BaseModel):
-    data: List[Dict[str, Any]] = Field(..., description="A list of historical data points.")
+class StrategyOptimizationOutput(BaseModel):
+    optimized_strategy: str = Field(..., description="The optimized strategy.")
 
-@tool(input_schema=FetchHistoricalDataInput, output_schema=FetchHistoricalDataOutput)
-def FetchHistoricalDataTool(symbol: str, timeframe: str = "1d", limit: int = 100, exchange: str = "binance") -> Dict[str, Any]:
+def strategy_optimization_func(input: StrategyOptimizationInput) -> StrategyOptimizationOutput:
     """
-    Fetches historical market data from a CEX.
-    """
-    try:
-        exchange_class = getattr(ccxt, exchange)()
-        ohlcv = exchange_class.fetch_ohlcv(symbol, timeframe, limit=limit)
-        return {"data": ohlcv}
-    except Exception as e:
-        return {"data": [], "error": f"Could not fetch data: {e}"}
-
-
-class CheckArbitrageOpportunitiesInput(BaseModel):
-    pair: str = Field(..., description="The trading pair to check (e.g., 'BTC/USDT').")
-    exchanges: List[str] = Field(..., description="A list of exchanges to check.")
-
-class CheckArbitrageOpportunitiesOutput(BaseModel):
-    opportunity: Dict[str, Any] = Field(..., description="A dictionary describing the arbitrage opportunity.")
-
-@tool(input_schema=CheckArbitrageOpportunitiesInput, output_schema=CheckArbitrageOpportunitiesOutput)
-def CheckArbitrageOpportunitiesTool(pair: str, exchanges: List[str]) -> Dict[str, Any]:
-    """
-    Checks for arbitrage opportunities between CEXs.
+    Optimizes a trading strategy.
     """
     # ... (Placeholder implementation)
-    return {"opportunity": {"buy_on": "binance", "sell_on": "kraken", "profit_margin": 0.01}}
+    return StrategyOptimizationOutput(optimized_strategy="Optimized strategy")
 
+strategy_optimization = Function.from_callable(strategy_optimization_func)
 
-class IdentifyMarketRegimeInput(BaseModel):
-    pass
+class PaperTradingInput(BaseModel):
+    strategy: str = Field(..., description="The strategy to paper trade.")
 
-class IdentifyMarketRegimeOutput(BaseModel):
-    regime: str = Field(..., description="The current market regime.")
+class PaperTradingOutput(BaseModel):
+    results: Dict[str, Any] = Field(..., description="The paper trading results.")
 
-@tool(input_schema=IdentifyMarketRegimeInput, output_schema=IdentifyMarketRegimeOutput)
-def IdentifyMarketRegimeTool() -> Dict[str, Any]:
+def paper_trading_func(input: PaperTradingInput) -> PaperTradingOutput:
     """
-    Identifies the current market regime (e.g., bull, bear, sideways).
+    Paper trades a trading strategy.
     """
     # ... (Placeholder implementation)
-    return {"regime": "sideways"}
+    return PaperTradingOutput(results={"pnl": 500})
+
+paper_trading = Function.from_callable(paper_trading_func)
+
+strategy_toolkit = Toolkit(name="strategy")
+strategy_toolkit.register(backtesting)
+strategy_toolkit.register(strategy_optimization)
+strategy_toolkit.register(paper_trading)
