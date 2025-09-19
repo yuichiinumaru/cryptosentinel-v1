@@ -1,7 +1,6 @@
 from pydantic import BaseModel, Field
 from typing import Dict, Any, List
 from agno.tools.toolkit import Toolkit
-from agno.tools.function import Function
 
 class BacktestingInput(BaseModel):
     strategy: str = Field(..., description="The strategy to backtest.")
@@ -10,15 +9,6 @@ class BacktestingInput(BaseModel):
 class BacktestingOutput(BaseModel):
     results: Dict[str, Any] = Field(..., description="The backtesting results.")
 
-def backtesting_func(input: BacktestingInput) -> BacktestingOutput:
-    """
-    Backtests a trading strategy.
-    """
-    # ... (Placeholder implementation)
-    return BacktestingOutput(results={"pnl": 1000})
-
-backtesting = Function.from_callable(backtesting_func)
-
 class StrategyOptimizationInput(BaseModel):
     strategy: str = Field(..., description="The strategy to optimize.")
     data: list = Field(..., description="The historical data to optimize on.")
@@ -26,31 +16,39 @@ class StrategyOptimizationInput(BaseModel):
 class StrategyOptimizationOutput(BaseModel):
     optimized_strategy: str = Field(..., description="The optimized strategy.")
 
-def strategy_optimization_func(input: StrategyOptimizationInput) -> StrategyOptimizationOutput:
-    """
-    Optimizes a trading strategy.
-    """
-    # ... (Placeholder implementation)
-    return StrategyOptimizationOutput(optimized_strategy="Optimized strategy")
-
-strategy_optimization = Function.from_callable(strategy_optimization_func)
-
 class PaperTradingInput(BaseModel):
     strategy: str = Field(..., description="The strategy to paper trade.")
 
 class PaperTradingOutput(BaseModel):
     results: Dict[str, Any] = Field(..., description="The paper trading results.")
 
-def paper_trading_func(input: PaperTradingInput) -> PaperTradingOutput:
-    """
-    Paper trades a trading strategy.
-    """
-    # ... (Placeholder implementation)
-    return PaperTradingOutput(results={"pnl": 500})
+class StrategyToolkit(Toolkit):
+    def __init__(self, **kwargs):
+        super().__init__(name="strategy", tools=[
+            self.backtesting,
+            self.strategy_optimization,
+            self.paper_trading,
+        ], **kwargs)
 
-paper_trading = Function.from_callable(paper_trading_func)
+    def backtesting(self, input: BacktestingInput) -> BacktestingOutput:
+        """
+        Backtests a trading strategy.
+        """
+        # ... (Placeholder implementation)
+        return BacktestingOutput(results={"pnl": 1000})
 
-strategy_toolkit = Toolkit(name="strategy")
-strategy_toolkit.register(backtesting)
-strategy_toolkit.register(strategy_optimization)
-strategy_toolkit.register(paper_trading)
+    def strategy_optimization(self, input: StrategyOptimizationInput) -> StrategyOptimizationOutput:
+        """
+        Optimizes a trading strategy.
+        """
+        # ... (Placeholder implementation)
+        return StrategyOptimizationOutput(optimized_strategy="Optimized strategy")
+
+    def paper_trading(self, input: PaperTradingInput) -> PaperTradingOutput:
+        """
+        Paper trades a trading strategy.
+        """
+        # ... (Placeholder implementation)
+        return PaperTradingOutput(results={"pnl": 500})
+
+strategy_toolkit = StrategyToolkit()

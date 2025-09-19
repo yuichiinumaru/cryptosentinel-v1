@@ -1,6 +1,5 @@
 from pydantic import BaseModel, Field
 from agno.tools.toolkit import Toolkit
-from agno.tools.function import Function
 
 class SendInternalAlertInput(BaseModel):
     message: str = Field(..., description="The alert message to send.")
@@ -9,15 +8,16 @@ class SendInternalAlertInput(BaseModel):
 class SendInternalAlertOutput(BaseModel):
     success: bool = Field(..., description="Whether the alert was sent successfully.")
 
-def send_internal_alert_func(input: SendInternalAlertInput) -> SendInternalAlertOutput:
-    """
-    Sends an internal alert to another agent or a system channel.
-    """
-    # This is a placeholder implementation. A real implementation would use a messaging system.
-    print(f"ALERT to {input.recipient}: {input.message}")
-    return SendInternalAlertOutput(success=True)
+class AlertingToolkit(Toolkit):
+    def __init__(self, **kwargs):
+        super().__init__(name="alerting", tools=[self.send_internal_alert], **kwargs)
 
-send_internal_alert = Function.from_callable(send_internal_alert_func)
+    def send_internal_alert(self, input: SendInternalAlertInput) -> SendInternalAlertOutput:
+        """
+        Sends an internal alert to another agent or a system channel.
+        """
+        # This is a placeholder implementation. A real implementation would use a messaging system.
+        print(f"ALERT to {input.recipient}: {input.message}")
+        return SendInternalAlertOutput(success=True)
 
-alerting_toolkit = Toolkit(name="alerting")
-alerting_toolkit.register(send_internal_alert)
+alerting_toolkit = AlertingToolkit()
