@@ -1,8 +1,6 @@
 import os
 from dotenv import load_dotenv
-from agno.agent import Agent
-from agno.workflow import Workflow as Team
-from agno.models.google import Gemini
+from agno.team import Team
 
 # Import all agent definitions
 from backend.AnalistaDeSentimento.AnalistaDeSentimento import analista_de_sentimento
@@ -18,9 +16,10 @@ from backend.RiskAnalyst.RiskAnalyst import risk_analyst
 from backend.StrategyAgent.StrategyAgent import strategy_agent
 from backend.Trader.Trader import trader_agent
 
-# Import storage and key manager for shared resources
+# Import storage and the shared model
 from backend.storage.sqlite import SqliteStorage
 from backend.storage.base import Storage
+from backend.shared_model import get_shared_model
 
 load_dotenv()
 
@@ -33,28 +32,7 @@ def get_storage() -> Storage:
         raise ValueError(f"Unsupported storage type: {storage_type}")
 
 storage = get_storage()
-
-class KeyManager:
-    def __init__(self):
-        self.api_keys = self._load_keys()
-        if not self.api_keys:
-            raise ValueError("No Gemini API keys found in .env file.")
-        self.current_key_index = 0
-
-    def _load_keys(self) -> list[str]:
-        keys_str = os.getenv("gemini_api_keys")
-        if keys_str:
-            return [key.strip() for key in keys_str.split(',')]
-        return []
-
-    def get_key(self) -> str:
-        return self.api_keys[self.current_key_index]
-
-    def rotate_key(self) -> str:
-        self.current_key_index = (self.current_key_index + 1) % len(self.api_keys)
-        return self.get_key()
-
-key_manager = KeyManager()
+shared_model = get_shared_model()
 
 # Define the team with all 12 agents
 crypto_trading_team = Team(
@@ -73,16 +51,5 @@ crypto_trading_team = Team(
         dev_agent,
     ],
     name="CryptoSentinelTeam",
-    # The model for the team itself, if it needs to reason about routing.
-    # We can use the shared_model from one of the agent files as a template.
-    model=Gemini(
-        id=os.getenv("gemini_model", "gemini-1.5-flash-latest"),
-        api_key=key_manager.get_key(),
-        temperature=float(os.getenv("temperature", 0.7)),
-    )
+    model=shared_model
 )
-
-# It seems the individual agent files define their own models.
-# This is inefficient. It's better to have one shared model instance.
-# However, for now, I will keep the structure as it is to avoid more refactoring.
-# The `crypto_trading_team` model is just for the team's own reasoning.

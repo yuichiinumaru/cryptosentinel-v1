@@ -9,15 +9,13 @@ class SendInternalAlertInput(BaseModel):
 class SendInternalAlertOutput(BaseModel):
     success: bool = Field(..., description="Whether the alert was sent successfully.")
 
-def send_internal_alert_func(input: SendInternalAlertInput) -> SendInternalAlertOutput:
+def send_internal_alert(input: SendInternalAlertInput) -> SendInternalAlertOutput:
     """
     Sends an internal alert to another agent or a system channel.
     """
     # This is a placeholder implementation. A real implementation would use a messaging system.
     print(f"ALERT to {input.recipient}: {input.message}")
     return SendInternalAlertOutput(success=True)
-
-send_internal_alert = Function.from_callable(send_internal_alert_func)
 
 alerting_toolkit = Toolkit(name="alerting")
 alerting_toolkit.register(send_internal_alert)

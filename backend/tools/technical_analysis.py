@@ -13,7 +13,7 @@ class CalculateTechnicalIndicatorInput(BaseModel):
 class CalculateTechnicalIndicatorOutput(BaseModel):
     result: List[float] = Field(..., description="The result of the indicator calculation.")
 
-def calculate_technical_indicator_func(input: CalculateTechnicalIndicatorInput) -> CalculateTechnicalIndicatorOutput:
+def calculate_technical_indicator(input: CalculateTechnicalIndicatorInput) -> CalculateTechnicalIndicatorOutput:
     """
     Calculates a technical indicator on the given data.
     """
@@ -41,8 +41,6 @@ def calculate_technical_indicator_func(input: CalculateTechnicalIndicatorInput) 
         return CalculateTechnicalIndicatorOutput(result=[])
 
     return CalculateTechnicalIndicatorOutput(result=result.dropna().tolist())
-
-calculate_technical_indicator = Function.from_callable(calculate_technical_indicator_func)
 
 technical_analysis_toolkit = Toolkit(name="technical_analysis")
 technical_analysis_toolkit.register(calculate_technical_indicator)

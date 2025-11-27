@@ -1,6 +1,7 @@
 from pydantic import BaseModel, Field
 from typing import Dict, Any
 from agno.tools.toolkit import Toolkit
+from agno.tools.decorator import tool
 
 class CalculatePortfolioMetricsInput(BaseModel):
     pass
@@ -35,5 +36,3 @@ def calculate_portfolio_risk() -> CalculatePortfolioRiskOutput:
     return CalculatePortfolioRiskOutput(volatility=0.2, var=100, exposure={"BTC": 0.5, "ETH": 0.5})
 
 portfolio_analysis_toolkit = Toolkit(name="portfolio_analysis")
-portfolio_analysis_toolkit.register(calculate_portfolio_metrics)
-portfolio_analysis_toolkit.register(calculate_portfolio_risk)

@@ -1,6 +1,7 @@
 from pydantic import BaseModel, Field
 from typing import List, Dict, Any
-from agno.tools import tool
+from agno.tools.decorator import tool
+from agno.tools.toolkit import Toolkit
 from pycoingecko import CoinGeckoAPI
 
 
@@ -43,3 +44,5 @@ def fetch_market_data(input: FetchMarketDataInput) -> FetchMarketDataOutput:
 
 
     return FetchMarketDataOutput(market_data=market_data)
+
+market_data_toolkit = Toolkit(name="market_data")
