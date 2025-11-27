@@ -1,6 +1,7 @@
 from pydantic import BaseModel, Field
 from typing import Dict, Any
 from agno.tools.toolkit import Toolkit
+from agno.tools.decorator import tool
 
 class AdjustGlobalRiskParametersInput(BaseModel):
     new_parameters: Dict[str, Any] = Field(..., description="The new risk parameters.")
@@ -33,5 +34,3 @@ def pause_trading(input: PauseTradingInput) -> PauseTradingOutput:
     return PauseTradingOutput(success=True)
 
 risk_management_toolkit = Toolkit(name="risk_management")
-risk_management_toolkit.register(adjust_global_risk_parameters)
-risk_management_toolkit.register(pause_trading)

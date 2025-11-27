@@ -84,7 +84,7 @@ CryptoSentinel uses a team-based approach with multiple specialized AI agents:
   - Dark Grey: Neutral dark theme with low contrast 
   - Mr. Robot: Hacker-inspired theme with terminal aesthetics, glitch effects, and red accents
 - **Configurable API**: Connect to your own backend with custom settings
-- **OpenAI Integration**: Use your own API key and optionally a custom endpoint
+- **Google Integration**: Use your own API key and optionally a custom endpoint
 
 ## API Integration
 
@@ -98,14 +98,14 @@ CryptoSentinel is designed to work with a Python backend API that handles the ac
    - Navigate to the Settings tab in the dashboard
    - In the API Configuration section, enter your backend API URL (default is http://localhost:8000)
    - Click "Test" to verify the connection
-   - Provide your OpenAI API key for the AI agents functionality
-   - Optionally, enter a custom OpenAI endpoint if you're using an alternative service
+   - Provide your Google API key for the AI agents functionality
+   - Optionally, enter a custom Google endpoint if you're using an alternative service
    - Click "Save API Configuration" to store these settings
 
 2. **API Storage**:
    - The API URL is stored in localStorage as "apiUrl"
-   - The OpenAI API key is stored in localStorage as "openaiApiKey"
-   - The custom OpenAI endpoint (if provided) is stored in localStorage as "openaiEndpoint"
+   - The Google API key is stored in localStorage as "googleApiKey"
+   - The custom Google endpoint (if provided) is stored in localStorage as "googleEndpoint"
 
 ### Backend API Structure
 
@@ -138,10 +138,10 @@ The frontend expects the following API endpoints to be available on your Python 
 
 ### Authentication
 
-The frontend sends the OpenAI API key in the Authorization header for all requests:
+The frontend sends the Google API key in the Authorization header for all requests:
 
 ```
-Authorization: Bearer {openaiApiKey}
+Authorization: Bearer {googleApiKey}
 ```
 
 ### Python Backend Implementation Guidelines
@@ -159,7 +159,7 @@ When implementing your Python backend, consider the following:
 
 4. **Error Handling**: Return appropriate HTTP status codes and error messages that the frontend can display to the user.
 
-5. **OpenAI Integration**: The backend should use the provided OpenAI API key to power the AI agents, either directly or through a service like LangChain.
+5. **Google Integration**: The backend should use the provided Google API key to power the AI agents, either directly or through a service like LangChain.
 
 6. **State Management**: The backend should maintain state for the agent system, trading history, and configuration.
 

@@ -10,14 +10,12 @@ class GenerateReportInput(BaseModel):
 class GenerateReportOutput(BaseModel):
     report: str = Field(..., description="The generated report.")
 
-def generate_report_func(input: GenerateReportInput) -> GenerateReportOutput:
+def generate_report(input: GenerateReportInput) -> GenerateReportOutput:
     """
     Generates a report based on the given data.
     """
     # ... (Placeholder implementation)
     return GenerateReportOutput(report=f"This is a {input.report_type} report.")
-
-generate_report = Function.from_callable(generate_report_func)
 
 reporting_toolkit = Toolkit(name="reporting")
 reporting_toolkit.register(generate_report)

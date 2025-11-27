@@ -7,7 +7,7 @@ import nltk
 # Download the VADER lexicon if it's not already downloaded
 try:
     nltk.data.find('sentiment/vader_lexicon.zip')
-except nltk.downloader.DownloadError:
+except LookupError:
     nltk.download('vader_lexicon')
 
 class AnalyzeSentimentInput(BaseModel):

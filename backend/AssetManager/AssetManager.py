@@ -1,9 +1,9 @@
 import os
 from agno.agent import Agent
-from agno.models.google import Gemini
 from backend.tools.portfolio import get_portfolio
 from backend.tools.wallet import get_account_balance
 from backend.tools.alerting import alerting_toolkit
+from backend.shared_model import get_shared_model
 
 # Load instructions from the markdown file
 with open(os.path.join(os.path.dirname(__file__), 'instructions.md'), 'r') as f:
@@ -15,9 +15,5 @@ asset_manager = Agent(
     description="Gerencia os ativos da carteira, como alocação e rebalanceamento.",
     instructions=instructions,
     tools=[get_portfolio, get_account_balance, alerting_toolkit],
-    model=Gemini(
-        id=os.getenv("gemini_model", "gemini-1.5-flash-latest"),
-        api_key=os.getenv("gemini_api_key"),
-        temperature=float(os.getenv("temperature", 0.7)),
-    ),
+    model=get_shared_model(),
 )
