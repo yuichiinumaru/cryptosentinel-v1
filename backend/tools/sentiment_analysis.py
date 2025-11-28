@@ -16,13 +16,16 @@ class AnalyzeSentimentInput(BaseModel):
 class AnalyzeSentimentOutput(BaseModel):
     sentiment: Dict[str, float] = Field(..., description="A dictionary containing the sentiment scores.")
 
-def analyze_sentiment(input: AnalyzeSentimentInput) -> AnalyzeSentimentOutput:
-    """
-    Analyzes the sentiment of a given text using NLTK's VADER.
-    """
-    sia = SentimentIntensityAnalyzer()
-    sentiment_scores = sia.polarity_scores(input.text)
-    return AnalyzeSentimentOutput(sentiment=sentiment_scores)
+class SentimentAnalysisToolkit(Toolkit):
+    def __init__(self, **kwargs):
+        super().__init__(name="sentiment_analysis", tools=[self.analyze_sentiment], **kwargs)
 
-sentiment_analysis_toolkit = Toolkit(name="sentiment_analysis")
-sentiment_analysis_toolkit.register(analyze_sentiment)
+    def analyze_sentiment(self, input: AnalyzeSentimentInput) -> AnalyzeSentimentOutput:
+        """
+        Analyzes the sentiment of a given text using NLTK's VADER.
+        """
+        sia = SentimentIntensityAnalyzer()
+        sentiment_scores = sia.polarity_scores(input.text)
+        return AnalyzeSentimentOutput(sentiment=sentiment_scores)
+
+sentiment_analysis_toolkit = SentimentAnalysisToolkit()
