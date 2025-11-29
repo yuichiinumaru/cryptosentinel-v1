@@ -1,7 +1,6 @@
 from pydantic import BaseModel, Field
 from typing import Dict, Any
 from agno.tools.toolkit import Toolkit
-from agno.tools.function import Function
 
 class GenerateReportInput(BaseModel):
     data: Dict[str, Any] = Field(..., description="The data to include in the report.")
@@ -10,12 +9,15 @@ class GenerateReportInput(BaseModel):
 class GenerateReportOutput(BaseModel):
     report: str = Field(..., description="The generated report.")
 
-def generate_report(input: GenerateReportInput) -> GenerateReportOutput:
-    """
-    Generates a report based on the given data.
-    """
-    # ... (Placeholder implementation)
-    return GenerateReportOutput(report=f"This is a {input.report_type} report.")
+class ReportingToolkit(Toolkit):
+    def __init__(self, **kwargs):
+        super().__init__(name="reporting", tools=[self.generate_report], **kwargs)
 
-reporting_toolkit = Toolkit(name="reporting")
-reporting_toolkit.register(generate_report)
+    def generate_report(self, input: GenerateReportInput) -> GenerateReportOutput:
+        """
+        Generates a report based on the given data.
+        """
+        # ... (Placeholder implementation)
+        return GenerateReportOutput(report=f"This is a {input.report_type} report.")
+
+reporting_toolkit = ReportingToolkit()

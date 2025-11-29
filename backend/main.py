@@ -9,8 +9,9 @@ import json
 import requests
 from fastapi.responses import StreamingResponse
 
+from agno.tools.duckduckgo import DuckDuckGoTools
 from backend.storage.models import TradeData, ActivityData
-from backend.agents import crypto_trading_team, storage
+from backend.agents import crypto_trading_team, storage, key_manager
 
 
 app = FastAPI(title="DeepTrader API")
@@ -71,7 +72,7 @@ async def get_api_key(authorization: str = Header(None)):
         raise HTTPException(status_code=401, detail="API key is missing")
 
     # Set the environment variable for the agno library to use for this request's context
-    os.environ['GEMINI_API_KEY'] = api_key
+    os.environ['OPENAI_API_KEY'] = api_key
     return api_key
 
 
@@ -93,37 +94,55 @@ async def get_status(api_key: str = Depends(get_api_key)):
 @app.get("/news/latest", response_model=List[NewsItem])
 async def get_latest_news(limit: int = 20, api_key: str = Depends(get_api_key)):
     """
-    Fetches the latest cryptocurrency news by asking the agent team.
+    Fetches the latest cryptocurrency news using DuckDuckGo search.
     """
     try:
-        # Ask the AnalistaDeSentimento to fetch the latest news.
-        # The response should be a list of NewsItem objects.
-        response = crypto_trading_team.run(
-            f"Fetch the latest {limit} cryptocurrency news articles."
-        )
+        # Use DuckDuckGo news tool directly for reliability
+        ddg_news = DuckDuckGoTools(news=True)
+        news_results = ddg_news.duckduckgo_news(query="cryptocurrency")
 
-        # The response from the team might be a generator, so we consume it.
-        # The final result should be a JSON string representing a list of news items.
-        final_response = ""
-        for chunk in response:
-            if isinstance(chunk, dict) and 'content' in chunk:
-                final_response += chunk['content']
-            elif isinstance(chunk, str):
-                final_response = chunk
+        # The tool does not support a limit, so we slice the results
+        if isinstance(news_results, list):
+            news_results = news_results[:limit]
 
-        if not final_response:
-            return []
+        # The output of the tool is a string, so we need to parse it.
+        # This is a bit brittle, but it's how the tool is designed.
+        # A better implementation would have the tool return structured data.
+        if isinstance(news_results, str):
+            try:
+                # The string is a JSON representation of a list of dicts
+                news_items_raw = json.loads(news_results)
+            except json.JSONDecodeError:
+                print(f"Failed to parse news results from DDG: {news_results}")
+                return []
+        else:
+            # If it's already a list (which it should be), use it directly
+            news_items_raw = news_results
 
-        # The agent should return a JSON string that we can parse into our model.
-        news_items_raw = json.loads(final_response)
-
-        # Validate and format the response
-        formatted_news = [NewsItem(**item) for item in news_items_raw]
+        # Format the results into the NewsItem model
+        formatted_news = []
+        for i, item in enumerate(news_items_raw):
+            # The news tool returns 'date', 'title', 'body', 'url', 'source'
+            # We need to map this to our NewsItem model
+            formatted_news.append(
+                NewsItem(
+                    id=f"news_{int(datetime.now().timestamp())}_{i}",
+                    title=item.get("title", "No Title"),
+                    summary=item.get("body", ""),
+                    source=item.get("source", "Unknown Source"),
+                    url=item.get("url", "#"),
+                    timestamp=datetime.fromisoformat(item.get("date")) if item.get("date") else datetime.now(),
+                    sentiment="neutral",  # Sentiment analysis would require another agent/tool
+                    relevance=0.8,  # Relevance scoring would require another agent/tool
+                    tags=["crypto"],
+                    coins=[],  # Coin extraction would require another agent/tool
+                    agentId="DuckDuckGoTools",
+                )
+            )
         return formatted_news
-
     except Exception as e:
-        print(f"Error fetching news from agent team: {e}")
-        raise HTTPException(status_code=500, detail="Failed to fetch news from agent team.")
+        print(f"Failed to fetch news from DuckDuckGo: {e}")
+        return []
 
 @app.get("/trades/recent", response_model=List[TradeData])
 async def get_recent_trades(limit: int = 15, api_key: str = Depends(get_api_key)):
@@ -138,35 +157,50 @@ async def get_recent_agent_activities(limit: int = 20, api_key: str = Depends(ge
 @app.get("/market/price", response_model=List[PriceDataPoint])
 async def get_market_price(symbol: str = "BTC", period: str = "1D", api_key: str = Depends(get_api_key)):
     """
-    Fetches market price data by asking the MarketAnalyst agent.
+    Fetches real market price data directly from the CoinGecko API.
     """
+    # Mapping for symbols to CoinGecko IDs
+    symbol_to_id = {
+        "BTC": "bitcoin",
+        "ETH": "ethereum",
+        "DOGE": "dogecoin",
+        # Add other common symbols here
+    }
+    coin_id = symbol_to_id.get(symbol.upper(), symbol.lower())
+
+    # Mapping for period to days
+    period_to_days = {
+        "1D": 1,
+        "7D": 7,
+        "1M": 30,
+        "3M": 90,
+        "1Y": 365,
+    }
+    days = period_to_days.get(period.upper(), 1)
+
+    url = f"https://api.coingecko.com/api/v3/coins/{coin_id}/market_chart"
+    params = {
+        "vs_currency": "usd",
+        "days": days,
+    }
+
     try:
-        # Ask the MarketAnalyst to fetch the price data.
-        response = crypto_trading_team.run(
-            f"Fetch the market price for {symbol} for the last {period}."
-        )
+        response = requests.get(url, params=params)
+        response.raise_for_status()  # Raise an exception for bad status codes
+        data = response.json()
 
-        # The response from the team might be a generator, so we consume it.
-        final_response = ""
-        for chunk in response:
-            if isinstance(chunk, dict) and 'content' in chunk:
-                final_response += chunk['content']
-            elif isinstance(chunk, str):
-                final_response = chunk
-
-        if not final_response:
-            return []
-
-        # The agent should return a JSON string that we can parse into our model.
-        price_data_raw = json.loads(final_response)
-
-        # Validate and format the response
-        price_data = [PriceDataPoint(**item) for item in price_data_raw]
+        # Process the data into the format expected by the frontend
+        price_data = [
+            PriceDataPoint(time=item[0] / 1000, price=item[1])
+            for item in data.get("prices", [])
+        ]
         return price_data
-
+    except requests.exceptions.RequestException as e:
+        print(f"Failed to fetch data from CoinGecko: {e}")
+        return []
     except Exception as e:
-        print(f"Error fetching market price from agent team: {e}")
-        raise HTTPException(status_code=500, detail="Failed to fetch market price from agent team.")
+        print(f"An error occurred while processing price data: {e}")
+        return []
 
 
 @app.post("/chat")
@@ -183,19 +217,18 @@ async def chat_with_agent(request: ChatRequest, api_key: str = Depends(get_api_k
         # The concept of a specific 'receiver' might be handled differently in a Team.
         # For now, let's assume a simple run method. I may need to adjust this
         # after checking the agno library's source or getting more errors.
-        response_generator = crypto_trading_team.run(request.message, stream=True)
+        response_generator = crypto_trading_team.run(request.message)
 
-        # The `run` method of a team with stream=True returns a generator.
-        # We need to iterate through it to get the final content.
+        # The response from the agency can be a generator for streaming.
+        # For a simple chat endpoint, we can consume the generator to get the final response.
         final_response = ""
         for chunk in response_generator:
-            # The chunk can be a string or a dictionary-like object (event).
-            # We are interested in the string content.
-            if isinstance(chunk, str):
-                final_response += chunk
-            elif hasattr(chunk, 'content') and isinstance(chunk.content, str):
-                 final_response += chunk.content
-
+            # The chunk can be a dict with 'content', 'tool_calls', etc.
+            # We are interested in the 'content' for the chat response.
+            if isinstance(chunk, dict) and 'content' in chunk:
+                final_response += chunk['content']
+            elif isinstance(chunk, str):
+                final_response = chunk # If it's just a string, use it directly
 
         # If the agent returns a structured object (like a Pydantic model),
         # agno will serialize it to a string. We might need to parse it back
