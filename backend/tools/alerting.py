@@ -65,6 +65,16 @@ def send_internal_alert(input: SendInternalAlertInput) -> SendInternalAlertOutpu
 
     return SendInternalAlertOutput(success=error is None, alert_id=alert_id, delivered_via=delivered_via, error=error)
 
+class AlertingToolkit(Toolkit):
+    def __init__(self, **kwargs):
+        super().__init__(name="alerting", tools=[self.send_internal_alert], **kwargs)
 
-alerting_toolkit = Toolkit(name="alerting")
-alerting_toolkit.register(send_internal_alert)
+    def send_internal_alert(self, input: SendInternalAlertInput) -> SendInternalAlertOutput:
+        """
+        Sends an internal alert to another agent or a system channel.
+        """
+        # This is a placeholder implementation. A real implementation would use a messaging system.
+        print(f"ALERT to {input.recipient}: {input.message}")
+        return SendInternalAlertOutput(success=True)
+
+alerting_toolkit = AlertingToolkit()

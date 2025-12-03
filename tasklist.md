@@ -9,3 +9,4 @@
 - [ ] Implement a simple trading strategy
 - [ ] Implement a simple UI for monitoring the bot
 - [ ] Deploy the bot to a cloud environment
+- [ ] Add `khala-agentmemory` as a submodule (postponed)

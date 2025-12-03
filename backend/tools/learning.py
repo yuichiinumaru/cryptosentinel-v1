@@ -118,3 +118,41 @@ learning_toolkit.register(get_trade_history)
 learning_toolkit.register(analyze_performance)
 learning_toolkit.register(adjust_agent_instructions)
 learning_toolkit.register(adjust_tool_parameters)
+class LearningToolkit(Toolkit):
+    def __init__(self, **kwargs):
+        super().__init__(name="learning", tools=[
+            self.get_trade_history,
+            self.analyze_performance,
+            self.adjust_agent_instructions,
+            self.adjust_tool_parameters,
+        ], **kwargs)
+
+    def get_trade_history(self, input: GetTradeHistoryInput) -> GetTradeHistoryOutput:
+        """
+        Gets the trade history from the database.
+        """
+        # ... (Placeholder implementation)
+        return GetTradeHistoryOutput(trades=[])
+
+    def analyze_performance(self, input: AnalyzePerformanceInput) -> AnalyzePerformanceOutput:
+        """
+        Analyzes the performance of a list of trades.
+        """
+        # ... (Placeholder implementation)
+        return AnalyzePerformanceOutput(performance_metrics={"roi": 0.1})
+
+    def adjust_agent_instructions(self, input: AdjustAgentInstructionsInput) -> AdjustAgentInstructionsOutput:
+        """
+        Adjusts the instructions of an agent.
+        """
+        # ... (Placeholder implementation)
+        return AdjustAgentInstructionsOutput(success=True)
+
+    def adjust_tool_parameters(self, input: AdjustToolParametersInput) -> AdjustToolParametersOutput:
+        """
+        Adjusts the parameters of a tool.
+        """
+        # ... (Placeholder implementation)
+        return AdjustToolParametersOutput(success=True)
+
+learning_toolkit = LearningToolkit()

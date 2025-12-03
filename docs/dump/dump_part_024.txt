@@ -1,0 +1,294 @@
+    - MarketAnalyst: Baseada em RSI (comprar quando RSI < 30, vender quando RSI > 70), focando em tokens de alta capitalização.
+
+    - DeepTraderManager: Limite de risco de 2% por operação, bloqueio de tokens fora do Top 50 ou com baixa pontuação de segurança.
+
+
+**6. Implementação Adicional Sugerida e Pendências**
+
+- **Implementar na totalidade**:
+
+    - Implementação do RAG (ConsultKnowledgeBase)
+
+    - Detecção de Sandwich Attacks
+
+    - MEV protection
+
+    - Agente LearningCoordinator
+
+    - CalculateTechnicalIndicator
+
+- **Pesquisar e definir:**
+
+    - Quais exchanges e apis de segurança serão usadas, incluindo alternativas.
+
+    - Quais dados buscar em cada exchange, dentro das limitações de rate limit de cada uma
+
+    - Detalhar o funcionamento das blacklists (tokens e devs)
+
+    - Estratégia de trading
+
+    - Detalhar chamadas de API pra CEX (se for ter)
+
+    - Como refatorar o código com async e await para evitar travamentos
+
+    - Como paralelizar as requisições às exchanges em diferentes threads
+
+    - Arquitetura de microsserviços (se for ter)
+
+    - Como integrar modelos de previsão de preço
+
+
+Esta lista detalhada abrange todos os aspectos definidos para o DeepTrader até o momento, com base em toda a nossa conversa. Ela serve como um guia completo para o desenvolvimento do projeto, destacando o que já foi esboçado em código e o que ainda precisa ser implementado ou definido.
+
+s	Yes, via ARX models with exogenous data
+Probabilistic Forecasting	Yes, with sampled or distribution parameters	Yes, provides prediction intervals
+Covariates Support	Yes, past-observed, future-known, static	Yes, via ARX models
+Documentation	Comprehensive, with user guides and API refs	Includes notebooks, less extensive
+Community and Maintenance	Active, more stars on GitHub (assumed)	Active, fewer stars (assumed)
+Best For	Flexibility, complex models, scalability	Quick deployment, automated forecasting
+This table highlights that Darts offers more flexibility for users comfortable with tuning models, while PyAF is better for those seeking a plug-and-play solution. Both are suitable for financial time series, given their handling of non-stationarity and volatility, but the choice depends on the user's technical expertise and project timeline.
+
+Additional Considerations
+Other libraries were evaluated but found less suitable. For instance, FinnTS, a forecasting package from Microsoft, was identified as an R package, which may not align with the user's likely Python preference. Libraries like statsmodels, arch, and sktime were considered general-purpose, with arch focusing on volatility models (ARCH, GARCH) but not directly on price prediction. Projects like Zipline were more for backtesting trading strategies rather than providing prediction models, reinforcing the focus on Darts, PyAF, and GitHub projects.
+
+The survey also noted the importance of real-time or near-real-time prediction for trading bots, with Darts and PyAF both supporting efficient model training and prediction. Financial time series characteristics like non-stationarity and volatility clustering were addressed by the models in these libraries, ensuring robustness for market data.
+
+Practical Implementation
+For users starting with Darts, installation and exploration can begin with the user guide at Darts User Guide, testing models like NBEATSModel or TFTModel for financial data. For PyAF, the introductory notebook at PyAF Introduction Notebook provides a starting point, with options to customize transformations and AR models. GitHub projects like huseinzol05/Stock-Prediction-Models can be cloned for immediate access to notebooks, adapting models like LSTM for specific stocks.
+
+Conclusion
+In conclusion, for a trading bot requiring advanced, ready-to-use open-source price prediction models, Darts and PyAF are recommended as primary libraries, with GitHub projects offering supplementary specialized implementations. Darts provides flexibility with a broad model range, while PyAF excels in automation for quick deployment. Users should evaluate based on their technical comfort and project needs, ensuring efficient integration into their trading bot by 06:08 PM PDT on Tuesday, March 11, 2025.
+
+Key Citations
+Darts User Guide for Time Series Forecasting
+PyAF Introduction Notebook for Automated Forecasting
+Stock-Prediction-Models GitHub Repository for Forecasting
+
+
+# Guia de Implementação: Agency Swarm com Gemini, optillm e LiteLLM
+
+## Índice
+1. [Pré-requisitos e Setup](#pré-requisitos-e-setup)
+2. [Arquitetura da Solução](#arquitetura-da-solução)
+3. [Guia de Implementação](#guia-de-implementação)
+4. [Tools e MCPs](#tools-e-mcps)
+5. [Integração com Cursor AI](#integração-com-cursor-ai)
+6. [Troubleshooting e FAQ](#troubleshooting-e-faq)
+7. [Exemplos Completos](#exemplos-completos)
+8. [Recursos Adicionais](#recursos-adicionais)
+
+## Pré-requisitos e Setup
+
+### Requisitos do Sistema
+- Python 3.8 ou superior
+- WSL (Windows Subsystem for Linux) se estiver usando Windows
+- Ambiente virtual Python (venv ou conda)
+- Git para controle de versão
+
+### Dependências Principais
+```bash
+# Criar e ativar ambiente virtual
+python -m venv venv
+source venv/bin/activate  # Linux/WSL
+# ou
+.\venv\Scripts\activate  # Windows
+
+# Instalar dependências
+pip install agency-swarm==0.1.7  # Versão específica recomendada para melhor compatibilidade com backends não-OpenAI que mimetizam a API Assistants V2.
+pip install litellm optillm google-generativeai
+```
+
+### Chaves de API Necessárias
+- **Gemini API Key**: Necessária para acesso aos modelos Gemini
+- **OpenAI API Key** (opcional): Se planeja usar modelos híbridos/fallback
+- **Azure OpenAI Key** (opcional): Para deployment em ambiente Azure
+
+### Configuração do Ambiente
+```bash
+# Configurar variáveis de ambiente
+export GEMINI_API_KEY=sua_chave_gemini
+export OPTILLM_MODEL=gemini/gemini-pro  # ou outro modelo Gemini
+export OPTILLM_API_KEY=chave_optillm    # se necessário
+```
+
+### Verificação da Instalação
+```python
+# Script de verificação
+import os
+import openai
+from agency_swarm import set_openai_client
+from dotenv import load_dotenv
+
+load_dotenv()
+
+# Teste de conexão com optillm
+client = openai.OpenAI(
+    base_url="http://localhost:8000/v1",
+    api_key=os.getenv("OPTILLM_API_KEY", "dummy-key")
+)
+
+try:
+    response = client.chat.completions.create(
+        model="gemini/gemini-pro",
+        messages=[{"role": "user", "content": "Olá!"}]
+    )
+    print("Conexão com optillm OK!")
+except Exception as e:
+    print(f"Erro na conexão com optillm: {e}")
+
+# LiteLLM e a Tradução de Function Calling para Gemini
+
+Este documento resume a capacidade do LiteLLM de traduzir automaticamente as definições e chamadas de `tools` (function calling) do formato padrão da API OpenAI para o formato nativo exigido pelos modelos Gemini do Google.
+
+## Sumário Executivo
+
+**Sim, o LiteLLM realiza a tradução automática do schema de `tools` (function calling) do formato OpenAI para o formato Gemini.** Ao usar o LiteLLM (seja diretamente via SDK ou através de um proxy como o `optillm` que o utilize corretamente), você pode definir suas funções usando o schema padrão da OpenAI, e o LiteLLM cuidará da conversão necessária para que o Gemini entenda a solicitação. Ele também traduz a resposta do Gemini de volta para o formato OpenAI.
+
+## Principais Descobertas da Documentação
+
+1.  **Tradução Automática (Request):**
+    *   A documentação de Function Calling ([LiteLLM Docs: Function Calling](https://docs.litellm.ai/docs/completion/function_call)) afirma explicitamente que o LiteLLM traduz os parâmetros `tools` e `tool_choice` do formato OpenAI para os formatos nativos de provedores suportados, incluindo Gemini.
+    *   Para o Gemini, ele converte o parâmetro `tools` (que contém a lista de definições de funções no formato JSON Schema da OpenAI) para o parâmetro `tools` esperado pelo Gemini.
+    *   Ele também traduz o parâmetro `tool_choice` da OpenAI para o parâmetro `tool_config` do Gemini, mapeando os valores correspondentes (ex: `tool_choice="auto"` vira `tool_config={"function_calling_config": {"mode": "AUTO"}}`).
+
+2.  **Tradução Automática (Response):**
+    *   Quando o Gemini responde com uma intenção de chamar uma função (no formato de resposta nativo do Gemini), o LiteLLM traduz essa resposta de volta para o formato de resposta da OpenAI (contendo `tool_calls`). Isso garante uma interface consistente para o seu aplicativo, independentemente do modelo backend.
+
+3.  **Formato de Entrada Esperado:**
+    *   Você deve fornecer a definição das suas funções no parâmetro `tools` usando o formato JSON Schema padrão da OpenAI, como faria ao chamar diretamente a API da OpenAI ([LiteLLM Docs: Input - Function Calling](https://docs.litellm.ai/docs/completion/input#function-calling)).
+
+4.  **Exemplos com Gemini:**
+    *   A documentação específica do provedor Gemini ([LiteLLM Docs: Gemini](https://docs.litellm.ai/docs/providers/gemini)) mostra exemplos de chamadas `litellm.completion` para modelos `gemini/*` que incluem o parâmetro `tools` no formato OpenAI, reforçando que a tradução é feita internamente.
+
+5.  **Pass-through (Alternativa):**
+    *   Caso a tradução automática não seja suficiente ou você precise usar parâmetros nativos específicos do Gemini não mapeados pelo LiteLLM, existe a funcionalidade de "Pass-through" ([LiteLLM Docs: Pass-through Intro](https://docs.litellm.ai/docs/pass_through/intro), [Google AI Studio Pass-through](https://docs.litellm.ai/docs/pass_through/google_ai_studio)). Isso permite enviar parâmetros diretamente para a API do Gemini, mas nesse caso, você seria responsável por usar o formato nativo do Gemini para `tools` e `tool_config`.
+
+## Integrando com `optillm`
+
+O `optillm` atua como um proxy otimizador que, conforme sugerido pela presença de `optillm/optillm/litellm_wrapper.py`, provavelmente utiliza o LiteLLM para se comunicar com diversos backends de LLM, incluindo o Gemini. Isso permite combinar as otimizações de inferência do `optillm` com a capacidade de tradução de function calling do LiteLLM.
+
+**Como Funciona a Integração:**
+
+1.  **Requisição do Cliente:** Seu aplicativo envia uma requisição para o endpoint do `optillm` (ex: `http://localhost:8000/v1/chat/completions`) usando o formato da API OpenAI. Esta requisição inclui a mensagem do usuário e o parâmetro `tools` com as definições das funções no formato JSON Schema da OpenAI.
+2.  **Processamento pelo `optillm`:**
+    *   O `optillm` recebe a requisição.
+    *   Ele aplica a estratégia de otimização configurada (ex: MoA, MCTS, CePO). Isso pode envolver modificar a requisição original ou fazer múltiplas chamadas ao LLM subjacente.
+3.  **Chamada ao Backend (via LiteLLM):**
+    *   Para cada chamada que o `optillm` direciona ao modelo Gemini configurado, ele (através do seu wrapper LiteLLM) passa a requisição para a biblioteca LiteLLM.
+    *   Crucialmente, ele passa o parâmetro `tools` (no formato OpenAI) para o LiteLLM.
+4.  **Tradução pelo LiteLLM:**
+    *   O LiteLLM recebe a chamada do `optillm`.
+    *   Ele detecta que o modelo de destino é Gemini e que há um parâmetro `tools`.
+    *   **LiteLLM traduz automaticamente** o schema das funções do formato OpenAI para o formato nativo do Gemini.
+    *   LiteLLM envia a requisição traduzida para a API do Gemini.
+5.  **Resposta do Gemini e Tradução Reversa:**
+    *   O Gemini processa a requisição e pode responder com uma intenção de chamar uma função (no formato Gemini).
+    *   LiteLLM recebe a resposta do Gemini.
+    *   **LiteLLM traduz automaticamente** a resposta do Gemini (incluindo a chamada de função) de volta para o formato OpenAI (`tool_calls`).
+6.  **Retorno ao `optillm`:** O LiteLLM retorna a resposta formatada como OpenAI para o `optillm`.
+7.  **Finalização pelo `optillm`:**
+    *   O `optillm` recebe a(s) resposta(s) do LiteLLM.
+    *   Dependendo da estratégia, ele pode realizar processamento adicional (ex: agregar resultados no MoA).
+    *   O `optillm` envia a resposta final (no formato OpenAI) de volta para o cliente.
+
+**Configuração:**
+
+Para usar Gemini com `optillm` e function calling:
+
+1.  **Execute o `optillm`:** Inicie o servidor proxy `optillm` (via Docker ou diretamente).
+2.  **Configure o Modelo:** Defina o modelo Gemini desejado usando a variável de ambiente `OPTILLM_MODEL` ou o argumento `--model`. Use o prefixo esperado pelo LiteLLM, como `gemini/gemini-pro` ou `gemini/gemini-1.5-pro-latest`.
+    *   Exemplo (variável de ambiente): `export OPTILLM_MODEL=gemini/gemini-pro`
+3.  **Configure a API Key:** Certifique-se de que a API key do Gemini esteja acessível para o LiteLLM (que é usado pelo `optillm`). A forma padrão é via variável de ambiente: `export GEMINI_API_KEY=SUA_API_KEY`.
+4.  **Escolha a Abordagem `optillm`:** Selecione a técnica de otimização desejada com `OPTILLM_APPROACH` ou `--approach` (ex: `moa`, `mcts`, `cepo`, ou deixe o padrão).
+5.  **Envie a Requisição:** Faça chamadas para o endpoint do `optillm` como se fosse a API da OpenAI, incluindo o parâmetro `tools` com suas definições de função no formato OpenAI.
+
+**Benefícios Combinados:**
+
+*   **Interface Unificada:** Use frameworks e SDKs compatíveis com OpenAI.
+*   **Otimização de Inferência:** Aproveite as técnicas avançadas do `optillm` (MoA, MCTS, etc.) para potencialmente melhorar a qualidade das respostas do Gemini.
+*   **Compatibilidade de Function Calling:** Defina funções uma vez no formato OpenAI e use-as com Gemini sem reescrever o schema, graças à tradução automática do LiteLLM.
+*   **Suporte a Diversos Modelos:** Alterne facilmente entre Gemini e outros modelos suportados pelo `optillm`/LiteLLM apenas mudando a configuração.
+
+## Integrando com Agency Swarm
+
+A combinação `optillm` + LiteLLM pode ser integrada ao framework Agency Swarm para permitir o uso de modelos Gemini como backend para os agentes, mantendo a compatibilidade com a API Assistants da OpenAI que o Agency Swarm utiliza.
+
+**Como Integrar Gemini (via optillm/LiteLLM) no Agency Swarm:**
+
+1.  **Execute o `optillm`:**
+    *   Inicie o servidor proxy `optillm`.
+    *   Configure-o para usar o modelo Gemini desejado (ex: `export OPTILLM_MODEL=gemini/gemini-1.5-pro-latest`).
+    *   Certifique-se de que a API Key do Gemini esteja acessível no ambiente onde `optillm` (e consequentemente LiteLLM) está rodando (ex: `export GEMINI_API_KEY=SUA_API_KEY`).
+    *   Opcionalmente, configure uma abordagem de otimização no `optillm` (ex: `export OPTILLM_APPROACH=moa`).
+    *   Anote o endereço e porta onde o `optillm` está rodando (ex: `http://localhost:8000`).
+
+2.  **Configure o Cliente OpenAI no Agency Swarm:**
+    *   No seu código Python do Agency Swarm, *antes* de inicializar qualquer `Agent` ou `Agency`, configure um cliente OpenAI para apontar para o endpoint do `optillm`.
+    ```python
+    import os
+    import openai
+    from agency_swarm import set_openai_client
+    from dotenv import load_dotenv
+
+    load_dotenv() # Carrega variáveis de ambiente (opcional, mas útil)
+
+    # Endereço onde o optillm está rodando
+    OPTILLM_BASE_URL = "http://localhost:8000/v1" # Verifique se o /v1 é necessário pelo optillm
+
+    # Chave API para o *optillm* (se ele exigir autenticação)
+    # Se o optillm não tiver auth, pode ser uma string qualquer.
+    # Se tiver, use a chave configurada no optillm (OPTILLM_API_KEY).
+    OPTILLM_API_KEY = os.getenv("OPTILLM_API_KEY", "dummy-key")
+
+    # Cria o cliente OpenAI apontando para o optillm
+    client = openai.OpenAI(
+        base_url=OPTILLM_BASE_URL,
+        api_key=OPTILLM_API_KEY,
+        # Outros parâmetros como timeout, max_retries podem ser adicionados
+    )
+
+    # Define este cliente customizado para o Agency Swarm usar
+    set_openai_client(client)
+
+    print(f"Agency Swarm configurado para usar o endpoint: {OPTILLM_BASE_URL}")
+    ```
+    *   **Autenticação:** Verifique a necessidade de `api_key` para o `optillm`. A chave do *Gemini* (`GEMINI_API_KEY`) deve estar no ambiente do `optillm`.
+
+3.  **Defina os Agentes no Agency Swarm:**
+    *   Ao criar suas instâncias de `Agent`, especifique o parâmetro `model` com o **mesmo nome de modelo que o `optillm` está configurado para usar**.
+    ```python
+    from agency_swarm import Agent
+    from .tools import SuaFerramentaCustomizada # Exemplo
+
+    ceo = Agent(name="CEO",
+                description="Agente CEO",
+                instructions="Instruções do CEO...",
+                model='gemini/gemini-1.5-pro-latest', # <<< IMPORTANTE: Mesmo modelo configurado no optillm
+                tools=[SuaFerramentaCustomizada]
+               )
+    # ... outros agentes ...
+    ```
+
+4.  **Defina as Ferramentas (Tools):**
+    *   Crie suas ferramentas normalmente no Agency Swarm, herdando de `BaseTool` e usando o formato **JSON Schema padrão da OpenAI**.
+    *   O `optillm`, ao usar o LiteLLM, será responsável por traduzir essas definições para o formato Gemini.
+
+5.  **Crie e Execute a Agência:**
+    *   Inicialize sua `Agency` com os agentes configurados e o `agency_chart`.
+    ```python
+    from agency_swarm import Agency
+
+    # Supondo que 'ceo', 'dev', etc. são os agentes definidos acima
+    agency = Agency(agency_chart=[ceo, [ceo, dev]], # Exemplo
+                    shared_instructions="Instruções compartilhadas...")
+
+    # Execute usando demo_gradio, get_completion, etc.
+    # agency.demo_gradio()
+    response = agency.get_completion("Qual a previsão do tempo para São Paulo amanhã?",
+                                     # Use sua ferramenta de previsão do tempo aqui
+                                     yield_messages=True) # Exemplo com streaming
+    for message in response:
+        print(message)
+    ```
+
+**Considerações Importantes para Agency Swarm:**

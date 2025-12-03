@@ -134,3 +134,33 @@ dev_toolkit = Toolkit(name="dev")
 dev_toolkit.register(code_writer)
 dev_toolkit.register(code_tester)
 dev_toolkit.register(deploy)
+class DevToolkit(Toolkit):
+    def __init__(self, **kwargs):
+        super().__init__(name="dev", tools=[
+            self.code_writer,
+            self.code_tester,
+            self.deploy,
+        ], **kwargs)
+
+    def code_writer(self, input: CodeWriterInput) -> CodeWriterOutput:
+        """
+        Writes code for a given task.
+        """
+        # ... (Placeholder implementation)
+        return CodeWriterOutput(code=f"print('Code for {input.task}')")
+
+    def code_tester(self, input: CodeTesterInput) -> CodeTesterOutput:
+        """
+        Tests a given piece of code.
+        """
+        # ... (Placeholder implementation)
+        return CodeTesterOutput(success=True, results="All tests passed.")
+
+    def deploy(self, input: DeployInput) -> DeployOutput:
+        """
+        Deploys a given piece of code.
+        """
+        # ... (Placeholder implementation)
+        return DeployOutput(success=True, message="Deployment successful.")
+
+dev_toolkit = DevToolkit()

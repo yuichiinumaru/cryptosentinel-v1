@@ -50,6 +50,15 @@ def generate_report(input: GenerateReportInput) -> GenerateReportOutput:
         report = json.dumps(input.data, indent=2, default=str)
     return GenerateReportOutput(report=report)
 
+class ReportingToolkit(Toolkit):
+    def __init__(self, **kwargs):
+        super().__init__(name="reporting", tools=[self.generate_report], **kwargs)
 
-reporting_toolkit = Toolkit(name="reporting")
-reporting_toolkit.register(generate_report)
+    def generate_report(self, input: GenerateReportInput) -> GenerateReportOutput:
+        """
+        Generates a report based on the given data.
+        """
+        # ... (Placeholder implementation)
+        return GenerateReportOutput(report=f"This is a {input.report_type} report.")
+
+reporting_toolkit = ReportingToolkit()

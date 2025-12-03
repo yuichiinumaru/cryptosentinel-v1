@@ -1,0 +1,186 @@
+- Investimento e Manutenção: Ferramentas automatizadas podem exigir investimentos significativos em desenvolvimento, infraestrutura e manutenção. Se o ganho em performance e escalabilidade superar esses custos, vale a pena a implementação. Caso contrário, pode ser mais vantajoso operar sem a ferramenta ou com uma implementação híbrida. Como eu tenho pouquíssimo capital disponível para começar esta ferramenta, eu gostaria de encurtar o máximo de caminho com o mínimo de esforço possível (por exemplo, verificando soluções opensource no github que podem ser implementadas ou adaptadas no projeto).
+- Escalabilidade das Operações: Em sistemas que precisam lidar com volumes elevados de dados ou operações simultâneas, a automação via MCP pode proporcionar uma escalabilidade que a intervenção manual dos agentes dificilmente alcançaria.
+- Sinergia entre Agentes, Flexibilidade e Adaptabilidade: A escolha também depende de como a ferramenta se integra com as demais funções da agência. Se o uso da ferramenta favorecer uma comunicação mais rápida e integrada entre os agentes, a automação pode aumentar a eficiência do sistema como um todo. Em ambientes de alta volatilidade, onde as condições mudam rapidamente, pode ser necessário ajustar o nível de automação ou uso da ferramenta para que o sistema se adapte a novas condições sem comprometer a segurança ou a eficácia da operação. Também por isso quis que tivesse um agente de aprendizado, para evolução dos agentes com o tempo, e um agente dev, para desenhar novas ferramentas ou melhorar as já existentes.
+
+
+1. Analista Técnico
+- Responsável por fazer análise técnica (gráfico).
+- Proficiência em análise gráfica e identificação de padrões (ex.: suportes, resistências, formações de candlestick, etc.).
+- Conhecimento profundo de indicadores técnicos (médias móveis, RSI, MACD, etc.) e algoritmos de detecção de padrões.
+- Capacidade de integrar dados históricos com análises em tempo real para identificar sinais de entrada/saída.
+- Ferramentas de backtesting para validar estratégias.
+- Integração com feeds de dados de alta frequência para maior precisão.
+
+2. Analista Fundamentalista
+- Responsável por fazer análise fundamentalista.
+- Monitoramento contínuo de fontes confiáveis de notícias e dados do mercado (anúncios de parcerias, atualizações de projetos, regulamentações, etc.).
+- Habilidade em análise de sentimento para avaliar o impacto das notícias no mercado.
+- Capacidade de realizar análises quantitativas e qualitativas dos fundamentos dos tokens, incluindo whitepapers, roadmaps e métricas de uso.
+- Algoritmos de processamento de linguagem natural (NLP) para extrair insights relevantes dos textos.
+- Sistema de alerta para eventos críticos que possam afetar a volatilidade.
+
+3. Analista de Sentimento do Mercado
+- Responsável por fazer análise de sentimento de mercado.
+- Coleta de Dados Multicanal: Habilidade para extrair informações de redes sociais, fóruns, blogs e portais de notícias relevantes para o ambiente de criptomoedas, garantindo uma visão ampla do sentimento do mercado.
+- Processamento de Linguagem Natural (NLP): Capacidade de aplicar algoritmos de NLP para classificar textos e identificar tendências positivas, negativas ou neutras, extraindo insights valiosos do conteúdo textual.
+- Análise Quantitativa e Qualitativa: Integração dos dados sentimentais com indicadores quantitativos para avaliar o impacto das opiniões e tendências no comportamento do mercado.
+- Monitoramento em Tempo Real: Operar em tempo real para captar mudanças rápidas no sentimento, permitindo respostas ágeis às flutuações do mercado.
+- Ferramentas e APIs Especializadas: Utilizar soluções que ofereçam análise de sentimento, como APIs de redes sociais ou ferramentas especializadas em monitoramento de mídias, para obter dados de forma automatizada e contínua.
+- Visualização de Dados: Implementar dashboards e ferramentas de visualização que permitam uma rápida interpretação das tendências, facilitando a tomada de decisões estratégicas.
+- Integração com Outros Agentes: Sincronizar as informações de sentimento com os demais agentes, especialmente o analista fundamental e o coordenador de aprendizagem, para que as estratégias possam ser ajustadas com base nos insights do mercado.
+- Aprimoramento com Machine Learning: Aplicar algoritmos de aprendizado de máquina para refinar a classificação do sentimento, ajustando o modelo conforme o ambiente de dados e as tendências do mercado evoluem.
+
+4. Analista de Risco
+- Responsável pela estratégia de risco.
+- Monitoramento e avaliação de riscos do portfólio, incluindo volatilidade, liquidez e exposições concentradas.
+- Definição e implementação de políticas de stop-loss e limites de exposição.
+- Habilidade em identificar sinais de manipulação de mercado ou atividades suspeitas, e na criação de blacklists para tokens de alto risco.
+- Modelos quantitativos de gerenciamento de risco (ex.: Value at Risk - VaR).
+- Integração com fontes de dados externas que forneçam alertas de risco em tempo real.
+
+5. Broker
+
+- Responsável por executar as ordens.
+- Execução Eficiente: Deve ser capaz de enviar e gerenciar ordens de compra e venda de forma automatizada, garantindo que as operações sejam realizadas no tempo adequado para aproveitar oportunidades de mercado.
+- Integração com APIs: Conhecimento profundo na integração com APIs de exchanges, lidando com aspectos como latência, volume e liquidez para minimizar o slippage e garantir operações precisas.
+- Gestão de Riscos Operacionais: Capacidade de monitorar e reagir a falhas de conexão ou problemas nas exchanges, implementando estratégias de fallback e redundância para assegurar a continuidade das operações.
+- Sincronia com Outros Agentes: Deve trabalhar em conjunto com os demais agentes, especialmente com o analista técnico e o administrador, para sincronizar as operações conforme as condições e estratégias definidas.
+- Algoritmos de Execução: Implementar estratégias como VWAP (Volume Weighted Average Price) ou TWAP (Time Weighted Average Price) para dividir grandes ordens e minimizar o impacto no mercado.
+- Monitoramento em Tempo Real: Utilizar ferramentas que permitam o acompanhamento constante da performance, latência e taxas de execução das ordens.
+- Robustez e Redundância: Desenvolver mecanismos de backup para conexões com APIs e identificar rapidamente problemas operacionais, garantindo alta disponibilidade.
+- Aprimoramento Contínuo: Incorporar técnicas de aprendizado de máquina para aprimorar o timing das ordens e ajustar estratégias com base em dados históricos e comportamento de mercado.
+
+6. Administrador
+- Líder do time e responsável por gerir metas e métricas de crescimento da carteira.
+- Gestão segura dos ativos (hot/cold wallets), garantindo a proteção contra invasões e perdas.
+- Controle financeiro robusto, com transparência na cobrança de performance e na distribuição de lucros.
+- Conhecimento em regulamentações e conformidade para operar no ambiente de criptomoedas.
+- Implementação de protocolos de segurança avançados (ex.: multi-assinatura, autenticação multifatorial).
+- Monitoramento contínuo de transações e auditorias regulares.
+
+7. Coordenador de Aprendizagem
+- Responsável por observar o comportamento dos outros agentes, avaliar a performance deles, armazenar aprendizados coletados das experiencias em um banco de dados acessível a todos os agentes via RAG.
+- Gestão e armazenamento eficiente de dados e aprendizados, utilizando tanto bases de dados vetoriais (ChromaDB) quanto NoSQL (documentos e grafos na ArangoDB).
+- Capacidade de identificar padrões de comportamento e de performance dos outros agentes para promover ajustes contínuos nas estratégias. Pode modificar os arquivos de instruções dos outros agentes.
+- Conhecimento em técnicas de aprendizado de máquina para melhorar a capacidade de previsão e adaptação das estratégias.
+- Integração com frameworks de IA para refinar modelos com base em novos dados.
+- Ferramentas de visualização para monitoramento dos aprendizados e performance dos agentes.
+
+8. Dev
+- Responsável por escrever, testar e implementar novas ferramentas e MCP's para deixar à disposição dos outros agentes do time.
+- Programação e Desenvolvimento de Software: Proficiência em linguagens de programação relevantes (por exemplo, Python, JavaScript) para escrever e customizar ferramentas, scripts e MCPs conforme as necessidades dos demais agentes.
+- Integração de Sistemas e APIs: Habilidade para conectar e orquestrar a comunicação entre diferentes sistemas, garantindo que as ferramentas se integrem de forma fluida aos fluxos de trabalho dos outros agentes.
+- Teste, Debugging e Validação: Capacidade de implementar testes automatizados, realizar debugging e validar o desempenho e segurança das ferramentas desenvolvidas, assegurando a robustez das soluções.
+- Adaptabilidade e Inovação: Acompanhamento contínuo das inovações tecnológicas e tendências do mercado, adaptando rapidamente as soluções para atender às novas demandas e desafios.
+- Colaboração e Comunicação Técnica: Facilidade para trabalhar em equipe, entender as necessidades dos demais agentes e traduzir essas demandas em soluções técnicas eficientes.
+- Implementação de Práticas DevOps: Adotar metodologias ágeis e pipelines de integração e entrega contínua (CI/CD) para acelerar o desenvolvimento, testes e implementação de novas ferramentas.
+- Documentação e Suporte: Manter uma documentação clara e atualizada para que os outros agentes possam utilizar e, se necessário, contribuir para as ferramentas implementadas.
+- Monitoramento e Feedback: Estabelecer mecanismos de monitoramento das ferramentas e MCPs, permitindo ajustes e melhorias contínuas com base no desempenho e feedback dos usuários internos.
+- Foco em Segurança e Conformidade: Garantir que as soluções estejam alinhadas com os melhores padrões de segurança, minimizando riscos operacionais e garantindo a integridade dos dados.
+- Exploração de Novas Tecnologias: Incentivar a experimentação e a adoção de tecnologias emergentes que possam otimizar processos ou agregar valor ao sistema multi-agente.
+
+----
+
+I'm building a completely autonomous cryptocoin trader, using multi-agent framework Agency Swarm (VRSEN).The agency is composed of
+1 - technical analyst (who can read charts, apply calculation tools, take moving averages, head-and-shoulders, support and resistance, etc.),
+2 - a fundamental analyst (who monitors news from a number of reliable websites),
+3 - a learning coordinator (who manages the team's learnings and stores them in a vector database and a nosql doc database, both shared and accessible to all other agents, who observes the behavior of other agents and makes notes, who can change their instruction set, etc.),
+4 - a risk analyst (who monitors risk issues with the portfolio, finds and adds bad tokens to a blacklist together with the token dev, etc.),
+5 - administrator (who manages the portfolio, manages hot and cold wallets, charges the team's performance, etc.)
+
+That being said, here's what i'd like you to do:
+
+1 - brainstorm ideas for mcp integration for my trader agency
+2 - i've found some lists of mcp servers, and i'd like you to take a look at them and list all of them that might be useful for my case. also search for possible existing solutions outside the lists i provided.
+https://github.com/modelcontextprotocol/python-sdk
+https://github.com/appcypher/awesome-mcp-servers
+https://github.com/punkpeye/awesome-mcp-clients
+https://github.com/punkpeye/awesome-mcp-servers
+https://modelcontextprotocol.io/examples
+https://modelcontextprotocol.io/clients
+https://portkey.ai/mcp-servers
+https://x.com/hey_madni/status/1902735231997857900
+https://mcpservers.org/
+
+3 - give me a complete guide on how can MCP's be used within the Agency Swarm multiagent framework - how to integrate, when is it better to use tools instead of mcp's, use cases within the trader context. in case you need, here are the links to the agency swarm documentation and repos:
+
+https://github.com/VRSEN/agency-swarm
+https://github.com/VRSEN/agency-swarm-lab
+https://vrsen.github.io/agency-swarm/
+https://agency-swarm.ai/
+
+
+MCP
+https://github.com/modelcontextprotocol/python-sdk
+https://github.com/appcypher/awesome-mcp-servers
+https://github.com/punkpeye/awesome-mcp-clients
+https://github.com/punkpeye/awesome-mcp-servers
+https://modelcontextprotocol.io/examples
+https://modelcontextprotocol.io/clients
+https://portkey.ai/mcp-servers
+https://x.com/hey_madni/status/1902735231997857900
+https://mcpservers.org/
+https://microsoft.github.io/genaiscript/reference/scripts/mcp-tools/
+
+CURSOR
+https://docs.cursor.com/context/model-context-protocol
+
+https://github.com/OthersideAI/self-operating-computer
+
+
+The agency is composed of
+1 - technical analyst (who can read charts, apply calculation tools, take moving averages, head-and-shoulders, support and resistance, etc.),
+2 - a fundamental analyst (who monitors news from a number of reliable websites),
+3 - a learning coordinator (who manages the team's learnings and stores them in a vector database and a nosql doc database, both shared and accessible to all other agents, who observes the behavior of other agents and makes notes, who can change their instruction set, etc.),
+3 - a risk analyst (who monitors risk issues with the portfolio, finds and adds bad tokens to a blacklist together with the token dev, etc.),
+4 - administrator (who manages the portfolio, manages hot and cold wallets, charges the team's performance, etc.)
+
+
+import openai
+from agency_swarm import set_openai_client, Agent, Agency
+
+# Configure OpenAI client to use OptiLLM as a proxy for Gemini
+optillm_client = openai.OpenAI(
+    api_key="AIzaSyCf1VnyFF4osnJo2CRof4dTwMTOLpHZ1GQ",  # Not needed for local OptiLLM
+    base_url="http://127.0.0.1:8000/v1"  # OptiLLM server URL
+)
+
+# Set OptiLLM as the LLM provider in Agency Swarm
+set_openai_client(optillm_client)
+
+# Create Genesis agent using Gemini-2.0-Flash (via OptiLLM)
+genesis_agent = Agent(
+    name="Genesis",
+    description="Creates new agencies using OptiLLM + Gemini.",
+    model="gemini-2.0-flash",  # This tells OptiLLM to use Gemini
+)
+
+# Define the agency with Genesis
+agency = Agency([genesis_agent])
+
+# Run Genesis with OptiLLM + Gemini
+agency.get_completion("Continue the creation of DeepTradeDev agency, a complete software development company, with a boss, productmanager, architect, project manager, engineer, QA, etc. It should know everything about software development and AI agents, and have deep knowledge of the Agency Swarm framework, as well as python backend and tailwind frontend building and api connecting specialization. All agents must use google gemini 'gemini-2.0-flash' model and use custom wrapper from optillm (https://github.com/codelion/optillm) to get google gemini model working in agency swarm. Previous work is already in folder /mnt/f/AI/deeptrade/DeepTradeDev and you must acquire the current development status before starting the work.")
+
+----
+
+
+Continue the creation of DeepTradeDev agency, a complete software development company, with a boss, productmanager, architect, project manager, engineer, QA, etc. It should know everything about software development and AI agents, and have deep knowledge of the Agency Swarm framework, as well as python backend and tailwind frontend building and api connecting specialization. All agents must use google gemini 'gemini-2.0-flash' model and use custom wrapper from optillm (https://github.com/codelion/optillm) to get google gemini model working in agency swarm. Previous work is already inside directory '/mnt/f/AI/deeptrade/DeepTradeDev' and you must acquire the current development status before starting the work. The Agency was already being built, but it was stopped in the middle of the process, so please check the files in the given directory before proceeding.
+
+https://ai.google.dev/gemini-api/docs/function-calling
+https://ai.google.dev/gemini-api/docs/function-calling/tutorial?lang=python
+https://cloud.google.com/vertex-ai/generative-ai/docs/multimodal/function-calling
+
+----
+
+Entendi, interessante isso. Como funciona a questão da memória dos agentes no Agency Swarm, apenas usa database de vetores? Minha pergunta tem mais a ver com memória e aprendizado, pq em muito o planejamento de longo prazo é afetado (precisa ser afetado e melhorado) conforme o aprendizado dos agentes. Comparativamente,
+- Eu vi outros frameworks que tinham memória compartilhada entre os agentes + memoria individual de cada agente
+- Alguns tinham mais de um banco, combinando vetorial, gráfica e relacional (self-query retriever, text-to-cypher, text-to-sql).
+- Alguns empregavam tecnicas de query translation para traduzir questoes ou pedidos para um formato mais apropriado para retrieval (multiquery, rag-fusion, decomposition, step-back, HyDE)
+- Alguns tinham roteamento lógico e/ou semântico (deixar a LLM escolher qual DB acessar de acordo com a questao VS embedding na pergunta e escolher prompt baseado em similaridade)
+- Alguns tinham tecnicas de indexação como chunk optimization (semantic splitter pra otimizar chunk size pro embedding), multirepresentation indexing (parent document, dense X, basicamente converter documentos para unidades mais compactas de retrieval, por exemplo sumario), emprego de embeddings especializados (finetuned, ColBERT, modelos de embedding mais avançados ou domain specific), indexação hierarquica (raptor, arvore de sumarização de documento em varios niveis de abstração)
+- Alguns empregavam ideias como Self-RAG, RRR (generation quality para re-retrieval ou re-writing), Rankeamento / compressão de documentos com base na relevância (re-rank, rankGPT, RAG-Fusion + refinamento com CRAG)
+
+Quais dessas tecnicas o Agency Swarm emprega ou pode vir a empregar na questão de seu aprendizado e seu planejamento a longo prazo?
+
+
+----

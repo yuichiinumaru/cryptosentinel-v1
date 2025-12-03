@@ -149,6 +149,30 @@ def reject_trade(input: RejectTradeInput) -> RejectTradeOutput:
 
     return RejectTradeOutput(success=error is None, message_id=record.id, delivered_via=delivered_via, error=error)
 
+class CommunicationToolkit(Toolkit):
+    def __init__(self, **kwargs):
+        super().__init__(name="communication", tools=[
+            self.approve_trade,
+            self.reject_trade,
+        ], **kwargs)
+
+    def approve_trade(self, input: ApproveTradeInput) -> ApproveTradeOutput:
+        """
+        Approves a trade.
+        """
+        # This is a placeholder implementation. A real implementation would send a message to the Trader agent.
+        print(f"Trade {input.trade_id} approved.")
+        return ApproveTradeOutput(success=True)
+
+    def reject_trade(self, input: RejectTradeInput) -> RejectTradeOutput:
+        """
+        Rejects a trade.
+        """
+        # This is a placeholder implementation. A real implementation would send a message to the MarketAnalyst agent.
+        print(f"Trade {input.trade_id} rejected. Reason: {input.reason}")
+        return RejectTradeOutput(success=True)
+
+communication_toolkit = CommunicationToolkit()
 
 communication_toolkit = Toolkit(name="communication")
 communication_toolkit.register(approve_trade)

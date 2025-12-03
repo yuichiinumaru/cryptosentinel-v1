@@ -1,0 +1,89 @@
+import ccxt
+
+async def fetch\_bitcoin\_price():
+    exchange \= ccxt.binance({'asyncio\_loop': asyncio.get\_running\_loop()})
+    ticker \= await exchange.fetch\_ticker('BTC/USDT')
+    await exchange.close()
+    return ticker\['last'\]
+
+async def main():
+    preco\_bitcoin \= await fetch\_bitcoin\_price()
+    print(f"Preço do Bitcoin: {preco\_bitcoin}")
+
+if \_\_name\_\_ \== "\_\_main\_\_":
+    asyncio.run(main())
+
+Este exemplo demonstra como buscar dados de mercado de forma assíncrona. Operações como a colocação de ordens também podem ser feitas de forma assíncrona usando métodos apropriados da CCXT. O tratamento de exceções que podem ocorrer durante as chamadas de API assíncronas deve ser feito usando blocos try...except.
+
+## **Integrando Outras Bibliotecas Assíncronas Populares**
+
+As estratégias gerais para integrar outras bibliotecas assíncronas populares em Python (por exemplo, drivers de banco de dados assíncronos como asyncpg ou motor, clientes HTTP assíncronos como httpx em seu modo assíncrono, filas de tarefas assíncronas como celery) seguem princípios semelhantes aos da integração da CCXT. Ao trabalhar com bibliotecas assíncronas, os desenvolvedores devem procurar manter o método run() composto principalmente de chamadas async e await para garantir que o agente permaneça altamente responsivo e eficiente no tratamento de tarefas concorrentes. \[N/A\]
+
+O uso de gerenciadores de contexto assíncronos (async with) é essencial para gerenciar recursos como conexões de banco de dados ou sessões de cliente HTTP, garantindo a limpeza adequada. O princípio fundamental é usar async e await para todas as operações de I/O fornecidas por bibliotecas assíncronas para evitar o bloqueio do loop de eventos. Se a biblioteca assíncrona ou o serviço externo com o qual ela interage tiver limitações no número de operações simultâneas, mecanismos de controle de concorrência como asyncio.Semaphore podem ser usados. \[N/A\]
+
+O gerenciamento eficiente de conexões assíncronas envolve o uso de pool de conexões (se suportado pela biblioteca), o tratamento de erros de conexão e tentativas de repetição e o fechamento adequado das conexões para evitar vazamentos de recursos. O pool de conexões para conexões de banco de dados e sessões HTTP melhora o desempenho e a utilização de recursos. Estratégias para detectar e tratar erros de conexão, como novas tentativas de conexão ou a implementação de padrões de disjuntor, são importantes para a resiliência. Garantir que as conexões assíncronas sejam fechadas corretamente é crucial para evitar o esgotamento de recursos.
+
+## **Conclusão: Padrões de Código Reutilizáveis e Melhores Práticas para Integrar Diversas Bibliotecas em Ferramentas de Agentes Assíncronos**
+
+Em resumo, a integração de bibliotecas síncronas e assíncronas em ferramentas de agentes assíncronos apresenta desafios distintos que exigem abordagens cuidadosas. Para bibliotecas síncronas, a principal preocupação é evitar o bloqueio do loop de eventos, o que é efetivamente abordado usando loop.run\_in\_executor. O gerenciamento do estado de bibliotecas síncronas exige consideração sobre inicialização e manutenção da integridade dos dados em invocações assíncronas. A comunicação com LLMs frequentemente requer a serialização de tipos de dados complexos em strings e sua posterior desserialização. O tratamento de exceções deve abranger tanto o contexto síncrono quanto o assíncrono para garantir a robustez. Para bibliotecas assíncronas como a CCXT, o foco está em abraçar sua natureza não bloqueante usando async e await e gerenciando conexões e limites de taxa de forma eficiente.
+
+Os seguintes padrões de código reutilizáveis resumem as estratégias recomendadas:
+
+| Tipo de Biblioteca | Estratégia de Integração | Mecanismo/Padrão Chave do asyncio | Caso de Uso de Exemplo |
+| :---- | :---- | :---- | :---- |
+| Síncrona | Descarregar para Executor | loop.run\_in\_executor | Executando um cálculo de indicador TA-Lib |
+| Síncrona (Com Estado) | Nova Instância por Tarefa | Criando um novo objeto dentro de run() | Usando um motor Backtrader separado para cada backtest |
+| Assíncrona | Adotar Assincronicidade | async e await | Buscando dados de mercado com CCXT |
+| Assíncrona (Conexões) | Gerenciar Sessões | async with aiohttp.ClientSession() | Fazendo múltiplas chamadas de API com um cliente HTTP |
+
+Para desenvolvedores que trabalham com a integração de bibliotecas em ferramentas de agentes assíncronos, as seguintes melhores práticas são recomendadas:
+
+* Priorizar o uso de bibliotecas assíncronas sempre que possível.
+* Usar loop.run\_in\_executor criteriosamente para código síncrono, considerando a natureza da tarefa (I/O ou CPU-bound) para escolher o executor apropriado.
+* Gerenciar cuidadosamente o estado de bibliotecas síncronas, considerando a criação de novas instâncias ou o uso de sistemas externos de gerenciamento de estado.
+* Implementar serialização e desserialização robustas para a interação com LLMs, documentando claramente os formatos de dados.
+* Tratar as exceções de forma eficaz em ambos os contextos síncrono e assíncrono, implementando mecanismos de fallback ou recuperação de erros quando apropriado.
+* Aprender com frameworks existentes como LangChain e LlamaIndex para identificar padrões de integração estabelecidos.
+* Gerenciar conexões e recursos assíncronos de forma adequada, incluindo o uso de pool de conexões e o tratamento de erros de conexão.
+
+Direções futuras nesta área podem incluir o desenvolvimento de wrappers assíncronos para bibliotecas síncronas populares, mecanismos mais sofisticados para gerenciar o estado compartilhado em ambientes assíncronos concorrentes e ferramentas aprimoradas para depurar e analisar aplicações híbridas síncronas/assíncronas.
+
+# **Detailed Implementation of MCP Servers for Financial and Web APIs**
+
+## **Introduction: Bridging Financial and Web APIs with the Model Context Protocol**
+
+The increasing sophistication of artificial intelligence applications necessitates seamless access to real-world data to enhance their capabilities and provide relevant, timely information. Integrating Large Language Models (LLMs) with external APIs that provide financial and web data presents a significant challenge due to the diverse nature of these APIs and the complexities involved in ensuring secure and efficient communication. The Model Context Protocol (MCP) has emerged as an open standard designed to address these challenges by providing a unified framework for applications to supply contextual information to LLMs 1. This protocol aims to standardize the interaction between AI models and external tools and data sources, much like a universal connector simplifies the use of various peripherals with a computer 4. By establishing a common language and set of rules, MCP facilitates the creation of more versatile and powerful AI agents capable of leveraging real-time information and executing complex tasks 5. This report delves into the detailed implementation of MCP servers for financial and web APIs using the modelcontextprotocol Python SDK. It will explore concrete examples and established patterns for constructing ToolProvider and ResourceProvider components, addressing the specific requirements for experienced developers seeking to integrate these critical data sources into their AI applications.
+
+## **Core Concepts: ToolProvider and ResourceProvider in the modelcontextprotocol Python SDK**
+
+An MCP server acts as a provider of capabilities to client applications, typically LLMs, through a standardized protocol 2. These capabilities are primarily exposed in three forms: Tools, Resources, and Prompts 2. Tools represent executable functions that an LLM can invoke to perform specific actions, such as fetching real-time stock prices or generating an image based on a textual description 5. Resources, on the other hand, are akin to data endpoints that allow clients to retrieve information, similar to GET requests in a traditional REST API, providing data without significant computational overhead 2. Prompts are pre-defined templates that guide the LLM in interacting with the available tools and resources effectively 2.
+
+Within the implementation of an MCP server, the ToolProvider and ResourceProvider abstractions play crucial roles in organizing and delivering these capabilities. A ToolProvider serves as a container for a collection of tools offered by the server, while a ResourceProvider manages the set of resources that the server makes accessible to clients. The modelcontextprotocol Python SDK simplifies the process of building these providers. It offers functionalities for defining tools and resources, handling client requests, and managing the lifecycle of the server 2. For instance, the SDK's fastmcp module allows developers to use decorators like @mcp.tool() and @mcp.resource() to declaratively define the tools and resources that their server will expose 2. This approach streamlines the development process and enhances code readability.
+
+Communication between MCP clients and servers relies on transport mechanisms, with the protocol supporting options such as HTTP with Server-Sent Events (SSE) and standard input/output (stdio) 2. The choice of transport can be influenced by factors such as the deployment environment and the nature of the interaction. For example, stdio might be suitable for local interactions where the client and server run on the same machine, while HTTP/SSE enables communication over a network, allowing for remote access to server capabilities 2. The Python SDK provides support for these different transport layers, offering flexibility in how MCP servers are deployed and accessed.
+
+## **Wrapping Trading APIs: A Deep Dive into CCXT Integration**
+
+The CryptoCurrency eXchange Trading Library (CCXT) is an indispensable tool for developers seeking to interact with a multitude of cryptocurrency exchanges through a unified programming interface 12. It abstracts away the complexities of individual exchange APIs, providing a consistent way to access market data and execute trades across platforms. CCXT's extensive functionality includes retrieving real-time and historical pricing data, accessing order books, and fetching trading histories.
+
+To expose the power of CCXT within an MCP server, developers can create a ToolProvider that wraps key CCXT functionalities as MCP tools. The Nayshins/mcp-server-ccxt project on GitHub serves as an excellent example of this integration 12. This Python-based MCP server leverages the ccxt library to provide tools such as get-price (to fetch the current price of a trading pair), get-market-summary (to retrieve market information), get-top-volumes (to list the most actively traded pairs), get-historical-ohlcv (to obtain historical candlestick data), get-price-change (to calculate price changes over specified timeframes), and get-volume-history (to track trading volume) 12. These tools directly correspond to common data points and operations offered by cryptocurrency exchanges through CCXT.
+
+A critical aspect of integrating with trading APIs is the secure management of exchange authentication credentials. Snippet 13 highlights the importance of server-side credential management in remote MCP scenarios, where the server is often more trusted than the client. The Nayshins/mcp-server-ccxt project likely employs a similar strategy, potentially using environment variables or a secure configuration mechanism to store and access API keys required for interacting with exchanges. This approach ensures that sensitive authentication information is not directly exposed to the LLM client, mitigating potential security risks.
+
+Analyzing the Nayshins/mcp-server-ccxt project 12, it is evident that the server is built using Python and relies on both the mcp (likely a Python MCP SDK) and ccxt libraries. The server's capabilities extend to supporting a wide array of cryptocurrency exchanges, including Binance, Coinbase, Kraken, KuCoin, and others. The project's README.md provides a clear overview of the available tools and offers illustrative examples of how these tools can be used. Examining the project structure 12 reveals key files such as src/crypto\_server.py, which likely contains the core logic for handling MCP requests and interacting with CCXT, and a Dockerfile 14, which facilitates the containerization and deployment of the server. The use of uv in the Dockerfile for managing Python dependencies suggests a focus on efficient dependency management. While the project does not have any tagged releases 15, its presence on GitHub and the provided documentation indicate a functional implementation of an MCP server for accessing cryptocurrency market data. The integration of CCXT's asynchronous capabilities 12 within the server is a notable design choice, enabling efficient communication with multiple exchanges without blocking the server's operation.
+
+## **Integrating Data APIs: Strategies for CoinGecko and Etherscan**
+
+Beyond trading-specific APIs, a multitude of data APIs provide valuable information for financial and web applications. CoinGecko, for example, offers a comprehensive dataset on cryptocurrencies, including real-time pricing, market capitalization, and historical data. Etherscan, on the other hand, provides detailed insights into the Ethereum blockchain, allowing access to transaction histories, account balances, smart contract information, and gas prices 16.
+
+Integrating these types of data APIs into an MCP server can be achieved through both ResourceProvider and ToolProvider components. When the primary goal is to provide direct access to structured data without requiring complex operations, exposing the API as an MCP resource can be an effective strategy. For instance, a ResourceProvider could be implemented to fetch and return the current price of a specific cryptocurrency from CoinGecko as a JSON object. Similarly, a resource could be designed to retrieve the latest transaction history for a given Ethereum address from Etherscan. The modelcontextprotocol Python SDK, as shown in 2, allows for the definition of such resources using the @mcp.resource() decorator, including the creation of dynamic resources that accept parameters in the URI template.
+
+Alternatively, wrapping data API functionalities as MCP tools within a ToolProvider offers greater flexibility, allowing LLMs to request specific data manipulations or formatted outputs. For example, a tool could be created to take a cryptocurrency ticker and a date range as input, then fetch and format the historical price data from CoinGecko into a user-friendly string. Another tool could leverage the Etherscan API to retrieve and summarize recent transactions for a given Ethereum address based on criteria specified in the tool's parameters.
+
+The 5ajaki/mcp-etherscan-server project on GitHub 16 provides a practical illustration of how a data API like Etherscan can be integrated as a collection of MCP tools. This server, implemented in TypeScript using Node.js, exposes tools for various Etherscan functionalities, including checking the ETH balance of an address, retrieving transaction history, tracking ERC20 token transfers, fetching smart contract ABIs, monitoring current gas prices, and resolving Ethereum addresses to ENS names. The server's configuration involves setting the Etherscan API key as an environment variable. The README.md provides clear instructions on how to install and run the server, as well as how to integrate it with MCP clients like Claude Desktop. Examining the project structure 16 reveals that the main server logic resides in src/server.ts, while the interactions with the Etherscan API are handled in src/services/etherscanService.ts. The existence of other projects by the same author, such as veri5ight 17 (an MCP server for interacting directly with Ethereum nodes) and safe-mcp-server 18 (for interacting with Safe smart contract wallets), indicates a focus on leveraging the MCP protocol for accessing and interacting with blockchain data. The approach taken in the Etherscan server demonstrates an effective pattern for exposing a suite of related functionalities from a data API as distinct and targeted MCP tools. Furthermore, the use of TypeScript highlights that MCP server implementations are not confined to a single programming language.
+
+## **Web Scraping as an MCP Tool: Harnessing Scrapy for Data Extraction**
+
+In scenarios where direct APIs are unavailable or do not provide the desired data, web scraping can be a valuable technique for extracting information from websites. Scrapy is a powerful Python framework specifically designed for web scraping, offering a structured and efficient way to crawl websites and extract data in a structured format.
+
+Integrating Scrapy within an MCP ToolProvider allows LLMs to access information from virtually any website. A tool can be designed to accept a target URL and potentially specific selectors or parameters that guide the scraping process. When the tool is invoked, the MCP server would execute a Scrapy spider, navigate to the specified page, extract the relevant data, and then format this data into a response that can be understood by the LLM.

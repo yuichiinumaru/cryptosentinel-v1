@@ -1,0 +1,194 @@
+So here's the thing, I want to write the best opensource completely autonomous trading bot operated by llm ever made, with these features:
+- Powered by LLM connected via Ollama
+- Market Monitoring & Analysis
+- Tracks 1000+ coins across multiple chains (ETH, BSC, etc.)
+- Identifies pumps/dumps in real-time
+- Detects liquidity changes and rug pull patterns
+- Security Features
+- Automatic rug pull detection (via Rugcheck.xyz + custom algorithms)
+- Fake volume identification
+- Developer blacklisting
+- Supply concentration checks
+- Telegram Integration
+- Sends real-time security alerts
+- Provides price movement notifications
+- Accepts manual buy/sell commands (/buy 0x... 1.5)
+- Portfolio Management
+- Trades only via explicit user commands
+- Shows portfolio status
+- Tracks entry/exit prices
+- Data Management
+- Maintains historical price database
+- Tracks liquidity events
+- Logs all transactions
+- Autonomous Trading
+- Make independent buy/sell decisions
+- AI-driven trading strategies
+- Fund Management
+- Handle wallet private keys
+- Automatic stop-loss/take-profit
+- Position sizing algorithms
+- Advanced Protections
+- MEV protection
+- Sandwich attack detection
+- Front-running prevention
+- Exchange Integration
+- Liquidity pool creation
+- Price predictions
+- ROI calculations
+
+----
+
+You are DeepTrader, an autonomous cryptocurrency trading team and a subsidiary of Basel Enterprise. Your primary and sole purpose is to maximize the net worth of the provided cryptocurrency portfolio, which is the savings of our shareholders and employees, and your salary is exclusively derived from the accumulated percentage gains of this equity. You will operate within the constraints and guidelines set forth below, to leverage within a safe margin. You will have access to a suite of tools that allow you to gather information, analyze the market, assess security risks, and execute trades on decentralized exchanges (DEXs) and centralized exchanges (CEXs) - tools that must be used to the best of your ability, to always be confident in the decisions you make. You operate in a continuous loop, constantly seeking profitable trading opportunities, until you reach the expected output.
+
+Objective: Maximize portfolio net worth (USD) through autonomous trading.
+
+Constraints and Guidelines:
+1 - Safety:  *Never* execute trades involving tokens flagged as "high risk" by the `check_token_security` tool.
+2 - Risk Management:
+    *   Do not allocate more than 10% of the total portfolio value to any single trade.
+    *   Always consider slippage and transaction fees when calculating potential profit.
+    *   Utilize stop-loss and take-profit orders where appropriate, balancing risk and reward.  Consider market volatility when setting these levels.
+*   Data-Driven Decisions: Base all trading decisions on thorough market analysis, using available data sources and tools.  Do *not* rely on speculation or hunches.
+*   Transparency:  Clearly explain the reasoning behind *every* action you take.  This includes the data analyzed, the tools used, and the expected outcome.
+*   DEX Focus: Prioritize trading on decentralized exchanges (DEXs) for transparency and control.  Use centralized exchanges (CEXs) only for arbitrage opportunities or when necessary due to liquidity constraints.
+*   Continuous Learning:  Analyze the outcomes of past trades (both successful and unsuccessful) to improve future decisions.
+*   Ethical Considerations: Do not engage in market manipulation, wash trading, or any other unethical or illegal activities.
+*   Limited Capital: You are operating with a *limited* amount of capital for *experimental* purposes.  Preservation of capital is paramount.  Do *not* take excessive risks.
+*   Report Results: After every action, report the action taken, the reasoning behind the action, and the expected result.
+*   No Financial Advice: You are an experimental AI bot.  Your actions are *not* financial advice.
+
+
+# Notes and Insights from Previous DeepTrader Versions/Brainstorming
+
+This file collects insights and potentially valuable ideas extracted from older project documents, brainstorming sessions, and conversation logs related to DeepTrader. These notes should be reviewed and potentially integrated into the main documentation files (`project.md`, `agents.md`, `tools.md`, `prompts.md`, `roadmap.md`, `mcp.md`) or serve as inspiration for future development.
+
+## Insights from `old/deeptrader dump.txt`
+
+### Potential Additions to `project.md`
+
+*   **Core Philosophy Reinforcement:** Reiterate the shift from hardcoded `if-then-else` logic to LLM-based reasoning and autonomous decision-making in the introduction or architecture sections.
+*   **Security Section Detail:** Add more specific implementation details for security mechanisms:
+    *   **MEV Protection:** Explicitly mention using Flashbots Protect RPC by altering the Web3 provider URL.
+    *   **Sandwich Attack Detection:** Detail the idea of simulating transactions (`w3.eth.call`) before sending to check for unexpected slippage.
+    *   **Fund Isolation:** Clearly state the use of distinct hot wallets (for trading) and cold wallets (for secure storage).
+    *   **Approval Revocation:** Highlight the practice of automatically revoking token approvals *after each trade*.
+*   **Communication Protocol:** Mention the idea of defining a formal communication protocol between agents using JSON messages structured with Pydantic models, potentially centralized in a `protocol.py` file.
+*   **Execution Loop:** Specify the potential use of `agency.run_loop()` combined with a scheduler like `AsyncIOScheduler` for periodic tasks (like market checks), if applicable.
+*   **Data Persistence Schema:** Note the previously considered specific SQLite tables (`tokens`, `events`, `transactions`, `portfolio`) as a potential starting point for the database schema design.
+
+### Potential Additions to `agents.md` / `prompts.md`
+
+*   **Agent Responsibilities (Refinement):** Review specific functions from the older agent structure (e.g., `DeepTraderManager`'s `BlockTrade`, `AllocateCapital`) and ensure clear mapping to current agents and prompts.
+*   **LearningCoordinator Details:** Add specific potential tools/functions for the `LearningCoordinator`: `GetTradeHistory`, `AnalyzePerformance`, `AdjustAgentInstructions`, `AdjustToolParameters`.
+*   **General Prompt Structure:** Consider adapting the structure from the final prompt example in the dump (Objective, Constraints, Guidelines, Reporting) for the main agency/manager prompt.
+
+### Potential Additions to `tools.md`
+
+*   **CheckTokenSecurity:** Mention specific external APIs considered (GoPlus, Rugcheck.xyz) and basic blockchain checks (`totalSupply` via `web3.py`).
+*   **ExecuteSwap Security:** Incorporate details like using Flashbots Protect RPC, transaction simulation for sandwich detection, and automatic post-trade approval revocation.
+*   **Market Analysis Tools:**
+    *   **Fake Volume Detection:** Note the potential use of Pocket Universe API or heuristics (volume/transaction analysis). Consider if this needs a dedicated tool.
+    *   **Technical Indicators:** Confirm the specific indicators (RSI, SMA, MACD) and chosen implementation approach (separate vs. generic tool).
+*   **Portfolio Tools:** Ensure tools for portfolio risk calculation (e.g., VaR) and rebalancing are defined.
+*   **Arbitrage/Liquidity Tools:** Re-evaluate if tools like `CheckArbitrageOpportunities` (`ccxt`), `ExecuteArbitrageTrade`, `AddLiquidity`, `RemoveLiquidity` are in scope and update `tools.md` accordingly.
+
+### Potential Additions to `roadmap.md`
+
+*   **MVP Strategy Example:** Use the simple RSI-based strategy (buy < 30, sell > 70 on high-cap tokens) as a concrete example for the MVP's starting point.
+*   **MVP Scope Refinement:** Clearly list specific security features (MEV protection, Sandwich detection simulation, Rug Pull API checks, Approval Revocation) intended for the MVP.
+*   **RAG Implementation Details:** Note specific vector stores considered (ChromaDB, FAISS, Qdrant, Weaviate) and advanced techniques (HyDE, re-ranking) for post-MVP exploration.
+
+### General Notes & Future Considerations (from dump.txt)
+
+*   **Advanced RAG/Memory Concepts:** The dump contained a rich discussion on advanced memory/RAG techniques potentially applicable to Agency Swarm or future evolution:
+    *   Shared vs. Individual Agent Memory
+    *   Hybrid Databases (Vector, Graph, Relational) & Querying (Self-Query, Text-to-Cypher, Text-to-SQL)
+    *   Query Translation Techniques (HyDE, MultiQuery, Decomposition, Step-Back, RAG-Fusion)
+    *   Semantic Routing for DB selection
+    *   Advanced Indexing Strategies (Semantic Chunking, Multi-representation/Parent Document, Specialized Embeddings, Hierarchical Indexing/Raptor)
+    *   Self-Correction/Refinement Loops (Self-RAG, RRR, CRAG, Re-ranking)
+    *   *(This area deserves careful consideration for the `LearningCoordinator` and long-term knowledge management strategy.)*
+*   **Blacklists:** Consider the distinction between blacklisting tokens vs. blacklisting developers (potentially handled by `RiskAnalyst`).
+*   **Performance/Parallelism:** Note the future need for `async`/`await` optimization and potential parallelization of exchange API requests.
+*   **CEX Integration:** Keep the `ccxt` library in mind for potential future CEX integration (e.g., for arbitrage).
+*   **Budget Constraints:** The dump explicitly mentioned a zero budget for programming initially, relying on open-source solutions and potentially Azure credits for LLMs. This constraint should influence technology choices in the roadmap.
+*   **Self-Operating Computer Concepts:** The mention of `self-operating-computer` might be relevant for exploring agent capabilities related to interacting with GUIs or broader system control, though likely outside the initial scope.
+
+---
+
+## Insights from `old/deeptrader project v2.txt`
+
+### Potential Additions to `project.md`
+
+*   **Quantified MVP Objectives:** Incorporate specific, measurable MVP goals (e.g., trades/day, security success rate) from Section 1.2.
+*   **Detailed Architecture Flow:** Replace or supplement the current architecture description with the detailed "Fluxo de Dados e Decisão" from Section 1.3, potentially including the Mermaid diagram.
+*   **Specific Technology Stack (MVP):** Explicitly list the core libraries planned: `agency-swarm`, `web3`, `pycoingecko`, `apscheduler`, `pydantic>=2.0.0`, `sqlite3`, `asyncio`, `tenacity`, `eth-account`, potentially `TA-Lib`.
+*   **Communication Protocol Overview:** Briefly describe the JSON/Pydantic message structure and mention the key message types defined in `protocol.py`.
+
+### Potential Additions to `agents.md` / `prompts.md`
+
+*   **Highly Refined Agent Prompts:** Replace or merge the existing prompts with the much more detailed versions from Section 2.1. Key elements to include:
+    *   Strong emphasis on Security & Chain of Thought (CoT).
+    *   Mandatory Tool usage and output validation.
+    *   Explicit Error Handling expectations.
+    *   Precise Input/Output Formats (JSON/Pydantic).
+    *   Clear Communication Flows & Negative Constraints ("NUNCA...").
+    *   Specific Risk Rules (2% per trade, 5% daily loss) for the Manager.
+    *   Detailed metrics tracking for PortfolioManager (ROI, Drawdown, Volatility).
+
+### Potential Additions to `tools.md`
+
+*   **Detailed Tool Schemas & Implementation Notes:** Update tool definitions with the refined Pydantic schemas (`input_type`, `output_type`) and implementation details from Section 2.2:
+    *   `FetchMarketData`: Add historical data handling, rate limiting logic.
+    *   `CheckTokenSecurity`: Note web3 limitations (holders, verification), API integration logic (GoPlus/Rugcheck), ABI usage.
+    *   `ExecuteSwap`: Include logic for DEX router/ABI loading, `min_amount_out` calculation, transaction simulation (`eth_call`), signing/sending, receipt handling, and approval revocation (`_revoke_approvals`). Note the `WalletManager` concept.
+    *   `GetPortfolio`: Add Pydantic output schema, note the dependency on `FetchMarketData` for USD value calculation.
+    *   `GetAccountBalance`: Use the refined code example.
+    *   `ConsultKnowledgeBase`: Incorporate the Langchain/ChromaDB sketch.
+*   **Tool Dependencies:** List specific libraries required by each tool (e.g., `pycoingecko` for `FetchMarketData`, `web3` for many, `langchain`/`chromadb` for RAG).
+
+### Potential Additions to `roadmap.md`
+
+*   **MVP Scope Clarity:** Reiterate which tools/features are explicitly post-MVP (Indicators, RAG, LearningCoordinator).
+*   **MVP Security Implementation:** Detail the planned security measures (Flashbots RPC, `eth_call` simulation, `CheckTokenSecurity` implementation).
+*   **Database & LLM:** Confirm SQLite and OpenAI API (initially) as MVP choices.
+*   **RAG/Learning Plan:** Outline RAG and Learning Coordinator as distinct future phases.
+*   **Dependencies:** List the specific libraries from Section 10 (`requirements.txt`).
+
+### General Notes & Future Considerations (from v2.txt)
+
+*   **Communication Protocol Details:** Add the specific Pydantic models for all defined message types (`MessageHeader`, `TradeRecommendation`, `TradeApprovalResponse`, `PortfolioUpdate`, `RiskReportRequest`, `RiskReport`, `StrategyAdjustment`, `Alert`) to `notes.md`. Include the Mermaid sequence diagrams. *(Consider a dedicated `protocol.md` later).*
+*   **.env Variables:** List the specific `.env` variables suggested (API keys, RPC URLs, wallet keys/addresses, DEX router addresses/ABIs, `MARKET_CHECK_INTERVAL`).
+*   **WalletManager Concept:** Note the implicit need for a `WalletManager` class to centralize private key handling and transaction signing/sending.
+*   **TA-Lib Installation:** Note the potential complexity of installing TA-Lib.
+*   **Pydantic Version:** Emphasize the use of Pydantic v2 (`>=2.0.0`).
+
+---
+
+## Insights from `old/deeptrade1.txt` and `old/deeptrader project.txt`
+
+*   **Ollama Integration:** Note specific mention of using local Ollama models (e.g., `llama3`) via the `ollama` Python client for AI analysis (`_analyze_with_ai` function example). (Source: `deeptrade1.txt`)
+*   **Alternative Architecture (Microservices):** Document the microservice architecture proposed in `deeptrade1.txt` (Safety Service, Analysis Engine, Trading Interface) as a potential future evolution or alternative, contrasting with the integrated Agency Swarm approach. Mention using Redis for inter-process communication. (Source: `deeptrade1.txt`)
+*   **Telegram Bot Integration (BonkBot Alternative):** Document the alternative trading execution approach using an existing Telegram bot (e.g., BonkBot). Highlight that security features (slippage, approvals) would then depend on the *external bot's* capabilities, potentially limiting custom implementation. Include the `TelegramTrader` class sketch as an example interface. (Source: `deeptrade1.txt`)
+*   **Fake Volume Detection Details:** Add specific heuristic checks:
+    *   High volume-to-transaction ratio: `(token['volume']['usd'] / token['txCount']) > config_threshold`.
+    *   Volume/price divergence: `abs(volume_change_%) > 500 and abs(price_change_%) < 10`.
+    *   Note Pocket Universe API endpoint: `POST https://api.pocketuniverse.app/v1/contract-risk` with `chain`, `address`, API key. (Source: `deeptrade1.txt`)
+*   **Bundle Purchase Check:** Note API: `GET https://api.bundlewatch.com/{chain}/token/{address}/supply`. Check: `initial_buy_percent >= 95`. Action: Blacklist token *and* dev wallet if bundled. (Source: `deeptrade1.txt`)
+*   **Quantitative Risk Scoring:** Add concept of a calculated `risk_score` (0.0-1.0) aggregating factors like fake volume, price moves, liquidity, as sketched in `_calculate_risk_score`. (Source: `deeptrade1.txt`)
+*   **Detailed Prerequisites List:** Add the specific list of API keys and setup requirements from `deeptrade1.txt`'s `README.md` section (Dexscreener, Pocket Universe, Rugcheck, Telegram Bot Token, RPC Endpoint, Wallet Setup, Security HW/2FA/VPS/VPN). (Source: `deeptrade1.txt`)
+*   **Fund Transfer Logic (Needs Definition):** Reiterate that implementation details for automatic fund transfer between hot/cold wallets (including top-up logic) are undefined. Note the `TradingModule` sketch in `deeptrade1.txt` includes placeholders (`_transfer_from_cold`, `_transfer_to_cold`). (Source: `deeptrade project.txt`, `deeptrade1.txt`)
+*   **CEX Arbitrage Tool:** Confirm `CheckArbitrageOpportunities` using `ccxt` is optional for MVP but part of the longer-term vision. (Source: `deeptrade project.txt`)
+*   **Refined DB Schema:** Reference the specific column definitions in `deeptrade project.txt`'s database section (Section 3) as a detailed schema proposal for `tokens`, `events`, `transactions`, and `portfolio` tables in SQLite. (Source: `deeptrade project.txt`)
+*   **Trading Module (`web3.py`):** Note the `TradingModule` class sketch in `deeptrade1.txt` implementing direct `web3.py` interactions for slippage (`_get_expected_price`), balance maintenance (`_maintain_hot_balance`), fund transfers (placeholders), and approval revocation (`_revoke_approvals`). This contrasts with the Telegram bot approach. (Source: `deeptrade1.txt`)
+
+---
+
+## Insights from `old/deeptrader swarm.txt`
+
+*   **Framework Justification (Agency Swarm):** Reinforce the choice of Agency Swarm based on its strengths (native multi-agent, customizable tools, LLM autonomy) vs. alternatives like Agno (native self-learning) or MetaGPT (code generation focus). (Source: `deeptrader swarm.txt`)
+*   **Self-Learning in Agency Swarm (Implementation Strategy):** Detail the proposed steps:
+    *   1. Long-Term Memory Tool (`TradeMemory` sketch using vector store).
+    *   2. Automated Feedback Loop Agent (`LearningCoordinator` analyzing metrics and adjusting others).
+    *   3. Predictive Model Integration (Tool like `PricePredictor` using Prophet/Darts).

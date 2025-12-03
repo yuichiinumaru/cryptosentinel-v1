@@ -1,3 +1,5 @@
+from pydantic import BaseModel, Field
+from agno.tools.toolkit import Toolkit
 import os
 
 from agno.tools.toolkit import Toolkit
@@ -30,3 +32,23 @@ def get_account_balance(input: GetAccountBalanceInput) -> GetAccountBalanceOutpu
 
 wallet_toolkit = Toolkit(name="wallet")
 wallet_toolkit.register(get_account_balance)
+class WalletToolkit(Toolkit):
+    def __init__(self, **kwargs):
+        super().__init__(name="wallet", tools=[self.get_account_balance], **kwargs)
+
+    def get_account_balance(self, input: GetAccountBalanceInput) -> GetAccountBalanceOutput:
+        """
+        Gets the balance of a wallet on a given blockchain.
+        """
+        try:
+            rpc_url = os.getenv(f"{input.chain.upper()}_RPC_URL")
+            if not rpc_url:
+                raise ValueError(f"RPC_URL for chain {input.chain} not found in environment variables.")
+            w3 = Web3(Web3.HTTPProvider(rpc_url))
+            balance_wei = w3.eth.get_balance(w3.to_checksum_address(input.wallet_address))
+            balance = w3.from_wei(balance_wei, 'ether')
+            return GetAccountBalanceOutput(balance=float(balance))
+        except Exception as e:
+            return GetAccountBalanceOutput(balance=0.0, error=str(e))
+
+wallet_toolkit = WalletToolkit()

@@ -1,0 +1,189 @@
+1.2. Objetivos Core do MVP
+
+* Trading Autônomo Baseado em LLM: Implementar um sistema que tome decisões de compra e venda de criptomoedas de forma autônoma, guiado por uma LLM e sem regras fixas pré-programadas.
+* Arquitetura Multiagente (Agency Swarm): Utilizar o framework Agency Swarm para criar uma equipe de agentes especializados (MarketAnalyst, Trader, DeepTraderManager, PortfolioManager) que colaborem para atingir o objetivo de trading.
+* Segurança Robusta: Integrar mecanismos de segurança essenciais para proteger o capital do usuário, incluindo proteção contra MEV e sandwich attacks, detecção de rug pulls e volume falso, e isolamento de fundos.
+* Operação em DEXs (web3.py): Habilitar o sistema para interagir diretamente com exchanges descentralizadas (DEXs) como Uniswap, PancakeSwap e SushiSwap, utilizando a biblioteca web3.py para executar trades e gerenciar liquidez.
+* Implementação de Ferramentas (Tools) Customizadas: Desenvolver Tools customizadas para cada agente, permitindo a interação com APIs de mercado, blockchains e outros serviços necessários para o trading autônomo.
+* Persistência de Dados (SQLite): Utilizar um banco de dados SQLite para armazenar dados históricos de mercado, histórico de trades, estado do portfólio e logs do sistema, facilitando a análise de desempenho e o aprendizado contínuo.
+* Execução Contínua e Agendamento de Tarefas: Configurar o sistema para operar de forma contínua (24/7), monitorando o mercado em tempo real e agendando tarefas periódicas (análise de mercado, verificação de arbitragem, etc.) utilizando AsyncIOScheduler.
+* Documentação Detalhada: Produzir uma documentação clara e completa do código, arquitetura e configuração do DeepTrader MVP, facilitando a manutenção, expansão e contribuições open-source futuras.
+
+1.3. Arquitetura do Sistema
+
+O DeepTrader MVP será implementado utilizando uma arquitetura modular e distribuída, baseada em microsserviços lógicos representados por agentes dentro do framework Agency Swarm. A arquitetura compreende os seguintes componentes principais:
+
+* Agentes Especializados:
+* `MarketAnalyst` (Analista de Mercado)
+* `Trader` (Executor de Trades)
+* `DeepTraderManager` (Gerente da Equipe)
+* `PortfolioManager` (Gerenciador de Portfólio)
+* Ferramentas (Tools): Módulos Python customizados que permitem aos agentes interagir com o mundo externo, incluindo:
+* `FetchMarketData` (CoinGecko API)
+* `CheckTokenSecurity` (Rugcheck.xyz API, GoPlus API opcional, e verificações via web3.py)
+* `ExecuteSwap` (web3.py para DEXs: Uniswap, PancakeSwap, SushiSwap)
+* `GetPortfolio` (Banco de dados SQLite)
+* `GetAccountBalance` (web3.py)
+* `ConsultKnowledgeBase` (RAG + ChromaDB - a ser implementado posteriormente)
+* `CalculateTechnicalIndicator` (a ser implementado posteriormente)
+* `CheckArbitrageOpportunities` (ccxt para CEXs: Binance, Kraken - opcional para MVP)
+* Banco de Dados: SQLite (para persistência de dados do MVP).
+* Loop Principal e Agendamento: Orquestrado por `agency.run_loop()` e `AsyncIOScheduler` para execução contínua e tarefas agendadas.
+* Mecanismos de Segurança:
+* Flashbots Protect RPC (MEV protection)
+* Simulação de Transações (`web3.eth.call` - Sandwich Attack Detection)
+* Blacklists (Tokens e Desenvolvedores - Banco de Dados SQLite)
+* Hot Wallet (Trading) / Cold Wallet (Armazenamento Seguro) - *Implementação da transferência de fundos a ser detalhada*
+* Revogação Automática de Approvals (web3.py)
+
+Fluxo de Dados e Decisão:
+
+1.O `AsyncIOScheduler` dispara periodicamente a tarefa `check_market_conditions`.
+2.O `MarketAnalyst` (agente) executa a Tool `FetchMarketData` para obter dados de mercado atualizados da CoinGecko API.
+3.O `MarketAnalyst` analisa os dados de mercado, considerando indicadores técnicos (RSI inicialmente) e consulta a Tool `CheckTokenSecurity` para avaliar a segurança de tokens promissores.
+4.Com base na análise, o `MarketAnalyst` gera recomendações de trading (compra/venda) e as envia (via mensagem JSON) para o `DeepTraderManager`.
+5.O `DeepTraderManager` (agente) recebe as recomendações, avalia o risco de cada trade (considerando regras de risco pré-definidas e o estado do portfólio), e decide se aprova ou rejeita.
+6.O `DeepTraderManager` envia uma mensagem de aprovação (ou rejeição) para o `Trader`.
+7.Se o trade for aprovado, o `Trader` (agente) executa a ordem de compra/venda na DEX correspondente usando a Tool `ExecuteSwap` (via `web3.py` e interação com contratos inteligentes). A Tool `WalletManager` é usada para assinar as transações de forma segura com a hot wallet.
+8.O `Trader` registra a transação no banco de dados (via Tool `Database`).
+9.O `PortfolioManager` (agente) monitora o portfólio, atualiza o estado (usando dados do banco de dados e preços de mercado obtidos via `FetchMarketData`), e calcula métricas de desempenho.Relatórios de risco são gerados periodicamente para o `DeepTraderManager`.
+10. O ciclo se repete continuamente, com o `AsyncIOScheduler` disparando novas análises de mercado e o DeepTraderManager monitorando o desempenho e ajustando as estratégias conforme necessário (em versões futuras, com a implementação do `LearningCoordinator`).
+
+2. Agentes e suas Ferramentas (Tools)
+
+2.1. Agentes Especializados
+
+O DeepTrader MVP será composto por quatro agentes especializados, cada um com um papel distinto e acesso a um conjunto específico de Tools. A colaboração entre esses agentes, orquestrada pelo Agency Swarm e guiada pela LLM, permitirá o funcionamento autônomo do sistema de trading.
+
+* 2.1.1. MarketAnalyst (Analista de Mercado)
+
+* Nome: `MarketAnalyst`
+* Descrição: Agente especializado em analisar dados de mercado de criptomoedas, verificar a segurança de tokens e identificar oportunidades de trading lucrativas e seguras.
+* Instruções (Prompt):
+```
+Você é um analista de mercado de criptomoedas experiente e diligente. Seu objetivo principal é identificar oportunidades de trading (compra e venda) com base em dados de mercado, análise técnica e verificação rigorosa de segurança de tokens.
+
+Siga estas diretrizes:
+
+1. Análise de Mercado: Utilize as ferramentas disponíveis para obter dados de mercado atualizados e históricos de diversas criptomoedas. Concentre-se em identificar tokens com potencial de crescimento, considerando fatores como volume de negociação, liquidez, e movimentos de preço significativos (pumps e dumps).
+
+2. Verificação de Segurança: Antes de recomendar qualquer token para trading, realize uma verificação de segurança completa. Utilize a ferramenta CheckTokenSecurity para avaliar o contrato do token, procurando por sinais de alerta como honeypots, rug pulls, ou outras vulnerabilidades. Priorize tokens com alta pontuação de segurança e contratos verificados.
+
+3. Geração de Recomendações: Com base em sua análise de mercado e verificação de segurança, gere recomendações de trading CLARAS e CONCISAS para o DeepTraderManager. Suas recomendações devem incluir:
+* Token: Símbolo e endereço do token.
+* Ação: 'buy' (compra) ou 'sell' (venda).
+* Justificativa (Raciocínio Chain-of-Thought): Explique o raciocínio por trás da sua recomendação, detalhando os dados de mercado, indicadores técnicos (RSI), e fatores de segurança que a sustentam.
+* Nível de Confiança: Indique o seu nível de confiança na recomendação (de 0.0 a 1.0).
+
+4. Comunicação com DeepTraderManager: Envie suas recomendações para o DeepTraderManager em formato JSON, seguindo o protocolo de mensagens definido.
+
+Lembre-se: Sua prioridade é identificar oportunidades de trading LUCRATIVAS e SEGURAS.A qualidade da sua análise e a precisão das suas recomendações são cruciais para o sucesso do DeepTrader. Utilize todas as ferramentas disponíveis e justifique sempre suas decisões com raciocínio lógico e dados concretos.
+```
+* Ferramentas (Tools):
+* `FetchMarketData`
+* Descrição: Busca dados de mercado (preço, volume, etc.) para uma lista de criptomoedas específicas da CoinGecko API.
+* Tipo de Entrada: `FetchMarketDataInput` (Pydantic Model - código esboçado) - Lista de IDs de moedas, moeda de comparação (vs\_currency), e flags para dados históricos.
+* Tipo de Saída: `FetchMarketDataOutput` (Pydantic Model - código esboçado) - Dados de mercado para cada moeda (preço, volume, etc.).
+* Implementação: Integração com a CoinGecko API usando a biblioteca `pycoingecko`. Implementar tratamento de rate limits e paginação, se necessário.
+* Status: MVP - Core
+* Documentação: [https://www.coingecko.com/en/api/documentation](https://www.coingecko.com/en/api/documentation)
+* `CheckTokenSecurity`
+* Descrição: Verifica a segurança de um contrato de token em uma blockchain específica, utilizando múltiplas fontes (consulta direta via `web3.py` e, opcionalmente, APIs externas como GoPlus Security API ou Rugcheck.xyz).
+* Tipo de Entrada: `CheckTokenSecurityInput` (Pydantic Model - código esboçado) - Endereço do contrato do token e chain.
+* Tipo de Saída: `CheckTokenSecurityOutput` (Pydantic Model - código esboçado) - Avaliação de segurança do token (booleano), informações detalhadas (total supply, número de holders, verificação de contrato, dados de APIs externas), e lista de razões para avaliação negativa.
+* Implementação: Integração com `web3.py` para consultas básicas à blockchain. Integração *opcional* com GoPlus Security API (ou Rugcheck.xyz API) para verificações de segurança avançadas. Implementar blacklists (tokens e devs) consultando o banco de dados SQLite.
+* Status: MVP - Core
+* Documentação:
+* `web3.py`: [https://web3py.readthedocs.io/en/stable/](https://web3py.readthedocs.io/en/stable/)
+* GoPlus Security API (exemplo): [https://docs.gopluslabs.io/](https://docs.gopluslabs.io/)
+* Rugcheck.xyz API: [https://api.rugcheck.xyz/swagger/index.html](https://api.rugcheck.xyz/swagger/index.html)
+* `CalculateTechnicalIndicator`
+* Descrição: Calcula indicadores técnicos (RSI, MACD, SMA, etc.) para um token, utilizando dados de mercado históricos.
+* Tipo de Entrada: A ser definida (Pydantic Model) - Símbolo do token, indicador a calcular, período, dados históricos.
+* Tipo de Saída: A ser definida (Pydantic Model) - Valor do indicador técnico.
+* Implementação: Utilizar bibliotecas Python para análise técnica (ex: TA-Lib, pandas-ta).Implementar Tools separadas para cada indicador ou uma Tool genérica que calcula múltiplos indicadores.
+* Status: MVP - Opcional (Implementar no MVP se o tempo permitir; caso contrário, adiar para versões futuras).
+* Documentação:
+* TA-Lib: [https://www.ta-lib.org/function_reference.html](https://www.ta-lib.org/function_reference.html)
+* pandas-ta: [https://github.com/twopir/pandas-ta](https://github.com/twopir/pandas-ta)
+* `ConsultKnowledgeBase`
+* Descrição: Consulta a base de conhecimento RAG (arquivos `.txt` locais) para buscar informações relevantes sobre trading de criptomoedas, análise técnica, etc.
+* Tipo de Entrada: `ConsultKnowledgeBaseInput` (Pydantic Model - código esboçado) - Query em linguagem natural.
+* Tipo de Saída: `ConsultKnowledgeBaseOutput` (Pydantic Model - código esboçado) - Trechos de documentos relevantes (lista de strings).
+* Implementação: Integração com ChromaDB (ou outro vector store) e Langchain (ou biblioteca similar) para indexação e busca vetorial.
+* Status: MVP - Opcional (Implementar no MVP se o tempo permitir; caso contrário, adiar para versões futuras).
+* Documentação:
+* ChromaDB: [https://www.trychroma.com/docs](https://www.trychroma.com/docs)
+* Langchain: [https://python.langchain.com/docs/](https://python.langchain.com/docs/)
+
+
+
+
+
+
+
+* 2.1.2. Trader (Executor de Trades)
+
+* Nome: `Trader`
+* Descrição: Agente especializado em executar ordens de compra e venda de criptomoedas em DEXs, de forma eficiente e segura, seguindo as recomendações do `MarketAnalyst` e as aprovações do `DeepTraderManager`.
+* Instruções (Prompt):
+```
+Você é um trader de criptomoedas altamente eficiente e focado na execução precisa de ordens. Seu objetivo é executar as ordens de compra e venda de tokens em DEXs (Exchanges Descentralizadas) da forma mais rápida, econômica e segura possível, respeitando rigorosamente as aprovações e instruções fornecidas pelo DeepTraderManager.
+
+Siga estas diretrizes:
+
+1. Execução de Ordens Aprovadas: Execute APENAS as ordens de trading que forem explicitamente aprovadas pelo DeepTraderManager.Verifique sempre a mensagem de aprovação para garantir que todos os detalhes do trade (token, ação, quantidade) correspondam à sua expectativa.
+
+2. Eficiência e Velocidade: Priorize a velocidade e a eficiência na execução de trades. Utilize as ferramentas disponíveis para construir e enviar transações de forma rápida, minimizando o tempo de espera e aproveitando as oportunidades de mercado.
+
+3. Segurança e Precisão: Garanta a segurança e a precisão na execução de cada trade. Utilize a ferramenta ExecuteSwap para interagir com os contratos inteligentes das DEXs de forma correta e segura, seguindo rigorosamente as especificações da API e as melhores práticas de segurança (proteção contra slippage, verificação de gas, etc.).
+
+4. Gestão do Portfólio: Após cada trade executado com sucesso, atualize o estado do portfólio utilizando a ferramenta GetPortfolio. Mantenha um registro preciso de todas as transações e posições abertas.
+
+5. Comunicação com PortfolioManager: Envie uma mensagem de atualização do portfólio (PortfolioUpdate) para o PortfolioManager SEMPRE que um trade for executado, incluindo os detalhes da transação (token, ação, quantidade, preço de execução, hash da transação, timestamp, etc.).
+
+6. Verificação de Saldo: Utilize a ferramenta GetAccountBalance para verificar periodicamente o saldo da hot wallet e garantir que há fundos suficientes para executar as ordens de trading.
+
+7. Respeito aos Limites de Risco: Execute as ordens de trading respeitando rigorosamente os limites de risco estabelecidos pelo DeepTraderManager. Se houver qualquer dúvida ou conflito entre as instruções do MarketAnalyst e as regras de risco do DeepTraderManager, SEMPRE siga as instruções do DeepTraderManager (priorizando a segurança do capital).
+
+Lembre-se: Sua prioridade é EXECUTAR trades de forma EFICIENTE e SEGURA, garantindo a precisão e a rapidez das operações, e mantendo o portfólio sempre atualizado. A CONFIANÇA na execução das ordens e a MINIMIZAÇÃO de erros são cruciais para o sucesso do DeepTrader.
+```
+* Ferramentas (Tools):
+* `ExecuteSwap`
+* Descrição: Executa um swap (troca) de tokens em uma DEX (Uniswap, PancakeSwap, SushiSwap) via `web3.py`.
+* Tipo de Entrada: A ser definida (Pydantic Model) - Detalhes do trade (tokenIn, tokenOut, amountIn, minAmountOut, path, deadline, DEX, etc.).
+* Tipo de Saída: A ser definida (Pydantic Model) - Hash da transação, status do trade (sucesso/falha), etc.
+* Implementação: Integração com a classe `DexClient` (código esboçado) para interagir com os contratos Router das DEXs. Implementar proteção contra slippage (parâmetro `minAmountOut`), tratamento de erros e espera pela confirmação da transação. Integração com `WalletManager` para assinatura segura com hardware wallet.
+* Status: MVP - Core
+* Documentação:
+* `web3.py`: [https://web3py.readthedocs.io/en/stable/](https://web3py.readthedocs.io/en/stable/)
+* Uniswap V2 Docs: [https://docs.uniswap.org/contracts/v2/](https://docs.uniswap.org/contracts/v2/)
+* PancakeSwap Docs: [https://docs.pancakeswap.finance/](https://docs.pancakeswap.finance/)
+* SushiSwap Docs: [https://docs.sushiswap.fi/](https://docs.sushiswap.fi/)
+* `GetPortfolio`
+* Descrição: Obtém o estado atual do portfólio do DeepTrader (posições abertas, valor total, alocação de ativos, etc.) consultando o banco de dados SQLite.
+* Tipo de Entrada: A ser definida (Pydantic Model) - Nenhuma entrada específica (pode receber filtros opcionais para o portfólio, se necessário).
+* Tipo de Saída: `GetPortfolioOutput` (Pydantic Model - código esboçado) - Dados do portfólio (lista de `PortfolioItem`, valor total em USD, etc.).
+* Implementação: Consultar o banco de dados SQLite (tabela `portfolio`) e calcular o valor total do portfólio usando preços atuais (via `FetchMarketData`).
+* Status: MVP - Core
+* `GetAccountBalance`
+* Descrição: Verifica o saldo da hot wallet do DeepTrader em uma blockchain específica (Ethereum, BSC, etc.) usando `web3.py`.
+* Tipo de Entrada: `GetAccountBalanceInput` (Pydantic Model - código esboçado) - Endereço da carteira e chain.
+* Tipo de Saída: `GetAccountBalanceOutput` (Pydantic Model - código esboçado) - Saldo da carteira na moeda nativa da blockchain (ex: ETH, BNB).
+* Implementação: Integração com `web3.py` para conectar ao nó da blockchain e obter o saldo da carteira.
+* Status: MVP - Core
+
+* 2.1.3. DeepTraderManager (Gerente da Equipe)
+
+* Nome: `DeepTraderManager`
+* Descrição: Agente responsável por gerenciar a equipe DeepTrader, coordenar as estratégias de trading, impor regras de gestão de risco e garantir que o sistema opere de forma eficiente e segura para maximizar o valor do portfólio.
+* Instruções (Prompt):
+```
+Você é o DeepTraderManager, o gerente da equipe de trading autônomo DeepTrader. Sua responsabilidade principal é garantir que todos os agentes da equipe (MarketAnalyst, Trader, PortfolioManager) trabalhem de forma coesa e eficiente para atingir o objetivo de MAXIMIZAR o valor do portfólio, dentro de limites de risco estritamente controlados.
+
+Siga estas diretrizes:
+
+1. Definição de Metas e Estratégias: Estabeleça metas claras e realistas para a equipe (ex: "Aumentar o portfólio em X% ao mês, com um drawdown máximo de Y%"). Defina as estratégias gerais de trading que a equipe deve seguir, comunicando-as ao MarketAnalyst.
+
+2. Gestão de Risco Proativa: Monitore continuamente o risco do portfólio, utilizando relatórios do PortfolioManager e ferramentas de análise de risco (a serem implementadas). Imponha regras de risco RIGOROSAS e garanta que o Trader as respeite em todas as operações. Regras de risco INICIAIS para o MVP:
+* Risco Máximo por Trade: NENHUM trade pode arriscar mais de 2% do capital total do portfólio.
