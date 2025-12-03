@@ -12,12 +12,15 @@ class FetchSocialMediaOutput(BaseModel):
     posts: List[Dict[str, Any]] = Field(..., description="A list of social media posts.")
 
 
-def fetch_social_media(input: FetchSocialMediaInput) -> FetchSocialMediaOutput:
-    """
-    Fetches data from social media platforms like X (Twitter) and Reddit.
-    """
-    # ... (Placeholder implementation)
-    return FetchSocialMediaOutput(posts=[{"text": f"Social media post about {input.query} on {input.platform}", "user": "placeholder_user"}])
+class SocialMediaToolkit(Toolkit):
+    def __init__(self, **kwargs):
+        super().__init__(name="social_media", tools=[self.fetch_social_media], **kwargs)
 
-social_media_toolkit = Toolkit(name="social_media")
-social_media_toolkit.register(fetch_social_media)
+    def fetch_social_media(self, input: FetchSocialMediaInput) -> FetchSocialMediaOutput:
+        """
+        Fetches data from social media platforms like X (Twitter) and Reddit.
+        """
+        # ... (Placeholder implementation)
+        return FetchSocialMediaOutput(posts=[{"text": f"Social media post about {input.query} on {input.platform}", "user": "placeholder_user"}])
+
+social_media_toolkit = SocialMediaToolkit()

@@ -4,6 +4,11 @@ import sys
 # Add backend to path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
+from tools.dex import DexToolkit, ExecuteSwapInput, RevokeApprovalInput, ExecuteTransactionSimulationInput
+
+def test_dex_toolkit_mock():
+    toolkit = DexToolkit()
+
 from tools.dex import execute_swap, revoke_approval, execute_transaction_simulation
 from tools.dex import ExecuteSwapInput, RevokeApprovalInput, ExecuteTransactionSimulationInput
 
@@ -16,6 +21,8 @@ def test_dex_tools_mock():
         chain="ethereum",
         dex="uniswap_v2"
     )
+    # Using the method directly
+    swap_output = toolkit.execute_swap(swap_input)
     swap_output = execute_swap.entrypoint(swap_input)
     print(f"Swap Output: {swap_output}")
     assert swap_output.success == True
@@ -27,6 +34,7 @@ def test_dex_tools_mock():
         spender_address="0x3333333333333333333333333333333333333333",
         chain="ethereum"
     )
+    revoke_output = toolkit.revoke_approval(revoke_input)
     revoke_output = revoke_approval.entrypoint(revoke_input)
     print(f"Revoke Output: {revoke_output}")
     assert revoke_output.success == True
@@ -38,6 +46,7 @@ def test_dex_tools_mock():
         token_out="0x2222222222222222222222222222222222222222",
         amount_in=1.0
     )
+    sim_output = toolkit.execute_transaction_simulation(sim_input)
     sim_output = execute_transaction_simulation.entrypoint(sim_input)
     print(f"Simulation Output: {sim_output}")
     assert sim_output.success == True
@@ -45,6 +54,7 @@ def test_dex_tools_mock():
 
 if __name__ == "__main__":
     try:
+        test_dex_toolkit_mock()
         test_dex_tools_mock()
         print("All mock tests passed!")
     except Exception as e:

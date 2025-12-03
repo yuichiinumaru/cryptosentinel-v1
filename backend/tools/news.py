@@ -11,12 +11,15 @@ class FetchNewsInput(BaseModel):
 class FetchNewsOutput(BaseModel):
     articles: List[Dict[str, Any]] = Field(..., description="A list of news articles.")
 
-def fetch_news(input: FetchNewsInput) -> FetchNewsOutput:
-    """
-    Fetches news articles from various sources.
-    """
-    # This is a placeholder implementation. A real implementation would use a news API.
-    return FetchNewsOutput(articles=[{"title": f"News about {input.query}", "url": "https://example.com"}])
+class NewsToolkit(Toolkit):
+    def __init__(self, **kwargs):
+        super().__init__(name="news", tools=[self.fetch_news], **kwargs)
 
-news_toolkit = Toolkit(name="news")
-news_toolkit.register(fetch_news)
+    def fetch_news(self, input: FetchNewsInput) -> FetchNewsOutput:
+        """
+        Fetches news articles from various sources.
+        """
+        # This is a placeholder implementation. A real implementation would use a news API.
+        return FetchNewsOutput(articles=[{"title": f"News about {input.query}", "url": "https://example.com"}])
+
+news_toolkit = NewsToolkit()
