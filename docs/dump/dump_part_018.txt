@@ -1,0 +1,298 @@
+Exemplo: O MarketAnalyst envia uma recomendação de compra ao DeepTraderManager, que valida o risco antes de autorizar o Trader a executar.
+
+Funcionalidades-Chave
+Operação em Tempo Real:
+
+Loop Contínuo: O sistema roda 24/7, com tarefas agendadas (ex: análise de mercado a cada 1 minuto) via integração entre agency.run_loop() e AsyncIOScheduler.
+
+Resposta a Eventos: Reage a mudanças bruscas (ex: quedas de preço >5%) com ajustes imediatos de estratégia.
+
+Gestão de Risco Avançada:
+
+Circuit Breakers: Interrompe trades automaticamente se o portfólio sofrer perdas superiores a 10%.
+
+Limites por Operação: Nenhum trade pode arriscar mais de 2% do capital total.
+
+Monitoramento de Blacklist: Bloqueia tokens com histórico de scams ou baixa liquidez.
+
+Aprendizado Contínuo:
+
+Memória de Longo Prazo: Armazena trades passados em bancos vetoriais (ChromaDB) e relacionais (PostgreSQL), permitindo consultas do tipo "Quais estratégias funcionaram em mercados em baixa?".
+
+Feedback Automático: Um agente LearningCoordinator analisa métricas (ROI, win rate) e ajusta instruções dos agentes (ex: priorizar tokens de alta capitalização após uma semana de baixo desempenho).
+
+Contextualização com RAG:
+
+Documentos Estratégicos: Manuais de análise técnica e fundamentalista são indexados hierarquicamente (ex: sumários, detalhes) para recuperação eficiente.
+Técnicas Avançadas: HyDE (Hypothetical Document Embeddings) para melhorar queries e reranking com modelos como BGE-Reranker para precisão.
+
+Fluxo Operacional
+Coleta de Dados:
+
+O MarketAnalyst puxa preços, volumes e notícias em tempo real, enriquecendo a análise com dados históricos do banco de dados.
+
+Geração de Sinais:
+
+Combina indicadores técnicos, sentimentos de mercado (análise de notícias) e insights do RAG para sugerir trades.
+
+Aprovação e Execução:
+
+O DeepTraderManager valida o risco e o alinhamento estratégico antes de liberar a execução pelo Trader.
+
+Pós-Trade:
+
+O PortfolioManager atualiza o portfólio, enquanto o LearningCoordinator registra o resultado para ajustes futuros.
+
+Diferenciais Inovadores
+Autonomia Total: Zero regras pré-programadas (ex: "if price > X, venda"); todas as decisões são tomadas pela LLM com base em ferramentas e contexto.
+
+Modularidade Extrema: Novos agentes (ex: ArbitrageHunter) ou ferramentas (ex: integração com Chainlink para dados on-chain) podem ser adicionados sem interromper o sistema.
+
+Transparência Auditável: Todas as decisões são logadas com histórico completo (quem decidiu, dados usados, resultado), permitindo auditoria pós-fato.
+
+Próximos Passos (Roadmap)
+Integração com Modelos Preditivos: Fine-tuning de LLMs para prever movimentos de curto prazo com base em padrões históricos.
+
+Deploy em Cloud Distribuída: Escalonamento horizontal para lidar com múltiplas exchanges simultaneamente.
+
+Simulação em Ambiente Sandbox: Teste de estratégias em dados históricos antes de alocar capital real.
+
+Visão Final
+O DeepTrader representa um avanço na automação de trading, substituindo sistemas estáticos baseados em regras por uma equipe virtual de agentes autônomos, adaptáveis e especializados. Projetado para operar com capital limitado (ex: US$ 50 inicialmente), seu objetivo é validar a viabilidade de sistemas multiagente governados por LLMs em ambientes financeiros complexos e imprevisíveis.
+
+
+make a vast research to determine
+- which experiences are there to find regarding building autonomous trader bots that operate cripto trading on their own
+- which llm model performs best trading (look deep to see if you find opensource models running local)
+- what is normally the dex, wallet / exchange they use (if possible, how they integrate into the bot)
+- what is usually the instructions / prompt given to the model
+
+
+DeepSearch
+64 Sources
+Thinking
+Researching autonomous trading
+Checking arXiv URL
+
+
+Thinking
+Researching autonomous trading
+The request is about finding experiences with building autonomous trader bots for crypto trading and identifying the best LLM model for trading.
+I'm considering what an autonomous trader bot is, likely one that makes trading decisions without human input, possibly using LLMs.
+Currently looking for case studies or experiences in building these bots, including open-source models that run locally.
+Searching for "autonomous crypto trading bots using LLMs"
+10 results found
+
+9 Best Crypto Trading Bots in 2025 (Tested)
+nftevening.com
+
+The 10 Best Crypto Trading Bots in 2025 (Reviewed) | CoinLedger
+coinledger.io
+
+8 BEST Crypto Trading Bots (2025)
+guru99.com
+
+11 Best Crypto Trading Bots for Automated Trading
+geekflare.com
+
+10 Best Crypto Trading Bots March 2025 | Expert Review | Koinly
+koinly.io
+See more (5)
+Browsing results
+Just found an article mentioning LLMs can analyze news and social media for sentiment-based trading ().
+Let's check if there are actual bots using LLMs for these purposes.
+I'm thinking about searching for "crypto trading bots using LLMs" to find specific examples or case studies.
+Searching for "crypto trading bots using LLMs"
+10 results found
+
+How LLMs like ChatGPT Can Change the Way We Trade | HackerNoon
+hackernoon.com
+
+The Promise and Potential of LLM in Crypto | HackerNoon
+hackernoon.com
+
+What's the Role of Bots in Crypto Trading?
+investopedia.com
+
+Leveraging Large Language Models to Create Financial Bots: A Practical Guide | by Ali M Saghiri | Medium
+medium.com
+
+Bots, Terminals, and LLMs — Crypto UX is Getting a Makeover
+gate.io
+See more (5)
+Browsing results
+Found a Medium article from November 2024 with a practical guide on creating financial bots using LLMs, which fits the request (Medium).
+There's an arXiv paper from July 2024 about a reflective LLM-based agent for zero-shot crypto trading, which seems very relevant.
+Browsing arxiv.org for "details about the LLM-based agent for crypto trading"
+The arXiv URL seems off; the HTML version isn't working, and no readable text was found.
+Checking arXiv URL
+The search result showed https://www.arxiv.org/html/2407.09546v1, but browsing it failed.
+Browsing arxiv.org for "summary of the paper"
+Hmm, still not working. Maybe I need to use the direct PDF link instead.
+Browsing arxiv.org for "details about the LLM-based agent for crypto trading"
+CryptoTrade, an LLM-based agent for crypto trading, uses on-chain and off-chain data, fitting the user's interest in autonomous bots.
+The paper says CryptoTrade is open-source, but it uses GPT-4 and GPT-4o, which are proprietary models from OpenAI.
+Searching for "open-source LLM for crypto trading"
+10 results found
+
+A Reflective LLM-based Agent to Guide Zero-shot Cryptocurrency Trading
+arxiv.org
+
+The Promise and Potential of LLM in Crypto | HackerNoon
+hackernoon.com
+
+fuchenru/Trading-Hero-LLM · Hugging Face
+huggingface.co
+
+How LLMs like ChatGPT Can Change the Way We Trade | HackerNoon
+hackernoon.com
+
+LLM for Automated Trading – Human-AI Teaming/Collaboration
+kaixu.me
+See more (5)
+Browsing results
+Found "fuchenru/Trading-Hero-LLM" on Hugging Face, an open-source sentiment analysis model for trading (Hugging Face).
+I'm considering if there are trading bots using open-source LLMs like Llama or Falcon that can run locally, as the user specified.
+Searching for "crypto trading bot with open-source LLM"
+10 results found
+
+The Best Open Source (And Free) Crypto Trading Bots | CoinLedger
+coinledger.io
+
+5 Best Open source Crypto Trading Bots - OctoBot
+octobot.cloud
+
+Best Open Source Crypto Trading Bots 2025
+sourceforge.net
+
+GitHub - freqtrade/freqtrade: Free, open source crypto trading bot
+github.com
+
+Superalgos | Free & Open-Source Crypto Trading Bots
+superalgos.org
+See more (5)
+Browsing results
+From this search, several open-source crypto trading bots like Freqtrade, Gekko, and Hummingbot exist, but they don't use LLMs.
+Searching for "crypto trading bot with local LLM"
+10 results found
+
+Creating a ChatGPT crypto trading bot - DEV Community
+dev.to
+
+LLM for Automated Trading – Human-AI Teaming/Collaboration
+kaixu.me
+
+Build crypto price bot using local llm and Langchain |Tutorial :54 - YouTube
+youtube.com
+
+How to Build an AI Crypto Chatbot | CoinGecko API
+coingecko.com
+
+The Most Powerful Crypto Trading Bot
+cryptohopper.com
+See more (5)
+Browsing results
+There's a YouTube video on building a crypto price bot using a local LLM and Langchain, which could help the user (YouTube).
+Now, I'm exploring which DEXs, wallets, or exchanges these bots typically use and how they integrate.
+From the search, Cryptohopper supports multiple exchanges, including both CEXs and DEXs, which might fit LLM-based bots.
+Searching for "LLM-based crypto trading bot on DEX"
+10 results found
+
+goodcryptoX | ultimate DEX trading bots
+goodcrypto.app
+
+DexBot - The Smartest DEX Trading Bot Tailored to Crypto Traders
+dexbot.com
+
+Trading bot - DEXTools
+info.dextools.io
+
+Building a Smart Crypto Trading Bot Using CoinMarketCap, Candlestick Analysis, and LLMs in C# | by Ali M Saghiri | Medium
+medium.com
+
+Creating a ChatGPT crypto trading bot - DEV Community
+dev.to
+See more (5)
+Browsing results
+DexBot is a smart DEX trading bot for crypto traders, supporting Uniswap, Pancakeswap, and blockchains like BSC, ETH, ARB.
+There isn't a specific exchange more commonly used for LLM-based bots; they can integrate with various CEXs and DEXs via APIs.
+From the arXiv paper, CryptoTrade has agents like market analysts using technical indicators and news interpreters.
+Browsing medium.com for "example prompts for LLM in trading bot"
+The Medium article didn't list specific example prompts for LLM trading bots.
+Prompts for LLMs in trading bots typically include market data, technical indicators, and news, asking for actions like buy, sell, or hold with portfolio proportions.
+Several research papers and projects show LLMs in building autonomous trading bots, like CryptoTrade using GPT-4 and GPT-4o.
+Trading bots can integrate with exchanges like Coinbase, Kraken, Binance for CEXs, and Uniswap, Sushiswap for DEXs.
+There is a lot here, so I'm summarizing the key points to help with the request.
+The arXiv paper mentions a prompt for the trading agent, deciding to buy, sell, or hold crypto based on market conditions and news, with proportions from -1 to 1.
+CryptoTrade uses GPT-4 and GPT-4o, showing better performance than traditional trading signals, according to the arXiv paper (arXiv).
+I'm thinking about how this info helps the user build or understand these bots better.
+Open-source LLMs like Llama, Falcon, or Mistral could be used for crypto trading, but documentation is limited.
+Wallets for these bots are usually exchange-provided or self-custody options like MetaMask for DEXs, ensuring secure transactions.
+The arXiv paper provides an example prompt, asking the model to decide on buying, selling, or holding crypto based on market conditions and news, with proportions from -1 to 1 (arXiv).
+From the search, URLs like Cryptohopper and Freqtrade offer insights into trading bot integrations (Cryptohopper, Freqtrade).
+I'm evaluating how these resources can assist in understanding LLM-based trading bot development.
+
+
+
+44 web pages
+Key Points
+Research suggests that building autonomous crypto trading bots using LLMs involves integrating market and news data, with projects like CryptoTrade showing promising results.
+It seems likely that GPT-4o performs best among proprietary LLMs, but open-source models like Llama or Falcon could be used locally, though less commonly documented for trading.
+The evidence leans toward bots using exchanges like Coinbase, Kraken, Binance for centralized trading, and Uniswap, Sushiswap for decentralized, with wallets like MetaMask for DEXs.
+Prompts for LLMs typically include market data and news, asking for buy, sell, or hold recommendations with portfolio proportions.
+Experiences in Building Autonomous Crypto Trading Bots
+Building autonomous crypto trading bots that operate on their own using LLMs is an emerging field, with several research efforts and practical guides available. One key example is the CryptoTrade project, detailed in a research paper from June 2024, which uses LLMs to make daily trading decisions for cryptocurrencies like Bitcoin, Ethereum, and Solana by integrating on-chain and off-chain data. This project demonstrates the potential of LLMs in automating trading without fine-tuning, achieving comparable results to traditional strategies.
+
+Best Performing LLM Models
+For trading, research suggests that proprietary models like GPT-4o outperform GPT-4, as shown in the CryptoTrade study. However, for open-source models that can run locally, options like Llama, Falcon, and Mistral exist, though their application in crypto trading bots is less documented. Projects like "Trading-Hero-LLM" on Hugging Face offer open-source sentiment analysis models, but complete trading bots using these locally are not as prevalent.
+
+Commonly Used Exchanges and Wallets
+These bots can integrate with various exchanges, both centralized (e.g., Coinbase, Kraken, Binance) and decentralized (e.g., Uniswap, Sushiswap), typically via APIs. Wallets depend on the exchange; for centralized exchanges, the exchange's wallet is used, while for DEXs, popular self-custody wallets like MetaMask are common. Integration methods involve connecting through APIs to execute trades based on LLM recommendations.
+
+Typical Instructions or Prompts
+The prompts given to LLMs usually include current market data (e.g., price, moving averages, MACD), technical indicators, and news summaries. The LLM is asked to recommend a trading action—buy, sell, or hold—and often to specify a proportion (e.g., -1 to 1, where -1 is sell all, 0 is hold, 1 is buy all), with reasoning provided step by step.
+
+Survey Note: Comprehensive Analysis of Autonomous Crypto Trading Bots Using LLMs
+This survey note provides a detailed examination of autonomous crypto trading bots that leverage Large Language Models (LLMs), addressing the user's query comprehensively. The analysis is based on recent research, articles, and project documentation available as of March 11, 2025, ensuring relevance and accuracy.
+
+Experiences in Building Autonomous Crypto Trading Bots
+The development of autonomous crypto trading bots using LLMs is an active area of research and application, particularly due to the volatile and data-rich nature of cryptocurrency markets. One significant contribution is the "A Reflective LLM-based Agent to Guide Zero-shot Cryptocurrency Trading" paper, published on arXiv in June 2024 (A Reflective LLM-based Agent to Guide Zero-shot Cryptocurrency Trading). This paper introduces CryptoTrade, a framework that integrates on-chain data (e.g., prices, volumes, transactions from CoinMarketCap and Dune Database) and off-chain data (e.g., news from Gnews API, Bloomberg, Yahoo Finance, crypto.news) to execute daily trading strategies for Bitcoin (BTC), Ethereum (ETH), and Solana (SOL). CryptoTrade employs a multi-agent system with market analyst, news analyst, trading, and reflection agents, using GPT-4 and GPT-4o without fine-tuning, and achieves performance comparable to traditional signals like MACD and Buy and Hold strategies across bull, sideways, and bear markets. For instance, in an ETH bullish period, CryptoTrade exceeded Buy and Hold by 3% (25.47% vs. 22.59% return).
+
+Beyond research, practical guides and community projects also highlight experiences. For example, a HackerNoon article from November 2023, "How LLMs like ChatGPT Can Change the Way We Trade" (How LLMs like ChatGPT Can Change the Way We Trade), discusses how LLMs can revolutionize market analysis, generate trading signals, and automate processes, emphasizing their ability to process large volumes of textual data for sentiment analysis. Additionally, a Reddit post from December 2024 on r/CryptoCurrency, "Here it is - I made an open source AI crypto trading assistant to help me manage my cryptocurrency portfolio using ..." (Here it is - I made an open source AI crypto trading assistant to help me manage my cryptocurrency portfolio using ...), describes a tool using an LLM connected to an exchange for simplified trading actions, showcasing community-driven efforts.
+
+Best Performing LLM Model for Trading, Including Open-Source Local Models
+Regarding performance, the CryptoTrade paper provides empirical evidence that GPT-4o outperforms GPT-4, with specific metrics like return and Sharpe Ratio showing better results (e.g., 28.47% return for BTC bull market with GPT-4o vs. 26.35% with GPT-4). However, the user's interest in open-source models that can run locally is less addressed in mainstream research. Open-source LLMs like Llama, Falcon, and Mistral are viable for local deployment, as noted in "The 11 best open-source LLMs for 2025" on the n8n Blog (The 11 best open-source LLMs for 2025), which lists popular models for AI workflows. A project like "fuchenru/Trading-Hero-LLM" on Hugging Face ([fuchenru/Trading-Hero-LLM](https://huggingface.co
+
+Grok was unable to finish replying.
+Please try again later or use a different model.
+
+
+
+
+
+Interrupted
+Ok, can you help me write the best opensource completely autonomous trading bot operated by llm ever made? With these features:
+- Powered by LLM connected via two choices 1) OpenAI API compatible (like LM studio); or 2) Ollama
+- Market Monitoring & Analysis
+- Tracks 1000+ coins across multiple chains (ETH, BSC, etc.)
+- Identifies pumps/dumps in real-time
+- Detects liquidity changes and rug pull patterns
+- Security Features
+- Automatic rug pull detection (via Rugcheck.xyz + custom algorithms)
+- Fake volume identification
+- Developer blacklisting
+- Supply concentration checks
+- Telegram Integration
+- Sends real-time security alerts
+- Provides price movement notifications
+- Accepts manual buy/sell commands (/buy 0x... 1.5)
+- Portfolio Management
+- Trades only via explicit user commands
+- Shows portfolio status
+- Tracks entry/exit prices
+- Data Management
+- Maintains historical price database
+- Tracks liquidity events
+- Logs all transactions
+- Autonomous Trading
+- Make independent buy/sell decisions

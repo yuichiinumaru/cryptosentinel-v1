@@ -1,0 +1,250 @@
+1.  **Core API Mismatch:** Gemini (and other models accessed via LiteLLM/OptiLLM proxies) typically expose only a **stateless Chat Completions API**. Agency Swarm's core agent lifecycle, state tracking, and tool handling are built assuming the **stateful Assistants API** backend.
+2.  **Agent Initialization Failure (`404 Not Found`):** This is the most common and critical issue. Agency Swarm's `agent.init_oai()` method calls `client.beta.assistants.create` to register the agent's configuration (instructions, tools, model) with the OpenAI backend. Proxy servers like LiteLLM **do not implement the `/assistants` endpoint**. Therefore, this essential initialization step fails, preventing agents from being set up correctly.
+3.  **No Managed State (Threads):** OpenAI Assistants automatically manage conversation history in persistent "Threads." Gemini requires the client/framework to manage history manually. Agency Swarm's internal state and communication mechanisms, designed around Threads, will likely break or require substantial modification.
+4.  **No Built-in Tools:** OpenAI's Code Interpreter and File Search/Retrieval are unavailable. Equivalent functionality must be custom-built as Agency Swarm `BaseTool`s.
+5.  **Unmanaged Tool Execution:** The Assistants API handles parts of the tool execution lifecycle (e.g., pausing for `requires_action`). With a Completions API, the client/framework (Agency Swarm + Proxy) must manage the entire loop: detect tool call -> run tool -> send result back. While LiteLLM translates schemas, Agency Swarm's *control flow* might not be designed for this when not using the Assistants API backend.
+
+### **2.3 The Impact of the Missing Assistants API**
+
+The absence of an equivalent Assistants API when using Gemini fundamentally alters how Agency Swarm can operate:
+
+*   **Agent Lifecycle:** The standard way agents are created, configured, and potentially persisted via the Assistants API is broken. The `agent.assistant` object, central to Agency Swarm's internal logic, cannot be created via the proxy.
+*   **Stateful Conversations:** Maintaining context across multiple turns becomes the responsibility of the application layer. Simple `get_completion` calls might work for single-turn tasks if history isn't needed, but multi-turn dialogues or tasks requiring memory will fail unless history is manually prepended to prompts. This drastically increases token usage and complexity.
+*   **Inter-Agent Communication:** Agency Swarm's patterns for communication between agents, likely relying on the shared context within Threads, may not function correctly. Passing state explicitly between agents becomes necessary.
+*   **Tool Use Reliability:** While LiteLLM translates tool *definitions*, Agency Swarm's ability to orchestrate the *execution* (detecting the need, calling the tool, resuming with the result) might be unreliable if it depends on the state transitions (`requires_action`) provided by the Assistants API.
+
+### **2.4 Workaround Strategies (Mitigating the Impact)**
+
+Due to the core incompatibility, achieving full Agency Swarm functionality with Gemini is difficult and requires significant workarounds that essentially bypass or replace parts of Agency Swarm's design.
+
+1.  **Addressing Initialization Failure (Most Difficult):**
+    *   **Challenge:** Bypassing `client.beta.assistants.create` requires deep modification of Agency Swarm's agent initialization.
+    *   **Potential:** Investigate Agency Swarm source code for alternative, undocumented modes or hooks that might allow agent instantiation without calling the Assistants API. This is unlikely to be officially supported.
+    *   **Pragmatic Outcome:** Full agent persistence and features tied to the OpenAI Assistant object are likely **unachievable**. Focus shifts to potentially using Agency Swarm for its `BaseTool` definition and communication flow structure *if* the core loop can run against a Completions API.
+
+2.  **Managing State/History (Manual):**
+    *   **Workaround:** Capture message history externally (e.g., in a dictionary per conversation). Before each call to the LLM via the proxy, manually prepend the relevant history to the `messages` list.
+    *   **Agency Swarm Context:** Check if Agency Swarm's state management features can be used *without* relying on OpenAI Thread IDs. If so, they could potentially store these manual message histories.
+    *   **Impact:** High token costs for long conversations; context window limits become a major concern. Requires custom logic outside the standard agent flow.
+
+3.  **Replacing Built-in Tools (Mandatory):**
+    *   **Workaround:** Implement custom `BaseTool`s for any needed functionality.
+        *   **RAG:** Build a RAG pipeline using vector stores (ChromaDB, Pinecone, etc.) and create tools for indexing and searching.
+        *   **Code Execution:** Create a tool using `subprocess`, Docker, or other secure methods to execute code snippets. **Prioritize security.**
+
+4.  **Handling the Tool Execution Loop (Reliance on Proxy + Framework):**
+    *   **Workaround:** This depends heavily on two factors:
+        1.  **LiteLLM:** Must correctly translate Gemini's `FunctionCall` response into the OpenAI `tool_calls` format within the chat completion response. (Verified: LiteLLM aims to do this).
+        2.  **Agency Swarm:** Its internal message processing logic must be able to:
+            *   Detect the `tool_calls` field in a response from the (proxied) Completions endpoint.
+            *   Identify and execute the corresponding local `BaseTool`.
+            *   Format the tool's output correctly as a `tool` role message.
+            *   Send this message back in the next call to the completions endpoint.
+    *   **Verification:** **Crucially, test this specific loop.** Does Agency Swarm's tool handling work correctly when `set_openai_client` points to a standard OpenAI *Completions* endpoint, not an Assistants-based one? Check Agency Swarm's documentation or examples for using non-Assistant backends ([Open Source Models](https://vrsen.github.io/agency-swarm/additional-features/open-source-models/)). Success here is vital for any meaningful agent interaction.
+
+**Conclusion on Workarounds:** The most feasible (though still limited) approach involves using LiteLLM as a proxy, accepting the loss of Assistants API features (state, built-in tools), implementing custom tools, manually managing history if needed, and **rigorously testing** if Agency Swarm's tool execution control flow operates correctly with a proxied Completions API. **The agent initialization failure remains the primary blocker to using Agency Swarm as originally designed.**
+
+---
+
+## **3. OptiLLM and LiteLLM Tools: Enabling Compatibility**
+
+Integrating non-OpenAI models like Gemini into frameworks designed for the OpenAI API (like Agency Swarm) often requires compatibility layers. LiteLLM and OptiLLM are key tools for achieving this, primarily by acting as **OpenAI Completions API compatible proxies.**
+
+### **3.1 LiteLLM Overview**
+
+**LiteLLM** ([Docs](https://docs.litellm.ai/docs/), [Repo](https://github.com/BerriAI/litellm)) acts as a **unified interface** to interact with a wide array of LLM providers, including OpenAI, Azure OpenAI, Anthropic, Cohere, Replicate, AI21, Hugging Face, TogetherAI, and critically, **Google Gemini**.
+
+**Key Features:**
+
+*   **Standardized API:** Provides a consistent Python function (`litellm.completion`, `litellm.embedding`) to call different LLMs, abstracting away provider-specific SDKs and API details.
+*   **OpenAI Compatibility (Proxy Mode):** Crucially, LiteLLM can expose an **OpenAI-compatible proxy server**. This server listens for requests formatted according to the OpenAI **Chat Completions API specification** (`/chat/completions`) and translates them to the target LLM's native API format (like Gemini's). **It does NOT typically implement the Assistants API endpoints.**
+*   **Provider Support:** Supports over 100 LLM providers.
+*   **Input/Output Formatting:** Handles the conversion of input prompts and output responses to maintain consistency.
+*   **Function Calling Translation:** Automatically translates function definitions and execution requests/responses between the OpenAI format and the native format of supported providers like Gemini. It maps OpenAI's `tools` and `tool_choice` to Gemini's `tools` (containing `FunctionDeclaration`) and `tool_config`, and translates Gemini's `FunctionCall` response back into OpenAI's `tool_calls` format.
+*   **Features:** Includes support for streaming, cost tracking, fallbacks, load balancing, and caching.
+
+By running LiteLLM as a proxy server configured for Gemini, you create a `/chat/completions` endpoint that Agency Swarm *can technically connect to*, but Agency Swarm's reliance on the *Assistants API* remains the core challenge.
+
+### **3.2 OptiLLM Overview**
+
+**OptiLLM** ([Repo](https://github.com/codelion/optillm)) is an **optimizing inference proxy** designed to enhance the reasoning capabilities and performance of LLMs.
+
+**Key Features:**
+
+*   **Builds on LiteLLM:** OptiLLM **uses LiteLLM** internally to interact with various LLM providers. It acts as a layer *on top of* LiteLLM, inheriting its multi-provider support and translation capabilities.
+*   **Reasoning Enhancement:** Implements techniques like Chain-of-Thought (CoT) prompting and "Context-enhanced Paraphrased Outputs" (CePO) to improve LLM reasoning accuracy without needing fine-tuning.
+*   **OpenAI API Compatibility:** Like LiteLLM, OptiLLM exposes an OpenAI-compatible API endpoint (typically `/chat/completions`).
+*   **Performance Optimization:** Aims to reduce errors and improve the quality of LLM outputs for complex queries.
+
+OptiLLM provides the same level of OpenAI *Completions API* compatibility as LiteLLM, adding its optimization features, but still doesn't resolve the fundamental Agency Swarm dependency on the Assistants API.
+
+### **3.3 Using LiteLLM as a Proxy for Gemini**
+
+This sets up the necessary *Completions API endpoint* that mimics OpenAI.
+
+1.  **Installation:**
+    ```bash
+    pip install litellm "google-generativeai>=0.3.0" # Install litellm and the Gemini SDK
+    ```
+
+2.  **Configuration (`config.yaml`):** Create a configuration file to define your Gemini model and API key.
+
+    ```yaml
+    # config.yaml
+    model_list:
+      - model_name: gemini-proxy-alias # An alias Agency Swarm will use in the 'model' field
+        litellm_params:
+          model: gemini/gemini-1.5-pro-latest # Or gemini/gemini-1.5-flash-latest, etc.
+          api_key: os.environ/GOOGLE_API_KEY # Use environment variable
+
+    litellm_settings:
+      set_verbose: True # Optional: for debugging
+    ```
+    *Make sure the `GOOGLE_API_KEY` environment variable is set.*
+
+3.  **Run LiteLLM Proxy:** Start the proxy server from your terminal.
+
+    ```bash
+    litellm --config config.yaml --port 8000 # Or any other desired port
+    ```
+
+4.  **Testing the Proxy (Chat Completions):** You can test the proxy's `/chat/completions` endpoint using `curl` or Python's `requests`.
+
+    ```bash
+    curl -X POST http://localhost:8000/chat/completions \
+    -H "Content-Type: application/json" \
+    -d '{
+        "model": "gemini-proxy-alias",
+        "messages": [
+            {
+                "role": "user",
+                "content": "Hello, how are you?"
+            }
+        ]
+    }'
+    ```
+    *(Note: Testing `/assistants` or `/threads` endpoints against this proxy will likely result in `404 Not Found` errors.)*
+
+### **3.4 Using OptiLLM with LiteLLM for Gemini**
+
+OptiLLM wraps LiteLLM, providing the same proxy endpoint but with added optimizations.
+
+1.  **Installation:**
+    ```bash
+    pip install optillm litellm "google-generativeai>=0.3.0"
+    ```
+
+2.  **Configuration:** OptiLLM often uses environment variables or direct instantiation. Ensure `GOOGLE_API_KEY` is set. Configure OptiLLM to use the desired Gemini model (e.g., `export OPTILLM_MODEL=gemini/gemini-1.5-pro-latest`). Refer to OptiLLM's documentation for specific setup.
+
+3.  **Running OptiLLM:** Start the OptiLLM server (consult OptiLLM documentation for the exact command, it might be similar to `optillm --port 8080 --model gemini/gemini-1.5-pro-latest`).
+
+### **3.5 Adapting Agency Swarm to Use the Proxy (Partial)**
+
+This step allows Agency Swarm to *send requests* to the proxy, but **does not guarantee functionality** due to the Assistants API mismatch.
+
+1.  **Set OpenAI Base URL:** Configure Agency Swarm to target the proxy's Completions API endpoint.
+
+    *   Set the environment variable `OPENAI_API_BASE`:
+        ```bash
+        # Point to the proxy server URL (ensure '/v1' is included if required by the proxy)
+        export OPENAI_API_BASE="http://localhost:8000/v1"
+        ```
+    *   Alternatively, use `set_openai_client` in Python:
+        ```python
+        import openai
+        from agency_swarm import set_openai_client
+
+        # Ensure the URL matches your proxy and includes '/v1' if needed
+        client = openai.OpenAI(
+            base_url="http://localhost:8000/v1",
+            api_key="dummy-key" # API key often not needed for local proxy
+        )
+        set_openai_client(client)
+        ```
+
+2.  **Specify Model Name:** In your Agency Swarm agent definitions, use the `model_name` alias you defined in the LiteLLM `config.yaml` (e.g., `gemini-proxy-alias`) or the model name configured in OptiLLM.
+
+    ```python
+    from agency_swarm.agents import Agent
+
+    class MyGeminiAgent(Agent):
+        def __init__(self):
+            super().__init__(
+                name="MyGeminiAgent",
+                description="Attempting to use Gemini via LiteLLM proxy.",
+                instructions="Follow these instructions carefully...",
+                model="gemini-proxy-alias", # Use the alias from LiteLLM config
+                # tools=[...],
+                # openai_api_key="dummy-key" # Usually set via set_openai_client
+            )
+        # >>>>> WARNING: Calling agency.py or agent.init_oai() on this agent
+        # >>>>>          will likely FAIL with a 404 error due to Assistants API calls.
+    ```
+
+3.  **Function Calling Translation:** Rely on LiteLLM (used by both itself and OptiLLM) to handle the translation between OpenAI's tool format and Gemini's function calling format. **Testing this specific interaction thoroughly is critical.**
+
+**Outcome:** Setting the `OPENAI_API_BASE` directs Agency Swarm's API calls to the proxy. However, the initial `agent.init_oai()` call attempting to use `client.beta.assistants.create` will likely still fail with a `404 Not Found` error, preventing the standard agent setup. Any subsequent attempt to use the agent would depend on bypassing or successfully navigating this initialization failure and Agency Swarm's ability to function using only Completions API calls for its core loop.
+
+---
+
+## **4. Creating Gemini-Specific MCPs (MCP Python SDK)**
+
+While Gemini doesn't natively *speak* MCP, you can create **MCP servers** that act as intermediaries, exposing functionalities powered by the Gemini API through the standardized MCP protocol. This allows frameworks or clients that *do* understand MCP (or custom tools within Agency Swarm designed to talk MCP) to leverage Gemini's capabilities in a structured way. The **MCP Python SDK** ([Repo](https://github.com/modelcontextprotocol/python-sdk), [Docs](https://modelcontextprotocol.io/introduction)) is the primary tool for this.
+
+This approach **bypasses the direct Gemini-Agency Swarm integration issues** by abstracting the Gemini interaction behind the MCP standard. Agency Swarm interacts with a standard `BaseTool` which acts as an MCP client.
+
+### **4.1 MCP Python SDK Overview**
+
+The SDK provides libraries and utilities to:
+
+*   **Build MCP Servers:** Create servers that host tools and resources, handle client connections (usually via WebSockets), and respond to MCP JSON-RPC requests.
+*   **Build MCP Clients:** Create clients that can connect to MCP servers, discover available tools/resources, and make calls (e.g., `callTool`, `getResource`).
+*   **Define Tools/Resources:** Use Python classes and decorators to easily define the tools and resources your MCP server will offer.
+
+**Installation:**
+```bash
+pip install "mcp[cli]" google-generativeai # Install MCP SDK and Gemini SDK
+```
+
+### **4.2 Building an MCP Server for Gemini**
+
+The core idea is to build a standard MCP server, but within the implementation of the server's *tools*, you call the Google Gemini API.
+
+**Steps:**
+
+1.  **Import necessary libraries:** `mcp`, `google.generativeai`, `asyncio`, etc.
+2.  **Configure Gemini:** Set up your Gemini API key.
+3.  **Define MCP Tools:** Use the `@tool` decorator from `mcp.tools.tool` to define functions.
+4.  **Implement Tool Logic using Gemini:** Inside the decorated functions, use the `google.generativeai` SDK to interact with the Gemini model (e.g., `model.generate_content`).
+5.  **Create and Run the Server:** Instantiate an `mcp.server.Server` and run it.
+
+**Example: MCP Server with a Gemini Summarization Tool**
+
+```python
+import asyncio
+import os
+import google.generativeai as genai
+from mcp.server.server import Server
+from mcp.model.tool import tool, Parameter, Returns
+from mcp.model.resource import resource
+from mcp.common.config import Config
+from typing import Annotated
+
+# --- Configure Gemini ---
+try:
+    # Ensure GOOGLE_API_KEY is set in your environment variables
+    gemini_api_key = os.environ['GOOGLE_API_KEY']
+    genai.configure(api_key=gemini_api_key)
+    gemini_model = genai.GenerativeModel('gemini-1.5-flash') # Or 1.5-pro etc.
+    print("Gemini configured successfully.")
+except KeyError:
+    print("ERROR: GOOGLE_API_KEY environment variable not set.")
+    exit(1)
+except Exception as e:
+    print(f"ERROR configuring Gemini: {e}")
+    exit(1)
+
+# --- Define MCP Tool using Gemini ---
+@tool(
+    name="summarize_text_with_gemini",
+    description="Summarizes the provided text using Google Gemini.",

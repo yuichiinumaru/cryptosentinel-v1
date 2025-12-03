@@ -1,0 +1,328 @@
+LLM: OpenAI API (modelo: gpt-3.5-turbo-1106 ou gpt-4-turbo-preview - a definir).
+
+Bibliotecas Python: agency-swarm, web3, pycoingecko, python-telegram-bot, apscheduler, pydantic, requests, sqlite3, asyncio, chromadb, langchain (futuro), tenacity, eth_account, ccxt (futuro).
+
+Diagrama de Arquitetura (Mermaid):
+
+graph LR
+    subgraph DeepTrader [Agency Swarm]
+        MA[MarketAnalyst]
+        T[Trader]
+        PM[PortfolioManager]
+        DM[DeepTraderManager]
+        LC[LearningCoordinator]
+
+        MA -- FetchMarketData --> CG[(CoinGecko API)]
+        MA -- CheckTokenSecurity --> GP[(GoPlus/Rugcheck API)]
+        MA -- CheckTokenSecurity --> B((Blockchain Node))
+        MA -- ConsultKnowledgeBase --> KB[(Knowledge Base - ChromaDB)]
+        MA -- Trade Recommendation --> DM
+        DM -- Trade Approval --> T
+        T -- ExecuteSwap --> DEX[(DEX Contracts)]
+        T -- GetPortfolio --> DB[(SQLite Database)]
+        T -- GetAccountBalance --> B
+        T -- Portfolio Update --> PM
+        PM -- Portfolio Data --> DM
+        PM -- Risk Report --> DM
+        LC -- Performance Data --> DB
+        LC -- Strategy Adjustment --> MA
+        LC -- Strategy Adjustment --> DM
+    end
+
+    B -- Blockchain Data --> MA
+    B -- Blockchain Data --> T
+    B -- Blockchain Data --> PM
+    CG -- Market Data --> MA
+    GP -- Security Data --> MA
+    DEX -- Trade Execution --> T
+    DB -- Historical Data --> LC
+
+    classDef agent fill:#f9f,stroke:#333,stroke-width:2px;
+    classDef tool fill:#ccf,stroke:#333,stroke-width:2px;
+    classDef external fill:#eee,stroke:#333,stroke-width:1px;
+
+    class MA,T,PM,DM,LC agent;
+    class FetchMarketData,CheckTokenSecurity,ExecuteSwap,GetPortfolio,GetAccountBalance,ConsultKnowledgeBase tool;
+    class CG,GP,DEX,DB,B external;
+Use code with caution.
+Mermaid
+Fluxo de Dados e Decisão (Detalhado):
+
+Agendamento: O AsyncIOScheduler dispara a tarefa check_market_conditions a cada X minutos (configurável, 5 minutos no MVP).
+
+Análise de Mercado (MarketAnalyst):
+
+MarketAnalyst é ativado pela tarefa agendada.
+
+MarketAnalyst chama a Tool FetchMarketData para obter os dados mais recentes de mercado da CoinGecko API (preços, volumes, etc., para uma lista pré-definida de tokens ou todos os tokens de determinadas chains - a definir). A Tool retorna um objeto FetchMarketDataOutput.
+
+MarketAnalyst chama a Tool CheckTokenSecurity para cada token obtido, verificando sua segurança (rug pull, honeypot, etc.). A Tool retorna um objeto CheckTokenSecurityOutput.
+
+MarketAnalyst filtra os tokens, removendo aqueles que falharam na verificação de segurança.
+
+Para os tokens restantes, MarketAnalyst calcula indicadores técnicos (inicialmente, apenas RSI). Nota: A Tool CalculateTechnicalIndicator ainda não foi detalhada, mas o MVP pode começar com o cálculo do RSI dentro do próprio agente, usando bibliotecas como TA-Lib ou pandas-ta.
+
+Usando os dados de mercado, os indicadores técnicos e o seu prompt (que inclui a estratégia de trading inicial), a LLM do MarketAnalyst raciocina (CoT) e decide se deve recomendar a compra, venda ou manutenção de cada token.
+
+Para cada recomendação, o MarketAnalyst cria uma mensagem do tipo TradeRecommendation (definida em protocol.py) contendo:
+
+header: Informações do cabeçalho (remetente, destinatário, timestamp, ID da mensagem).
+
+body:
+
+token_address: Endereço do contrato do token.
+
+chain: Blockchain do token.
+
+action: "buy" ou "sell".
+
+amount: Quantidade a ser negociada (a ser definida - pode ser um valor fixo em USD, um percentual do portfólio, ou calculado dinamicamente).
+
+confidence: Nível de confiança da LLM na recomendação (0.0 a 1.0).
+
+reasoning: Explicação detalhada do raciocínio (CoT) que levou à recomendação (ex: "RSI abaixo de 30 indica que o token está sobrevendido...").
+
+MarketAnalyst envia as mensagens TradeRecommendation para o DeepTraderManager.
+
+Gestão de Risco e Aprovação (DeepTraderManager):
+
+DeepTraderManager recebe as mensagens TradeRecommendation do MarketAnalyst.
+
+Para cada recomendação, DeepTraderManager:
+
+Verifica se o trade proposto viola alguma regra de risco (ex: risco máximo por trade, limite de perda diária).
+
+Verifica se o token já não está na blacklist.
+
+Consulta o saldo da hot wallet (via GetAccountBalance) para garantir que há fundos suficientes.
+
+Opcionalmente, consulta o PortfolioManager para obter informações adicionais sobre o risco do portfólio.
+
+Com base nessa análise, DeepTraderManager decide se aprova ou rejeita o trade.
+
+DeepTraderManager envia uma mensagem de TradeApprovalResponse de volta para o Trader, indicando o resultado (aprovado/rejeitado) e o motivo (se rejeitado).
+
+Execução do Trade (Trader):
+
+Trader recebe as mensagens TradeApprovalResponse do DeepTraderManager.
+
+Se o trade for aprovado, Trader:
+
+Chama a Tool ExecuteSwap para executar o trade na DEX apropriada (Uniswap, PancakeSwap, etc.).
+
+A Tool ExecuteSwap constrói a transação de swap, incluindo proteção contra slippage (parâmetro minAmountOut).
+
+A Tool ExecuteSwap usa o WalletManager para assinar a transação com a chave privada da hot wallet.
+
+A Tool ExecuteSwap simula a transação usando web3.eth.call antes de enviá-la, para detecção de sandwich attacks.
+
+A Tool ExecuteSwap envia a transação para a blockchain (inicialmente via Flashbots Protect RPC para proteção MEV).
+
+A Tool ExecuteSwap espera pela confirmação da transação.
+
+Após a execução bem-sucedida do trade, Trader:
+
+Chama a Tool Database (ou métodos específicos) para registrar a transação no banco de dados (tabela transactions).
+
+Envia uma mensagem de PortfolioUpdate para o PortfolioManager, informando sobre a transação executada.
+
+Atualização do Portfólio (PortfolioManager):
+
+PortfolioManager recebe as mensagens PortfolioUpdate do Trader.
+
+PortfolioManager atualiza o estado do portfólio no banco de dados (tabela portfolio), refletindo a nova posição (token, quantidade, preço médio de entrada).
+
+PortfolioManager recalcula as métricas de desempenho do portfólio (valor total, ROI, etc.). Nota: As métricas de risco (volatilidade, VaR, drawdown) podem ser calculadas periodicamente ou sob demanda, dependendo da complexidade.
+
+PortfolioManager gera relatórios de risco periodicamente (ex: diariamente) e os envia para o DeepTraderManager (isso pode ser feito via mensagem ou via uma Tool GetRiskReport).
+
+Aprendizado Contínuo (LearningCoordinator - Futuro):
+
+O LearningCoordinator (a ser implementado em versões futuras) analisará periodicamente o histórico de trades (do banco de dados), o desempenho do portfólio e as decisões dos agentes para identificar padrões, pontos fortes e fracos.
+
+O LearningCoordinator poderá ajustar as estratégias dos agentes (modificando seus prompts), os parâmetros das Tools, ou recomendar novas Tools ou fontes de dados.
+
+continue
+
+49.0s
+continue
+
+Ok, continuando a documentação detalhada do DeepTrader MVP. Agora vamos abordar os Agentes e suas Ferramentas (Tools), com foco em exemplos de código e refinamentos nos prompts.
+
+2. Agentes e suas Ferramentas (Tools) - Detalhes de Implementação
+
+2.1. Agentes Especializados - Refinamentos e Exemplos
+
+2.1.1. MarketAnalyst (Analista de Mercado) - Refinado
+
+Prompt (Refinado):
+
+Você é um analista de mercado de criptomoedas experiente, diligente e *extremamente* focado em segurança. Sua *única* responsabilidade é identificar oportunidades de trading (compra e venda) que sejam, ao mesmo tempo, *lucrativas* e *seguras*. Siga rigorosamente estas diretrizes:
+
+1. **Análise Abrangente:** Utilize *todas* as ferramentas disponíveis para obter uma visão *completa* do mercado.
+    *   `FetchMarketData`: Obtenha dados de preço, volume e, *se disponível*, dados históricos RECENTES (últimas 24h).
+    *   `CheckTokenSecurity`: Verifique a segurança de *cada token* antes de considerá-lo para trading. *NUNCA* recomende um token sem essa verificação.
+    *   `CalculateTechnicalIndicator` (Quando implementada): Calcule indicadores técnicos relevantes (inicialmente, apenas RSI).
+
+2. **Estratégia Inicial (MVP):**
+    *   **RSI (Índice de Força Relativa):**
+        *   Calcule o RSI de 14 períodos usando os dados históricos de preço (se disponíveis).
+        *   Se o RSI estiver *abaixo de 30* (sobrevendido), considere uma recomendação de *COMPRA*.
+        *   Se o RSI estiver *acima de 70* (sobrecomprado), considere uma recomendação de *VENDA*.
+    *   **Foco em Tokens de Alta Capitalização:** No MVP, concentre-se em tokens que estejam *consistentemente* entre os 50 maiores por capitalização de mercado (segundo a CoinGecko). Isso reduz o risco de manipulação e aumenta a liquidez.
+
+3. **Verificação de Segurança (Absolutamente Obrigatória):**
+    *   Use `CheckTokenSecurity` para *cada* token.
+    *   *NUNCA* recomende um token que:
+        *   Tenha uma pontuação de segurança *baixa* (definir um limite mínimo, ex: 85/100 no Rugcheck.xyz, se usado).
+        *   Seja um *potencial honeypot* ou tenha *outras flags de segurança* levantadas pela `CheckTokenSecurity`.
+        *   Esteja em uma *blacklist* de tokens ou desenvolvedores.
+        * *Se a ferramenta CheckTokenSecurity retornar erro, o token deve ser sumariamente desconsiderado sem análise adicional*.
+
+4. **Geração de Recomendações (Formato JSON - Pydantic):**
+    *   Suas recomendações *DEVEM* ser formatadas como um objeto JSON válido, seguindo *estritamente* o schema Pydantic definido na classe `TradeRecommendation` (em `protocol.py`).
+    *   **Campos Obrigatórios:**
+        *   `header`: Cabeçalho padrão (preenchido automaticamente).
+        *   `token_address`: Endereço *completo* do contrato do token.
+        *   `chain`: Nome da blockchain (ex: "ethereum", "bsc").
+        *   `action`: "buy" ou "sell".
+        *   `amount`: Quantidade a ser negociada (em *ETH* ou outra moeda base - a ser definido). *NÃO* use porcentagens aqui.
+        *   `confidence`: Nível de confiança na recomendação (0.0 a 1.0).
+        *   `reasoning`: Explicação *detalhada e passo a passo* (Chain of Thought) do seu raciocínio. *SEJA EXPLÍCITO*.
+
+5. **Chain of Thought (Obrigatório):**
+    *   Em *todas* as recomendações, explique *detalhadamente* o seu processo de raciocínio, passo a passo.
+    *   Cite os *dados específicos* (preços, volumes, indicadores) que você usou e *como* você os interpretou.
+    *   Mencione *explicitamente* os resultados da verificação de segurança.
+    *   Justifique *por que* você escolheu a ação ("buy" ou "sell") e o *nível de confiança*.
+    *   Exemplo (dentro do JSON):  `"reasoning": "O RSI de 14 períodos do token ABC está em 25 (abaixo de 30), indicando que ele está sobrevendido. O volume nas últimas 24h aumentou em 15%, sugerindo um possível interesse de compra.  A verificação de segurança (CheckTokenSecurity) retornou um score de 92 e não identificou flags de risco.  Portanto, recomendo COMPRAR com confiança de 0.8."`
+
+6. **Comunicação com DeepTraderManager:**
+    *   Envie *todas* as recomendações para o `DeepTraderManager` em formato JSON.
+    *   *Não* envie recomendações diretamente para o `Trader`.
+    *   *Aguarde* a resposta do `DeepTraderManager` antes de enviar novas recomendações (para evitar conflitos).
+
+7. **Instruções Negativas:**
+    *   *NUNCA* recomende um token sem verificar sua segurança.
+    *   *NUNCA* recomende um token com baixa liquidez ou volume de negociação insignificante.
+    *   *NUNCA* use informações de fontes não confiáveis.
+    *   *NUNCA* viole as regras de risco estabelecidas pelo `DeepTraderManager`.
+
+Lembre-se: Você é os OLHOS e o CÉREBRO da equipe.  A qualidade e a segurança das suas análises são *absolutamente cruciais* para o sucesso do DeepTrader.
+Use code with caution.
+Exemplo de Mensagem (TradeRecommendation - enviada para o DeepTraderManager):
+
+{
+  "header": {
+    "sender": "MarketAnalyst",
+    "recipient": "DeepTraderManager",
+    "timestamp": "2024-03-12T14:35:00Z",
+    "message_id": "a1b2c3d4-e5f6-7890-1234-567890abcdef",
+    "priority": "high"
+  },
+  "body": {
+    "type": "trade_recommendation",
+    "content": {
+      "token_address": "0x1234567890abcdef1234567890abcdef12345678",
+      "chain": "ethereum",
+      "action": "buy",
+      "amount": 0.05,
+      "confidence": 0.85,
+      "reasoning": "O RSI de 14 períodos do token ABC está em 25 (abaixo de 30), indicando que ele está sobrevendido. O volume nas últimas 24h aumentou em 15%, sugerindo um possível interesse de compra. A verificação de segurança (CheckTokenSecurity) retornou um score de 92 e não identificou flags de risco. Portanto, recomendo COMPRAR com confiança de 0.8."
+    },
+    "context": {}
+  }
+}
+Use code with caution.
+Json
+2.1.2. Trader (Executor de Trades) - Refinado
+
+Prompt (Refinado):
+
+Você é um trader de criptomoedas *extremamente preciso, eficiente e confiável*. Sua *única* função é executar as ordens de compra e venda aprovadas pelo DeepTraderManager na DEX especificada, com *absoluta segurança e o menor slippage possível*.
+
+Siga estas diretrizes *rigorosamente*:
+
+1. **Aprovação Obrigatória:** *NUNCA* execute um trade sem receber uma mensagem de `TradeApprovalResponse` com `approved: true` do `DeepTraderManager`.  Qualquer outra mensagem, ou a falta de mensagem, significa que o trade *NÃO* deve ser executado.
+
+2. **Execução Precisa:** Use a ferramenta `ExecuteSwap` para executar os trades *exatamente* como especificado na mensagem de aprovação. *NÃO* faça modificações ou "arredondamentos".  Preste atenção a *todos* os detalhes:
+    *   `token_address`: Endereço do token.
+    *   `chain`: Blockchain.
+    *   `action`: "buy" ou "sell".
+    *   `amount`: Quantidade *exata* a ser negociada.
+    *   `dex`: DEX a ser usada (Uniswap, PancakeSwap, etc. - a ser implementado).
+
+3. **Proteção contra Slippage (Obrigatória):**
+    *   Ao usar a `ExecuteSwap`, calcule o `min_amount_out` (quantidade mínima de tokens a receber) com base no preço atual e em um *slippage máximo permitido* (ex: 1%).  *NUNCA* execute um trade sem definir um `min_amount_out` adequado.
+    *   Se a simulação da transação (`eth_call`) indicar um slippage maior que o permitido, *NÃO* execute o trade e informe o `DeepTraderManager`.
+
+4. **Confirmação de Transação (Obrigatória):**
+    *   Após enviar uma transação, *sempre espere pela confirmação* da transação na blockchain (usando `web3.eth.wait_for_transaction_receipt`).
+    *   *Registre o hash da transação* (e todos os detalhes relevantes do trade) no banco de dados.
+
+5. **Revogação de Aprovações (Obrigatória):**
+    *   *Após cada trade* (compra ou venda), *imediatamente revogue a aprovação* do token para o contrato da DEX (set allowance to zero). Isso é uma *medida de segurança crítica*.
+
+6. **Atualização do Portfólio (Obrigatória):**
+    *   Após *cada trade confirmado*, envie uma mensagem de `PortfolioUpdate` para o `PortfolioManager`, informando os detalhes da transação.
+
+7. **Verificação de Saldo (Obrigatória):**
+    *   *Antes de cada trade*, verifique se a *hot wallet* tem saldo suficiente (em ETH/BNB/etc.) para pagar pelo trade *e* pelas taxas de gás.
+    *   Use a ferramenta `GetAccountBalance` para isso.
+    *   *NÃO* execute o trade se o saldo for insuficiente.
+
+8. **Comunicação com o DeepTraderManager:**
+    *   Responda *imediatamente* a todas as mensagens de `TradeApprovalRequest` com uma mensagem de `TradeApprovalResponse`, indicando se o trade foi aprovado (e executado) ou rejeitado (e o motivo).
+    *   Reporte *imediatamente* qualquer erro ou problema ao `DeepTraderManager`.
+
+9. **Instruções Negativas:**
+    *   *NUNCA* execute um trade sem aprovação explícita do `DeepTraderManager`.
+    *   *NUNCA* execute um trade com slippage maior do que o permitido.
+    *   *NUNCA* deixe aprovações de token ativas após um trade.
+    *   *NUNCA* use a cold wallet para trading.
+    *   *NUNCA* assuma que uma transação foi bem-sucedida sem *confirmação*.
+
+Lembre-se: Você é o responsável pela *execução segura e eficiente* dos trades.  Qualquer erro ou negligência pode resultar em *perda de capital*.  Sua precisão, velocidade e atenção aos detalhes são *absolutamente cruciais*.
+Use code with caution.
+Exemplo de Mensagem (TradeApprovalResponse - enviada para o DeepTraderManager):
+
+{
+  "header": {
+    "sender": "Trader",
+    "recipient": "DeepTraderManager",
+    "timestamp": "2024-03-12T14:40:00Z",
+    "message_id": "b4c5d6e7-f890-1234-5678-90abcdef1234",
+    "priority": "high"
+  },
+  "body": {
+    "type": "trade_approval_response",
+    "content": {
+      "trade_id": "a1b2c3d4-e5f6-7890-1234-567890abcdef",
+      "approved": true,
+      "reason": null,
+      "tx_hash": "0x..."
+    },
+    "context": {}
+  }
+}
+Use code with caution.
+Json
+2.1.3. DeepTraderManager (Gerente da Equipe) - Refinado
+
+Prompt (Refinado):
+
+Você é o DeepTraderManager, o cérebro e o guardião do sistema de trading autônomo DeepTrader. Sua responsabilidade é *dupla*: 1) garantir que a equipe de agentes (MarketAnalyst, Trader, PortfolioManager) trabalhe de forma *coordenada e eficiente* para *maximizar o valor do portfólio*, e 2) *proteger o capital* do sistema, impondo *regras de risco rigorosas* e *bloqueando* qualquer atividade suspeita ou perigosa.
+
+Siga estas diretrizes *IMPERATIVAMENTE*:
+
+1. **Gestão da Equipe:**
+    *   *Coordene* as atividades dos agentes, garantindo que eles tenham as informações e os recursos necessários para desempenhar suas funções.
+    *   *Resolva conflitos* entre os agentes, se surgirem (ex: MarketAnalyst recomendando compra e PortfolioManager alertando sobre risco excessivo).
+    *   *Delegue tarefas* de forma clara e eficiente, utilizando o protocolo de mensagens definido.
+
+2. **Definição de Metas e Estratégias (Longo Prazo):**
+    *   Defina *metas de desempenho* de longo prazo para o DeepTrader (ex: crescimento do portfólio em X% ao mês).
+    *   Estabeleça *estratégias de trading de alto nível* (ex: foco em tokens de alta capitalização, diversificação, etc.) e comunique-as ao `MarketAnalyst`.
+    *   *Adapte* as estratégias com base no desempenho do sistema e nas mudanças do mercado.
+
+3. **Gestão de Risco (Absolutamente Crítica):**

@@ -1,0 +1,493 @@
+**P: Tools não são reconhecidas pelos agentes**
+R: Verifique:
+1. Se a tool herda corretamente de `BaseTool`
+2. Se todos os campos obrigatórios têm `Field(...)`
+3. Se a tool está incluída na lista de tools do agente
+```python
+# Exemplo de correção
+from pydantic import Field
+
+class MyTool(BaseTool):
+    required_param: str = Field(..., description="Required parameter")
+    optional_param: str = Field("default", description="Optional parameter")
+```
+
+**P: Agentes não se comunicam corretamente**
+R: Verifique:
+1. Se o `agency_chart` está configurado corretamente
+2. Se os agentes têm as permissões necessárias
+```python
+# Exemplo de agency_chart correto
+agency = Agency(
+    agency_chart=[
+        ceo,
+        [ceo, researcher],  # CEO pode falar com researcher
+        [researcher, ceo]   # researcher pode responder ao CEO
+    ]
+)
+```
+
+### 2. Melhores Práticas
+
+#### 2.1 Desenvolvimento
+- Use controle de versão (Git) desde o início
+- Mantenha um arquivo de requisitos atualizado
+- Documente todas as tools e agentes
+- Implemente logging adequado
+- Escreva testes unitários
+
+#### 2.2 Deployment
+- Use Docker para containerização
+- Configure monitoramento
+- Implemente rate limiting
+- Faça backup das configurações
+- Mantenha logs de produção
+
+#### 2.3 Manutenção
+- Atualize dependências regularmente
+- Monitore uso de recursos
+- Faça backup de dados importantes
+- Mantenha documentação atualizada
+- Revise logs periodicamente
+
+### 3. Recursos Adicionais
+
+#### 3.1 Documentação
+- [Agency Swarm Docs](https://github.com/VRSEN/agency-swarm)
+- [LiteLLM Docs](https://docs.litellm.ai/)
+- [Gemini API Docs](https://ai.google.dev/docs)
+- [MCP Protocol Docs](https://modelcontextprotocol.io/)
+
+#### 3.2 Comunidade
+- GitHub Issues
+- Discord Server
+- Stack Overflow Tags
+
+#### 3.3 Exemplos e Templates
+- Repositório de exemplos
+- Templates de projetos
+- Casos de uso comuns
+
+## Exemplos Completos
+
+### 1. Agência de Análise de Dados
+
+#### 1.1 Estrutura do Projeto
+```
+data_analysis_agency/
+├── .env
+├── requirements.txt
+├── src/
+│   ├── __init__.py
+│   ├── agents/
+│   │   ├── __init__.py
+│   │   ├── ceo.py
+│   │   ├── analyst.py
+│   │   └── reporter.py
+│   ├── tools/
+│   │   ├── __init__.py
+│   │   ├── data_loader.py
+│   │   ├── analysis.py
+│   │   └── visualization.py
+│   └── mcp/
+│       ├── __init__.py
+│       └── data_providers.py
+└── data/
+    └── sample_dataset.csv
+```
+
+#### 1.2 Implementação
+```python
+# src/tools/data_loader.py
+from agency_swarm.tools import BaseTool
+from pydantic import Field
+import pandas as pd
+
+class DataLoaderTool(BaseTool):
+    """Carrega dados de um arquivo CSV."""
+
+    file_path: str = Field(..., description="Caminho para o arquivo CSV")
+
+    def run(self):
+        try:
+            df = pd.read_csv(self.file_path)
+            return f"Dados carregados: {len(df)} linhas, {len(df.columns)} colunas"
+        except Exception as e:
+            return f"Erro ao carregar dados: {e}"
+
+# src/tools/analysis.py
+class DataAnalysisTool(BaseTool):
+    """Realiza análise estatística dos dados."""
+
+    operation: str = Field(..., description="Operação de análise (describe, correlation)")
+    columns: List[str] = Field(default=None, description="Colunas para análise")
+
+    def run(self):
+        try:
+            df = pd.read_csv("data/sample_dataset.csv")
+            if self.columns:
+                df = df[self.columns]
+
+            if self.operation == "describe":
+                return df.describe().to_string()
+            elif self.operation == "correlation":
+                return df.corr().to_string()
+
+            return "Operação não suportada"
+        except Exception as e:
+            return f"Erro na análise: {e}"
+
+# src/agents/ceo.py
+from agency_swarm import Agent
+
+ceo = Agent(
+    name="CEO",
+    description="Coordenador da análise de dados",
+    instructions="""
+    Você é o CEO da agência de análise de dados.
+    Suas responsabilidades:
+    1. Coordenar a equipe de análise
+    2. Definir objetivos de análise
+    3. Revisar resultados
+    """,
+    model="gemini/gemini-pro",
+    tools=[DataLoaderTool]
+)
+
+# src/agents/analyst.py
+analyst = Agent(
+    name="Analyst",
+    description="Analista de dados principal",
+    instructions="""
+    Você é o analista principal.
+    Suas responsabilidades:
+    1. Realizar análises estatísticas
+    2. Identificar padrões
+    3. Gerar insights
+    """,
+    model="gemini/gemini-pro",
+    tools=[DataLoaderTool, DataAnalysisTool]
+)
+
+# src/agents/reporter.py
+reporter = Agent(
+    name="Reporter",
+    description="Gerador de relatórios",
+    instructions="""
+    Você é o responsável por relatórios.
+    Suas responsabilidades:
+    1. Criar relatórios claros
+    2. Visualizar dados
+    3. Comunicar resultados
+    """,
+    model="gemini/gemini-pro",
+    tools=[DataAnalysisTool]
+)
+
+# Configuração da Agência
+from agency_swarm import Agency
+
+agency = Agency(
+    agency_chart=[
+        ceo,
+        [ceo, analyst],
+        [analyst, reporter],
+        [reporter, ceo]
+    ],
+    shared_instructions="""
+    Objetivo: Analisar dados e gerar insights valiosos.
+    Fluxo de trabalho:
+    1. CEO define objetivos
+    2. Analyst realiza análises
+    3. Reporter cria relatórios
+    4. CEO revisa e aprova
+    """
+)
+
+# Exemplo de uso
+response = agency.get_completion(
+    "Analise o dataset sample_dataset.csv e prepare um relatório com estatísticas descritivas",
+    yield_messages=True
+)
+
+for message in response:
+    print(f"{message.agent_name}: {message.content}")
+```
+
+### 2. Agência de Pesquisa com MCP
+
+#### 2.1 Estrutura do Projeto
+```
+research_agency/
+├── .env
+├── requirements.txt
+├── src/
+│   ├── __init__.py
+│   ├── agents/
+│   │   ├── __init__.py
+│   │   ├── coordinator.py
+│   │   └── researcher.py
+│   ├── tools/
+│   │   ├── __init__.py
+│   │   ├── search.py
+│   │   └── summarize.py
+│   └── mcp/
+│       ├── __init__.py
+│       ├── client.py
+│       └── providers.py
+└── results/
+    └── research_outputs/
+```
+
+#### 2.2 Implementação
+```python
+# src/mcp/client.py
+from modelcontextprotocol.client import MCPClient
+from functools import lru_cache
+
+class ResearchMCPClient:
+    def __init__(self, server_url: str):
+        self.server_url = server_url
+        self._client = None
+
+    async def get_client(self):
+        if not self._client:
+            self._client = MCPClient(self.server_url)
+            await self._client.connect()
+        return self._client
+
+    @lru_cache(maxsize=100)
+    async def search(self, query: str) -> str:
+        client = await self.get_client()
+        result = await client.execute_tool(
+            "web_search",
+            {"query": query}
+        )
+        return result
+
+# src/tools/search.py
+from agency_swarm.tools import BaseTool
+from pydantic import Field
+from ..mcp.client import ResearchMCPClient
+
+class WebSearchTool(BaseTool):
+    """Realiza buscas na web usando MCP."""
+
+    query: str = Field(..., description="Termo de busca")
+
+    async def run(self):
+        client = ResearchMCPClient("http://localhost:8080")
+        try:
+            result = await client.search(self.query)
+            return f"Resultados da busca: {result}"
+        except Exception as e:
+            return f"Erro na busca: {e}"
+
+# src/agents/coordinator.py
+coordinator = Agent(
+    name="Coordinator",
+    description="Coordenador de pesquisa",
+    instructions="""
+    Você é o coordenador de pesquisa.
+    Suas responsabilidades:
+    1. Definir tópicos de pesquisa
+    2. Distribuir tarefas
+    3. Revisar resultados
+    """,
+    model="gemini/gemini-pro",
+    tools=[WebSearchTool]
+)
+
+# src/agents/researcher.py
+researcher = Agent(
+    name="Researcher",
+    description="Pesquisador principal",
+    instructions="""
+    Você é o pesquisador principal.
+    Suas responsabilidades:
+    1. Realizar pesquisas detalhadas
+    2. Analisar fontes
+    3. Sintetizar informações
+    """,
+    model="gemini/gemini-pro",
+    tools=[WebSearchTool]
+)
+
+# Configuração da Agência
+agency = Agency(
+    agency_chart=[
+        coordinator,
+        [coordinator, researcher]
+    ],
+    shared_instructions="""
+    Objetivo: Realizar pesquisas abrangentes e precisas.
+    Processo:
+    1. Coordinator define escopo
+    2. Researcher executa pesquisa
+    3. Coordinator revisa e finaliza
+    """
+)
+
+# Exemplo de uso
+async def run_research():
+    async for message in agency.get_completion_stream(
+        "Pesquise sobre avanços recentes em IA generativa"
+    ):
+        print(f"{message.agent_name}: {message.content}")
+
+import asyncio
+asyncio.run(run_research())
+```
+
+## Recursos Adicionais
+
+### 1. Templates e Boilerplates
+
+#### 1.1 Template Básico de Agência
+```python
+# template_agency.py
+from agency_swarm import Agency, Agent, BaseTool
+from pydantic import Field
+
+# Definir tools básicas
+class BasicTool(BaseTool):
+    """Tool template."""
+    param: str = Field(..., description="Parameter description")
+
+    def run(self):
+        return f"Processed: {self.param}"
+
+# Definir agentes
+main_agent = Agent(
+    name="MainAgent",
+    description="Main agent description",
+    instructions="Main agent instructions",
+    model="gemini/gemini-pro",
+    tools=[BasicTool]
+)
+
+support_agent = Agent(
+    name="SupportAgent",
+    description="Support agent description",
+    instructions="Support agent instructions",
+    model="gemini/gemini-pro",
+    tools=[BasicTool]
+)
+
+# Configurar agência
+agency = Agency(
+    agency_chart=[
+        main_agent,
+        [main_agent, support_agent]
+    ],
+    shared_instructions="Shared agency instructions"
+)
+```
+
+#### 1.2 Template de MCP Server
+```python
+# template_mcp_server.py
+from modelcontextprotocol.server import MCPApplication
+from modelcontextprotocol.providers import ResourceProvider, ToolProvider
+
+class TemplateResourceProvider(ResourceProvider):
+    async def list_resources(self):
+        return [
+            {
+                "id": "template",
+                "type": "template",
+                "description": "Template resource"
+            }
+        ]
+
+    async def get_resource_content(self, resource_id: str):
+        return "Template content"
+
+class TemplateToolProvider(ToolProvider):
+    async def list_tools(self) -> List[Dict[str, Any]]:
+        return [
+            {
+                "name": "template_tool",
+                "description": "Template tool",
+                "parameters": {
+                    "param": {
+                        "type": "string",
+                        "description": "Parameter"
+                    }
+                }
+            }
+        ]
+
+    async def execute_tool(self, tool_name: str, parameters: dict):
+        return f"Executed {tool_name} with {parameters}"
+
+app = MCPApplication(
+    resource_providers=[TemplateResourceProvider()],
+    tool_providers=[TemplateToolProvider()]
+)
+```
+
+### 2. Recursos de Aprendizado
+
+#### 2.1 Tutoriais
+1. [Introdução ao Agency Swarm](https://github.com/VRSEN/agency-swarm#readme)
+2. [Guia de Function Calling com LiteLLM](https://docs.litellm.ai/docs/completion/function_call)
+3. [MCP Protocol Tutorial](https://modelcontextprotocol.io/tutorial)
+
+
+
+
+# **gemini.md - Developer Guide: Integrating Gemini 2.5 Pro with Agency Swarm**
+
+**(Updated based on Analysis)**
+
+## **1. Introduction and Framework Comparison**
+
+This guide provides developers with a comprehensive understanding of how to effectively utilize Google Gemini 2.5 Pro within the Agency Swarm multi-agent framework. We will cover the differences between major LLM frameworks, detail Gemini's specific capabilities for tools and RAG/RAT, explain how to bridge compatibility gaps (including tool conversion), and outline integration strategies.
+
+**CRITICAL COMPATIBILITY NOTE:** Agency Swarm is fundamentally architected around the **stateful OpenAI Assistants API**. Google Gemini, even when accessed via compatibility layers like LiteLLM/OptiLLM, typically only exposes a **stateless Completions API**. This mismatch is the **primary challenge** for integration and means that core Agency Swarm features relying on the Assistants API (like managed state/threads, agent initialization via `assistants.create`, built-in tools) will **not function as designed** and may lead to errors or require significant workarounds. This guide outlines approaches, but full compatibility is not guaranteed.
+
+### **1.1 Gemini vs. OpenAI vs. Anthropic Differences**
+
+Understanding the distinct architectures of leading LLM providers is crucial for effective integration.
+
+*   **Google Gemini:**
+    *   **Tools/Functions:** Implements **Function Calling** via the core API (Gen AI SDK for Python, JS, Go), requiring developers to define function declarations using an OpenAPI subset. No built-in tools like OpenAI's Code Interpreter.
+    *   **Assistants API:** **No direct equivalent** to OpenAI's persistent Assistants API. State management and conversation history must be handled client-side or via frameworks like Agency Swarm (with adaptation). Vertex AI offers some agent-building capabilities, but differs from OpenAI's API structure.
+    *   **MCP Support:** Natively supports function calling, which can be used to interact with **Model Context Protocol (MCP)** servers. Community-driven MCP servers for Gemini exist. Requires explicit implementation on the client/framework side to call MCP servers.
+    *   **Key Strengths:** Strong **multimodal capabilities** (native image, audio, video), potentially large **context windows** (up to 2M tokens claimed for some models), deep integration with Google ecosystem, potentially **cost-effective** (TPU infrastructure).
+
+*   **OpenAI:**
+    *   **Tools/Functions:** Robust **Function Calling** integrated into Chat Completions and Assistants API. Offers **built-in tools** like Code Interpreter and File Search (Retrieval) within the Assistants API.
+    *   **Assistants API:** Provides a **managed, stateful environment** for creating persistent assistants, handling threads (conversation history), and tool execution orchestration. **Agency Swarm is built upon this API.**
+    *   **MCP Support:** Has adopted MCP support, integrating it into its Agents SDK, indicating a move towards standardization.
+    *   **Key Strengths:** Mature **Assistants API** simplifying stateful agent development, broad adoption, diverse model range.
+
+*   **Anthropic (Claude):**
+    *   **Tools/Functions:** Supports **Tool Use** (function calling) integrated into the Messages API, often praised for reliable structured output. Offers specific optimizations like token-efficient tool use.
+    *   **Assistants API:** **No direct equivalent.** Tool use is managed within the standard API request/response cycle.
+    *   **MCP Support:** **Inventor and strong advocate** of MCP, integrating it deeply as a standard way for Claude to interact with external tools and resources.
+    *   **Key Strengths:** Focus on **AI safety** and ethics (Constitutional AI), large context windows (up to 200k tokens for Claude 3), strong reasoning capabilities, originator of MCP.
+
+**Comparison Summary:**
+
+| Feature                 | Google Gemini                                  | OpenAI                                      | Anthropic Claude                             |
+| :---------------------- | :--------------------------------------------- | :------------------------------------------ | :------------------------------------------- |
+| **Tool Interaction**    | Function Calling (Core API)                    | Function Calling, Built-in Tools (Assistants) | Tool Use (Messages API), MCP Native Support |
+| **State Management**    | Client-Side / Framework                        | Managed via Assistants API                  | Client-Side / Framework                       |
+| **MCP Support**         | Via Function Calling to MCP Servers            | Explicit SDK Support                        | Native Protocol Support                      |
+| **Multimodal**          | Native Image, Audio, Video                     | Vision (GPT-4V), Expanding (Assistants)     | Vision Analysis (Claude 3)                   |
+| **Context Window**      | Very Large (e.g., 1M-2M tokens claimed)       | Varies (e.g., 128k for GPT-4 Turbo)         | Large (e.g., 200k tokens for Claude 3)       |
+| **Ecosystem Integration** | Strong (Google Workspace, Cloud)             | Broad, Generic                              | Developer/Enterprise Focused                 |
+| **Unique Aspect**       | Native Multimodality, Potential Cost Efficiency | Managed Assistants API                      | Safety Focus, MCP Originator                 |
+
+*(Context window sizes and specific features may vary by model version and are subject to change. Verify with official documentation.)*
+
+### **1.2 Importance for Agent Systems**
+
+These framework differences directly impact multi-agent system design:
+
+*   **State Management:** Gemini's lack of a managed assistant layer necessitates explicit state and history management within the coordinating framework (like Agency Swarm, potentially adapted) or individual agents. OpenAI simplifies this via the Assistants API.
+*   **Tool Integration:** Gemini's function calling requires the client/framework to handle the execution loop (call LLM -> get function request -> execute function -> send result back to LLM). OpenAI Assistants can automate parts of this. MCP offers a standardized alternative, particularly strong with Claude, but adaptable for Gemini/OpenAI.
+*   **Complexity vs. Control:** OpenAI's Assistants API offers convenience but less control. Gemini requires more custom implementation (state, tool execution loop) but offers greater architectural flexibility.
+*   **Multimodality:** Gemini's native support simplifies building agents that process/generate images, audio, or video compared to frameworks requiring separate model calls or more complex integrations.

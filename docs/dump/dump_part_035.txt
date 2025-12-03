@@ -1,0 +1,352 @@
+    "assistant_id": "asst_abc123",
+    "thread_id": "thread_abc123",
+    "type": "message_creation",
+    "status": "in_progress",
+    "step_details": {
+      "type": "message_creation",
+      "message_creation": {
+        "message_id": null
+      }
+    },
+    "last_error": null,
+    "metadata": {}
+  }
+}
+```
+
+### thread.run.step.in_progress
+
+Triggered when a step begins processing.
+
+```json
+{
+  "type": "thread.run.step.in_progress",
+  "data": {
+    "id": "step_abc123",
+    "object": "thread.run.step",
+    "created_at": 1682033042,
+    "run_id": "run_abc123",
+    "assistant_id": "asst_abc123",
+    "thread_id": "thread_abc123",
+    "type": "message_creation",
+    "status": "in_progress",
+    "step_details": {
+      "type": "message_creation",
+      "message_creation": {
+        "message_id": null
+      }
+    },
+    "last_error": null,
+    "metadata": {}
+  }
+}
+```
+
+### thread.run.step.delta
+
+This event provides incremental updates to a step as it progresses, which can include message creation or tool calls.
+
+For message creation:
+
+```json
+{
+  "type": "thread.run.step.delta",
+  "data": {
+    "id": "step_abc123",
+    "object": "thread.run.step.delta",
+    "delta": {
+      "step_details": {
+        "type": "message_creation",
+        "message_creation": {
+          "message_id": "msg_abc123"
+        }
+      }
+    }
+  }
+}
+```
+
+For tool calls:
+
+```json
+{
+  "type": "thread.run.step.delta",
+  "data": {
+    "id": "step_abc123",
+    "object": "thread.run.step.delta",
+    "delta": {
+      "step_details": {
+        "type": "tool_calls",
+        "tool_calls": [
+          {
+            "id": "call_abc123",
+            "type": "function",
+            "function": {
+              "name": "get_weather",
+              "arguments": "{\"location\":\"San Francisco, CA\"}"
+            }
+          }
+        ]
+      }
+    }
+  }
+}
+```
+
+### thread.run.step.completed
+
+Emitted when a step is successfully completed.
+
+```json
+{
+  "type": "thread.run.step.completed",
+  "data": {
+    "id": "step_abc123",
+    "object": "thread.run.step",
+    "created_at": 1682033042,
+    "run_id": "run_abc123",
+    "assistant_id": "asst_abc123",
+    "thread_id": "thread_abc123",
+    "type": "message_creation",
+    "status": "completed",
+    "step_details": {
+      "type": "message_creation",
+      "message_creation": {
+        "message_id": "msg_abc123"
+      }
+    },
+    "last_error": null,
+    "metadata": {},
+    "completed_at": 1682033060
+  }
+}
+```
+
+## Error Events
+
+### error
+
+Emitted when an error occurs during streaming.
+
+```json
+{
+  "type": "error",
+  "data": {
+    "error": {
+      "message": "An error occurred while processing the stream",
+      "type": "server_error",
+      "param": null,
+      "code": "internal_error"
+    }
+  }
+}
+```
+
+## Streaming Implementation
+
+To enable streaming with the Assistants API, you need to set `stream=True` in your API request[1][3]. The streaming implementation uses Server-Sent Events (SSE) to push real-time updates to your client application.
+
+```python
+from openai import OpenAI
+
+client = OpenAI()
+
+# Create a run with streaming enabled
+run = client.beta.threads.runs.create(
+    thread_id="thread_abc123",
+    assistant_id="asst_abc123",
+    stream=True
+)
+
+# Process the streaming events
+for event in run:
+    print(event.type)
+    print(event.data)
+```
+
+## Conclusion
+
+The OpenAI Assistants API v2 streaming endpoint provides a rich set of events that allow developers to build responsive and real-time applications. By listening to these events, applications can provide immediate feedback to users as the assistant processes requests, generates responses, and performs actions.
+
+Understanding the structure and flow of these events is crucial for implementing streaming effectively. The events follow a logical progression from creation to completion, with delta events providing incremental updates along the way.
+
+While the search results provided limited specific information about the complete event structure for Assistants API v2 streaming, this report combines available information with the general OpenAI streaming patterns to provide a comprehensive overview of the expected event types and their JSON structures.
+
+Citations:
+[1] https://community.openai.com/t/how-do-i-enable-streaming-using-open-ai-assistants/909276
+[2] https://learn.microsoft.com/en-us/azure/ai-services/openai/assistants-reference-threads
+[3] https://platform.openai.com/docs/api-reference/streaming
+[4] https://platform.openai.com/docs/api-reference/assistants-streaming/events
+[5] https://www.youtube.com/watch?v=MUX9Dp1PSfw
+[6] https://platform.openai.com/docs/guides/structured-outputs
+[7] https://platform.openai.com/docs/api-reference/assistants-streaming
+[8] https://platform.openai.com/docs/assistants/quickstart
+[9] https://www.youtube.com/watch?v=1RPO_iFQS0k
+[10] https://platform.openai.com/docs/api-reference/introduction
+[11] https://community.openai.com/t/assistant-response-is-sometimes-an-invalid-json-array/739939
+[12] https://platform.openai.com/docs/api-reference/assistants
+[13] https://docs.aimlapi.com/solutions/openai/assistants/threads
+[14] https://community.openai.com/t/how-to-stream-with-the-assistant-api-and-a-flask-endpoint/880094
+[15] https://platform.openai.com/docs/assistants/overview
+[16] https://platform.openai.com/docs/assistants
+[17] https://help.openai.com/en/articles/8550641-assistants-api-v2-faq
+[18] https://docs.heygen.com/docs/integrate-with-opeanai-assistant
+[19] https://community.openai.com/t/streaming-is-now-available-in-the-assistants-api/682011?page=2
+[20] https://dzone.com/articles/openai-assistants-api-threads-guide
+[21] https://stackoverflow.com/questions/78596555/openai-assistants-api-v2-should-i-attach-files-to-the-thread-or-to-the-assistan
+[22] https://www.youtube.com/watch?v=IU2HcQLBGsk
+[23] https://www.postman.com/devrel/openai/request/ox2r344/create-thread-and-run
+[24] https://community.openai.com/t/assistants-streaming-success-w-rest-api-in-php/1044299
+[25] https://platform.openai.com/docs/api-reference
+[26] https://learn.microsoft.com/en-us/azure/ai-services/openai/reference
+[27] https://community.openai.com/t/how-to-rework-a-full-payload-based-api-call-to-a-streamed-call/90961
+[28] https://buildship.com/integrations/apps/revenue-cat-and-openai
+[29] https://github.com/BaileySimrell/QuantGPT-v2
+[30] https://buildship.com/integrations/apps/google-docs-and-openai
+[31] https://stackoverflow.com/questions/tagged/openai-assistants-api?tab=Votes
+[32] https://www.linkedin.com/posts/akash-s-joshi_clitools-opensource-productivity-activity-7188090225611427841-bWPe
+[33] https://github.com/datastax/astra-assistants-api
+[34] https://www.linkedin.com/posts/adam-goldberg-b8569b6_openai-developers-openaidevs-on-x-activity-7186414886376157185-xCJf
+[35] https://community.openai.com/t/structured-outputs-with-assistants/900658
+[36] https://community.openai.com/t/assistant-that-gathers-information-and-stores-it-or-processes-for-some-pre-defined-documents/832522
+[37] https://learn.microsoft.com/pt-br/azure/ai-services/openai/assistants-reference-runs
+[38] https://platform.openai.com/docs/guides/realtime-conversations
+[39] https://community.openai.com/t/how-to-use-this-streaming-api-with-a-json-object/966639
+[40] https://community.openai.com/t/how-to-stream-response-in-javascript/7310
+[41] https://www.reddit.com/r/learnpython/comments/1d3lp0w/getting_openai_api_assistant_thread_messages_in/
+
+---
+Answer from Perplexity: pplx.ai/share
+
+### Key Points
+- Research suggests semantic similarity using embeddings is a practical method for attributing LLM responses to source chunks in RAG systems.
+- It seems likely that attention mechanism analysis offers high accuracy, but it's limited to open-source LLMs.
+- The evidence leans toward using the LLM itself for self-attribution as a viable alternative, especially for closed-source models.
+- There is some debate on the accuracy of statistical methods like NER, which may work for specific cases but lack general applicability.
+
+---
+
+### Methods and Trade-offs
+
+#### Overview
+Attributing parts of an LLM's generated text to specific source text chunks in Retrieval-Augmented Generation (RAG) systems involves post-processing techniques. Here, we explore state-of-the-art algorithms and practical Python library implementations, evaluating them based on accuracy, computational cost, and implementation complexity.
+
+#### Semantic Similarity Using Embeddings
+This method compares embeddings of response sentences to source chunk embeddings to find the most similar match. It's practical and widely applicable, using libraries like Sentence Transformers ([Sentence Transformers](https://www.sbert.net/)). Accuracy is medium to high, depending on embedding quality, with low computational cost and implementation complexity.
+
+#### Attention Mechanism Analysis
+For open-source LLMs, analyzing attention weights can directly attribute response parts to source chunks, offering high accuracy. However, it's medium in cost and complexity, requiring tools like BertViz ([BertViz](https://github.com/jessevig/bertviz)) and access to model internals, limiting its use for closed-source models.
+
+#### Statistical Methods (e.g., Named Entity Recognition)
+Using NLP techniques like NER, this method attributes responses based on shared entities, with low to medium accuracy, low cost, and low complexity, using libraries like spaCy ([spaCy](https://spacy.io/)). It's less effective for general content.
+
+#### Using LLM for Self-Attribution
+Prompting the LLM to attribute its response to source chunks offers medium accuracy, medium cost, and medium complexity, leveraging APIs like OpenAI's ([OpenAI API](https://platform.openai.com/docs)). It's a flexible approach for closed-source models.
+
+---
+
+---
+
+### Survey Note: Detailed Analysis of State-of-the-Art Algorithms for RAG Citation Generation
+
+This survey note provides an in-depth exploration of state-of-the-art algorithms and practical Python library implementations for post-processing an LLM's generated text response to accurately attribute parts of the response to specific source text chunks in Retrieval-Augmented Generation (RAG) systems. We evaluate techniques based on semantic similarity using embeddings, attention mechanism analysis, and statistical methods or advanced NLP techniques, discussing trade-offs in accuracy, computational cost, and implementation complexity.
+
+#### Background and Context
+RAG systems enhance LLMs by retrieving relevant information from a knowledge base or context, which is then used to generate responses. The task is to attribute parts of the response back to specific source text chunks, ensuring transparency and reliability, especially in applications requiring factual consistency.
+
+#### Methodology
+Our analysis began by identifying relevant methods through web searches and literature reviews, focusing on practical implementations and state-of-the-art research. We evaluated each method based on the user's specified criteria, drawing from resources like academic papers, GitHub repositories, and documentation for libraries such as LlamaIndex and LangChain.
+
+#### Detailed Methods and Evaluations
+
+##### 1. Semantic Similarity Using Embeddings
+**Description:**
+This method involves computing embeddings for each sentence in the LLM's response and each source text chunk, then comparing them to find the source chunk with the highest cosine similarity for each response sentence. It leverages semantic understanding to match content, suitable for post-processing.
+
+**Python Libraries:**
+- **Sentence Transformers**: Provides models like SBERT or MPNet for sentence-level embeddings, easy to use for computing similarities.
+- **NumPy**: For efficient similarity calculations, such as cosine similarity.
+
+**Accuracy:**
+Research suggests accuracy is medium to high, depending on the embedding model's ability to capture semantic meaning. It may struggle with synthesized responses or rephrased content, but state-of-the-art models like those from Sentence Transformers perform well for direct matches.
+
+**Computational Cost:**
+The computational cost is low, as embedding computation is efficient, especially with pre-trained models, and similarity comparisons are lightweight, typically linear in the number of chunks and sentences.
+
+**Implementation Complexity:**
+Implementation is low complexity, involving splitting the response into sentences, computing embeddings, and finding the most similar chunk. This can be done in a few lines using Sentence Transformers, making it accessible for developers.
+
+**Example Use Case:**
+For a response sentence, compute its embedding and compare it to source chunk embeddings, attributing the sentence to the chunk with the highest cosine similarity.
+
+##### 2. Attention Mechanism Analysis
+**Description:**
+This method uses the LLM's attention weights, if accessible, to determine which parts of the source chunks were attended to during response generation. It's particularly effective for transformer-based LLMs, analyzing attention patterns to map response parts to context.
+
+**Python Libraries:**
+- **Transformers**: From Hugging Face, allows access to attention weights for open-source LLMs.
+- **BertViz**: A visualization tool for attention weights, aiding in interpreting which context parts influenced the response.
+
+**Accuracy:**
+The evidence leans toward high accuracy, as attention weights directly reflect the model's focus during generation. However, interpreting these weights can be complex, and they may not always correlate perfectly with importance, potentially affecting attribution precision.
+
+**Computational Cost:**
+The cost is medium, requiring running the LLM with attention weight capture, which can be resource-intensive for large models. Analyzing weights adds some overhead, but it's manageable with visualization tools.
+
+**Implementation Complexity:**
+Complexity is medium to high, necessitating access to the LLM's internals, which is limited to open-source models. Developers need to extract attention weights, map them to source chunks, and interpret results, potentially requiring custom code and understanding of transformer architectures.
+
+**Example Use Case:**
+For an open-source LLM like Llama2, capture attention weights during inference, aggregate them across layers, and map high-attention regions to source chunks to attribute response parts.
+
+##### 3. Statistical Methods or Advanced NLP Techniques
+**Description:**
+This category includes methods like Named Entity Recognition (NER) and topic modeling. For instance, NER extracts entities from responses and source chunks, attributing sentences to chunks sharing entities, while topic modeling matches topics for broader alignment.
+
+**Python Libraries:**
+- **spaCy**: For NER, offering efficient entity extraction.
+- **Gensim**: For topic modeling, enabling topic distribution analysis.
+
+**Accuracy:**
+Accuracy is low to medium, as NER works well for entity-rich content but fails for abstract or general responses. Topic modeling offers coarser alignment, suitable for thematic matching but less precise for sentence-level attribution.
+
+**Computational Cost:**
+Cost is low, with NER being fast and topic modeling efficient with pre-trained models, though training from scratch can be more intensive.
+
+**Implementation Complexity:**
+Complexity is low, with standard libraries providing easy-to-use APIs. For NER, extract entities and match; for topic modeling, compute distributions and align, requiring minimal custom code.
+
+**Example Use Case:**
+Extract entities from a response sentence using spaCy, then attribute it to a source chunk with matching entities, or use Gensim to match topics for broader attribution.
+
+**Table: Comparison of Statistical Methods**
+
+| Method            | Accuracy       | Computational Cost | Implementation Complexity |
+|-------------------|----------------|-------------------|--------------------------|
+| Named Entity Recognition | Low to Medium | Low               | Low                      |
+| Topic Modeling    | Low to Medium | Low to Medium     | Low                      |
+
+##### 4. Using LLM for Self-Attribution
+**Description:**
+This method prompts the LLM with its response and source chunks, asking it to attribute each part to the most relevant chunk. It leverages the LLM's understanding for self-reflection, suitable for post-processing.
+
+**Python Libraries:**
+- Any LLM API, such as OpenAI's, for prompting and response parsing.
+- Custom prompt engineering for designing attribution tasks.
+
+**Accuracy:**
+It seems likely that accuracy is medium, depending on the LLM's ability to correctly attribute. It may struggle with complex syntheses or rephrasing, but can be effective with careful prompting.
+
+**Computational Cost:**
+Cost is medium, requiring additional LLM calls for attribution, adding to inference time and potentially token usage, especially for long responses.
+
+**Implementation Complexity:**
+Complexity is medium, involving designing prompts to ask for attributions, parsing responses, and handling potential inconsistencies. It requires trial and error for optimal prompt design.
+
+**Example Use Case:**
+Prompt the LLM with "Attribute each sentence of this response to the most relevant source chunk: [response] [source chunks]," and parse its output for attributions.
+
+#### Practical Python Library Implementations
+Several libraries support these methods, enhancing RAG system development:
+
+- **LlamaIndex**: Provides source nodes with responses, useful for initial attribution, though finer-grained mapping may require additional processing. Documentation at [LlamaIndex](https://www.llamaindex.ai/).

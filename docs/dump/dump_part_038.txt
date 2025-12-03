@@ -1,0 +1,98 @@
+27. How to get a RAG application to add citations | 🦜️ LangChain, accessed April 5, 2025, [https://python.langchain.com/docs/how\_to/qa\_citations/](https://python.langchain.com/docs/how_to/qa_citations/)
+28. Advanced RAG Techniques \- Haystack Documentation \- Deepset, accessed April 5, 2025, [https://docs.haystack.deepset.ai/docs/advanced-rag-techniques](https://docs.haystack.deepset.ai/docs/advanced-rag-techniques)
+29. Llamaindex RAG Tutorial \- IBM, accessed April 5, 2025, [https://www.ibm.com/think/tutorials/llamaindex-rag](https://www.ibm.com/think/tutorials/llamaindex-rag)
+30. Build RAG with in-line citations \- LlamaIndex, accessed April 5, 2025, [https://docs.llamaindex.ai/en/stable/examples/workflow/citation\_query\_engine/](https://docs.llamaindex.ai/en/stable/examples/workflow/citation_query_engine/)
+31. Starter Tutorial (Using Local LLMs) \- LlamaIndex, accessed April 5, 2025, [https://docs.llamaindex.ai/en/stable/getting\_started/starter\_example\_local/](https://docs.llamaindex.ai/en/stable/getting_started/starter_example_local/)
+32. Starter Tutorial (Using OpenAI) \- LlamaIndex, accessed April 5, 2025, [https://docs.llamaindex.ai/en/stable/getting\_started/starter\_example/](https://docs.llamaindex.ai/en/stable/getting_started/starter_example/)
+33. CitationQueryEngine \- LlamaIndex, accessed April 5, 2025, [https://docs.llamaindex.ai/en/stable/examples/query\_engine/citation\_query\_engine/](https://docs.llamaindex.ai/en/stable/examples/query_engine/citation_query_engine/)
+34. Haystack and Cohere (Integration Guide), accessed April 5, 2025, [https://docs.cohere.com/v2/docs/haystack-and-cohere](https://docs.cohere.com/v2/docs/haystack-and-cohere)
+35. VertexAITextGenerator \- Haystack Documentation \- Deepset, accessed April 5, 2025, [https://docs.haystack.deepset.ai/docs/vertexaitextgenerator](https://docs.haystack.deepset.ai/docs/vertexaitextgenerator)
+36. Generators \- Haystack Documentation \- Deepset, accessed April 5, 2025, [https://docs.haystack.deepset.ai/docs/generators](https://docs.haystack.deepset.ai/docs/generators)
+37. Citing the Haystack in an academic writing · Issue \#633 \- GitHub, accessed April 5, 2025, [https://github.com/deepset-ai/haystack/issues/633](https://github.com/deepset-ai/haystack/issues/633)
+38. RAGFlow an Open-Source Retrieval-Augmented Generation (RAG) Engine \- Omar Santos, accessed April 5, 2025, [https://becomingahacker.org/ragflow-an-open-source-retrieval-augmented-generation-rag-engine-6b903005a032](https://becomingahacker.org/ragflow-an-open-source-retrieval-augmented-generation-rag-engine-6b903005a032)
+39. Get started \- RAGFlow, accessed April 5, 2025, [https://ragflow.io/docs/dev/](https://ragflow.io/docs/dev/)
+40. Building a Simple Retrieval Augmented Generation (RAG) Flow \- AI Studio \- Quiq, accessed April 5, 2025, [https://ai-studio-docs.quiq.com/docs/building-a-simple-rag-pipeline](https://ai-studio-docs.quiq.com/docs/building-a-simple-rag-pipeline)
+41. RAGFlow: An Open Source RAG Engine Based on Deep Document Understanding to Provide Efficient Retrieval Enhanced Generation Workflow \- Chief AI Sharing Circle, accessed April 5, 2025, [https://www.aisharenet.com/en/ragflow/](https://www.aisharenet.com/en/ragflow/)
+42. Generate component | RAGFlow, accessed April 5, 2025, [https://ragflow.io/docs/dev/generate\_component](https://ragflow.io/docs/dev/generate_component)
+43. The Evolution and Impact of Attention Mechanisms in Large Language Models \- Medium, accessed April 5, 2025, [https://medium.com/@frankmorales\_91352/the-evolution-and-impact-of-attention-mechanisms-in-large-language-models-338dbdd0d2ff](https://medium.com/@frankmorales_91352/the-evolution-and-impact-of-attention-mechanisms-in-large-language-models-338dbdd0d2ff)
+44. The Mechanism of Attention in Large Language Models: A ..., accessed April 5, 2025, [https://magnimindacademy.com/blog/the-mechanism-of-attention-in-large-language-models-a-comprehensive-guide/](https://magnimindacademy.com/blog/the-mechanism-of-attention-in-large-language-models-a-comprehensive-guide/)
+45. What is an attention mechanism? | IBM, accessed April 5, 2025, [https://www.ibm.com/think/topics/attention-mechanism](https://www.ibm.com/think/topics/attention-mechanism)
+46. aclanthology.org, accessed April 5, 2025, [https://aclanthology.org/2024.blackboxnlp-1.10.pdf](https://aclanthology.org/2024.blackboxnlp-1.10.pdf)
+47. Attention-Driven Reasoning: Unlocking the Potential of Large Language Models \- arXiv, accessed April 5, 2025, [https://arxiv.org/html/2403.14932v1](https://arxiv.org/html/2403.14932v1)
+48. \[2503.10720\] AttentionRAG: Attention-Guided Context Pruning in Retrieval-Augmented Generation \- arXiv, accessed April 5, 2025, [https://arxiv.org/abs/2503.10720](https://arxiv.org/abs/2503.10720)
+49. RAG: From Context Injection to Knowledge Integration \- Alex Jacobs, accessed April 5, 2025, [https://alex-jacobs.com/posts/rag/](https://alex-jacobs.com/posts/rag/)
+50. \[2409.15355\] Block-Attention for Efficient RAG \- arXiv, accessed April 5, 2025, [https://arxiv.org/abs/2409.15355](https://arxiv.org/abs/2409.15355)
+51. Explaining LLMs for RAG and Summarization | Towards Data Science, accessed April 5, 2025, [https://towardsdatascience.com/explaining-llms-for-rag-and-summarization-067e486020b4/](https://towardsdatascience.com/explaining-llms-for-rag-and-summarization-067e486020b4/)
+52. rahulanand1103/rag-citation: RAG Citation enhances Retrieval-Augmented Generation (RAG) by automatically generating relevant citations for AI-generated content. It ensures credibility by backing responses with accurate references. Open for contributions and PRs. \- GitHub, accessed April 5, 2025, [https://github.com/rahulanand1103/rag-citation](https://github.com/rahulanand1103/rag-citation)
+53. DataGemma: enhancing numerical and statistical facts accuracy of LLM with RIG and RAG approaches on Data Commons knowledge graph | by SACHIN KUMAR | Medium, accessed April 5, 2025, [https://medium.com/@techsachin/datagemma-enhancing-numerical-and-statistical-facts-accuracy-of-llm-with-rig-and-rag-approaches-on-066da70efe0e](https://medium.com/@techsachin/datagemma-enhancing-numerical-and-statistical-facts-accuracy-of-llm-with-rig-and-rag-approaches-on-066da70efe0e)
+54. Training a Utility-based Retriever Through Shared Context Attribution for Retrieval-Augmented Language Models \- arXiv, accessed April 5, 2025, [https://arxiv.org/html/2504.00573v1](https://arxiv.org/html/2504.00573v1)
+
+### Key Points
+- Research suggests that Google's Gemini models, specifically gemini-1.5-pro via the google-generativeai Python SDK, cannot be reliably prompted to include structured metadata or explicit textual markers (e.g., [Source: provided_chunk_id_3]) in their generated text for RAG scenarios.
+- It seems likely that custom prompting or system design might achieve partial source attribution, but this is not a standard, guaranteed feature.
+- The evidence leans toward the need for post-processing or additional system architecture to include such markers, as official documentation and user reports do not confirm reliable model support.
+
+### Direct Answer
+
+#### Overview
+Google's Gemini models, particularly gemini-1.5-pro accessed through the google-generativeai Python SDK, are powerful tools for retrieval-augmented generation (RAG) scenarios. However, when it comes to including structured metadata or explicit textual markers (like [Source: provided_chunk_id_3]) in their responses to indicate which context chunks were used, the capability is not reliably supported out of the box.
+
+#### Capabilities and Limitations
+Extensive searches through official Google documentation, such as the [Vertex AI RAG Engine overview](https://cloud.google.com/vertex-ai/generative-ai/docs/rag-overview) and the [Google Gen AI SDK documentation](https://googleapis.github.io/python-genai/), show no direct mention of Gemini models automatically including source markers in their output. While the models can be prompted to generate structured outputs (e.g., JSON), there’s no evidence they can consistently attribute specific parts of the response to particular context chunks without additional system design.
+
+#### Potential Workarounds
+It’s possible to design a system where you prompt the model to include markers, such as “Generate a response and include [Source: chunk_id] for each piece of information used from the context.” However, reliability is uncertain, as the model might not always correctly identify and mark sources, especially for complex responses. Post-processing the output or using the RAG system’s retrieved document IDs could be a workaround, but this requires additional implementation, as seen in projects like [awesome-llm-apps on GitHub](https://github.com/Shubhamsaboo/awesome-llm-apps/tree/main/rag_tutorials/gemini_agentic_rag), which mention source attribution but don’t detail model-level support.
+
+#### Conclusion
+For now, it seems you’d need custom solutions rather than relying on Gemini’s native capabilities for this feature. This might involve prompting strategies or system-level adjustments, but it’s not a guaranteed, built-in function.
+
+---
+
+### Survey Note: Detailed Investigation into Gemini Models and Source Attribution in RAG Scenarios
+
+This note provides a comprehensive analysis of whether Google's Gemini models, specifically gemini-1.5-pro via the google-generativeai Python SDK, can be reliably prompted to include structured metadata or explicit textual markers (e.g., [Source: provided_chunk_id_3]) within their generated text responses to indicate which specific text segments (provided as context chunks in the prompt) were used as the source for different parts of the response in a retrieval-augmented generation (RAG) scenario. The investigation, conducted on April 5, 2025, draws from official Google documentation, user reports, and related resources to ensure a thorough understanding.
+
+#### Background on RAG and Gemini Models
+RAG is a technique that enhances large language models (LLMs) by retrieving relevant context from external sources before generating responses, improving accuracy and reducing hallucinations. Google's Gemini models, part of the generative AI suite, are designed for multimodal and multilingual tasks, with gemini-1.5-pro offering advanced capabilities for text generation. The google-generativeai Python SDK facilitates interaction with these models, particularly for RAG implementations via Vertex AI.
+
+#### Methodology
+The investigation involved searching official Google resources, such as the [Vertex AI RAG Engine overview](https://cloud.google.com/vertex-ai/generative-ai/docs/rag-overview), [Google Gen AI SDK documentation](https://googleapis.github.io/python-genai/), and [prompt design strategies for Gemini API](https://ai.google.dev/gemini-api/docs/prompting-strategies), as well as exploring user-implemented projects on platforms like Medium and GitHub. The focus was on identifying whether Gemini can be prompted to include source markers in its output, with specific attention to RAG scenarios.
+
+#### Findings from Official Documentation
+Official documentation provides insights into Gemini’s capabilities but lacks explicit support for source markers in model outputs. For instance, the [Vertex AI RAG Engine overview](https://cloud.google.com/vertex-ai/generative-ai/docs/rag-overview) details how RAG enhances LLM responses by incorporating context from a knowledge base, using a vector database for retrieval. However, example responses, such as those in the [RAG quickstart for Python](https://cloud.google.com/vertex-ai/generative-ai/docs/rag-quickstart), show generated text without source markers (e.g., “RAG stands for Retrieval-Augmented Generation. It’s a technique used in AI to enhance the quality of responses…”). The documentation mentions using LLMs for document parsing with prompts that can include “Provide source attribution for any information you use,” but this is for the parsing step, not the final response generation.
+
+The [Google Gen AI SDK documentation](https://googleapis.github.io/python-genai/) focuses on basic usage, such as generating content and handling function calls, with no mention of source attribution in the model’s output. Similarly, [prompt design strategies](https://ai.google.dev/gemini-api/docs/prompting-strategies) discuss guiding the model with examples for consistent structure (e.g., concise responses), but do not address attributing sources to context chunks.
+
+#### User Reports and Third-Party Implementations
+Several user-implemented projects suggest potential workarounds. For example, the GitHub repository [awesome-llm-apps](https://github.com/Shubhamsaboo/awesome-llm-apps/tree/main/rag_tutorials/gemini_agentic_rag) mentions “source attribution for answers” in a RAG system using Gemini 2.0 Flash, but the implementation details are not provided, suggesting it may involve system-level design rather than model-native capability. Other projects, such as [RAG-application-Gemini](https://github.com/isurulkh/RAG-application-Gemini) and [LangChain-RAG-System-with-Google-Gemini](https://github.com/amiegirl/LangChain-RAG-System-with-Google-Gemini), focus on retrieval and response generation but do not explicitly show source markers in outputs.
+
+Medium articles, such as [Understanding RAG with Gemini API](https://medium.com/@saurabhgssingh/understandingRAGbuildingARAGsystemfromscratchwithGeminiAPIb11ad9fc1bf7) and [Building a RAG-Powered Chatbot with Gemini](https://medium.com/@myscale/how-to-build-a-rag-powered-chatbot-withgoogle-gemini-and-myscaledb-79c0024cd237), provide step-by-step guides but do not discuss prompting for source markers, focusing instead on system architecture.
+
+#### Experimental Insights and Prompting Strategies
+Given the lack of direct support, an experimental approach was considered, such as constructing a prompt like: “Generate a response to the user’s question using the provided context chunks. In your response, whenever you are using information from a specific context chunk, include a marker [Source: chunk_id] to indicate which chunk was used for that part of the response.” For example, with context chunks “Chunk 1: The sky is blue” and “Chunk 2: The grass is green,” and the question “What color is the sky and the grass?”, the desired output might be “The sky is blue [Source: chunk_1] and the grass is green [Source: chunk_2].” While Gemini’s ability to follow instructions (as noted in [prompt design strategies](https://ai.google.dev/gemini-api/docs/prompting-strategies)) suggests it could attempt this, reliability is uncertain, especially for complex responses or numerous chunks, due to potential inconsistencies in following detailed instructions.
+
+#### Comparative Analysis with Other LLMs
+Research on other LLMs, such as those discussed in [Using LLM Prompts for Source Attribution](https://jamesg.blog/2023/04/02/llm-prompts-source-attribution), indicates that some models can be prompted to cite sources, but this often requires fine-tuning or post-processing, not native support. Given Gemini’s focus on general prompting flexibility, it seems likely that similar limitations apply, with no evidence of native, reliable source marker inclusion.
+
+#### Conclusion and Recommendations
+Based on the investigation, Google’s Gemini models, specifically gemini-1.5-pro via the google-generativeai Python SDK, cannot be reliably prompted to include structured metadata or explicit textual markers in their generated text for RAG scenarios. While custom prompting (e.g., instructing the model to include [Source: chunk_id]) or system-level designs (e.g., post-processing outputs) might achieve partial source attribution, these are not standard features and may not work consistently. For applications requiring such functionality, developers may need to implement additional logic, such as using the RAG system’s retrieved document IDs or leveraging libraries like LangChain for attribution.
+
+#### Table: Summary of Key Findings
+
+| **Aspect**                     | **Finding**                                                                 |
+|--------------------------------|-----------------------------------------------------------------------------|
+| Official Documentation Support | No direct mention of source markers in model outputs, e.g., [Vertex AI RAG Engine](https://cloud.google.com/vertex-ai/generative-ai/docs/rag-overview). |
+| User Reports and Projects      | Some projects (e.g., [awesome-llm-apps](https://github.com/Shubhamsaboo/awesome-llm-apps/tree/main/rag_tutorials/gemini_agentic_rag)) mention source attribution, but implementation is system-level, not model-native. |
+| Prompting Experiments          | Possible to prompt for markers, but reliability is uncertain, especially for complex responses. |
+| Workarounds                    | Post-processing or using retrieved document IDs from RAG tools may be necessary. |
+
+This survey note aims to provide a comprehensive overview, ensuring all relevant details from the investigation are included for a thorough understanding.
+
+### Key Citations
+- [Vertex AI RAG Engine overview](https://cloud.google.com/vertex-ai/generative-ai/docs/rag-overview)
+- [Google Gen AI SDK documentation](https://googleapis.github.io/python-genai/)
+- [Prompt design strategies for Gemini API](https://ai.google.dev/gemini-api/docs/prompting-strategies)
+- [Understanding RAG with Gemini API](https://medium.com/@saurabhgssingh/understandingRAGbuildingARAGsystemfromscratchwithGeminiAPIb11ad9fc1bf7)
+- [Building a RAG-Powered Chatbot with Gemini](https://medium.com/@myscale/how-to-build-a-rag-powered-chatbot-withgoogle-gemini-and-myscaledb-79c0024cd237)
+- [awesome-llm-apps GitHub repository](https://github.com/Shubhamsaboo/awesome-llm-apps/tree/main/rag_tutorials/gemini_agentic_rag)
+- [RAG-application-Gemini GitHub repository](https://github.com/isurulkh/RAG-application-Gemini)

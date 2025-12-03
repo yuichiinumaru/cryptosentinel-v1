@@ -1,0 +1,171 @@
+* This can be caused by a prompt or context that is too large and requires an extended processing time.1 If the client has set a very short timeout for the request, it might also encounter this error even if the server is still processing the request within its default deadline (which is often around 10 minutes).2 In such cases, increasing the 'timeout' setting in the client request might help avoid this error.1
+
+### **2.3. Summary of HTTP Status Codes**
+
+The following table summarizes the common HTTP status codes returned by the Gemini API, their descriptions, and potential solutions:
+
+| HTTP Code | Status | Description | Potential Solutions |
+| :---- | :---- | :---- | :---- |
+| 400 | INVALID\_ARGUMENT / FAILED\_PRECONDITION | Request body is malformed, free tier not available, API validation failed, input too long, or using incompatible API versions. | Check API reference for correct format, enable billing in Google AI Studio, verify model allowlisting/organization policies, reduce input size, or use compatible API versions. |
+| 403 | PERMISSION\_DENIED | API key lacks required permissions, wrong API key used, unauthorized access to tuned model, or insufficient client/service account permissions. | Ensure API key is correctly set and has necessary access, use the correct API key, follow proper authentication for tuned models, and verify IAM permissions for the project and service account. |
+| 404 | NOT\_FOUND | Requested resource, file, or model name was not found. | Check the validity of all parameters, verify file paths, and ensure the model name is correct and supported for the API version. |
+| 429 | RESOURCE\_EXHAUSTED | Rate limit exceeded due to too many requests. | Ensure requests are within the model's rate limit, request a quota increase if needed, implement retry logic with backoff, or consider using models with higher limits. |
+| 499 | CANCELLED | Request was cancelled by the client. | Investigate why the client is cancelling the request and adjust client-side logic if necessary. |
+| 500 | INTERNAL | Unexpected error on Google's side, input context too long, server overload, or issue with chat history or JSON schema. | Reduce input context, retry the request later, manage chat history length, or simplify the JSON schema. If persistent, report the issue. |
+| 503 | UNAVAILABLE | Service temporarily overloaded or down. | Temporarily switch to another model or wait and retry the request. If persistent, report the issue. |
+| 504 | DEADLINE\_EXCEEDED | Service unable to finish processing within the deadline, prompt/context too large, or client-side timeout too short. | Reduce prompt/context size or increase the 'timeout' in the client request. |
+
+## **3\. google.api\_core.exceptions Raised by the SDK**
+
+The google-generativeai SDK for Python utilizes the google.api\_core.exceptions module to provide structured error handling for API interactions.19 This module defines a hierarchy of exception classes that correspond to different types of errors, including those mapped from HTTP status codes and gRPC status codes.19
+
+### **3.1. InvalidArgument**
+
+The InvalidArgument exception, which maps to the HTTP 400 status code, indicates that the server has determined that the client's request is invalid.2 This often arises due to issues within the request itself.
+
+* A common scenario is receiving an "Invalid JSON payload received" error.21 This suggests that the JSON data provided in the request body is not correctly formatted or structured, possibly due to incorrect field names or data types.21 An example of this is encountering an "Unknown name" within the JSON payload, indicating a field that the API does not recognize for the given endpoint or model.27 This could be due to a simple typo or an attempt to use a parameter that is not supported in the current API version.
+* Another reason for an InvalidArgument error is providing an unsupported MIME type, such as when dealing with multimodal inputs or specifying the desired response format.23 The API expects specific mime\_type values for different types of content, and using an unsupported one will lead to this error.
+* While exceeding the request payload size often results in a 429 or 500 error, it can also be indicated by an InvalidArgument exception.28 This highlights that input size restrictions are enforced at various stages of the API processing pipeline.
+
+### **3.2. PermissionDenied**
+
+The PermissionDenied exception, corresponding to the HTTP 403 status code, signifies that the client lacks the necessary authorization to perform the requested operation.19
+
+* This is frequently encountered when attempting to access fine-tuned models without the proper permissions or authentication.29 Access to these specialized models is often restricted and requires specific authorization beyond a standard API key.
+* When utilizing the Files API to upload and process files, a PermissionDenied error might occur if the API key or the associated credentials do not have the necessary permissions to access the uploaded files.31 This is akin to needing the correct permissions to access resources in cloud storage.
+* A specific instance of permission denial is when the provided API key is not recognized as valid, resulting in an error message like "API key not valid".22 This could stem from using an incorrect key, an expired key, or a key that hasn't been activated correctly.
+
+### **3.3. ResourceExhausted**
+
+The ResourceExhausted exception, mapping to the HTTP 429 status code, indicates that a resource limit, typically an API usage quota, has been exceeded.10
+
+* This exception is the SDK's way of communicating that the application has surpassed the allowed limits for requests or tokens within a given timeframe. The error message often explicitly mentions that a resource has been exhausted and advises checking the quota.10
+* Sometimes, the error message might provide more specific guidance, such as advising the user to check their plan and billing details, as quota limits are often tied to the user's subscription tier and billing status.38
+
+### **3.4. InternalServerError**
+
+The InternalServerError exception, corresponding to the HTTP 500 status code, signifies an error on the server side that the client cannot directly resolve.13
+
+* A common message associated with this exception is simply "An internal error has occurred".13 This generally points to a problem within the API's infrastructure.
+* In the context of conversational models, this exception can arise when the history of the chat becomes too long, potentially exceeding internal limitations on the size or number of tokens.14 Managing the conversation history is therefore important.
+
+### **3.5. FailedPrecondition**
+
+The FailedPrecondition exception, which also maps to the HTTP 400 status code, indicates that the requested operation could not be performed because the system is not in the required state.1
+
+* This exception is used by the SDK to explicitly represent scenarios where the Gemini API free tier is not available in the user's country 1 or when API usage in a particular location requires a linked billing account.4
+* Interestingly, issues with the provided response schema, such as an invalid JSON payload, can also manifest as a FailedPrecondition error.26 This suggests that the API might validate the response schema and raise this error if it's not valid or doesn't meet expectations.
+
+### **3.6. Other Relevant Exceptions**
+
+Other subclasses of google.api\_core.exceptions that developers might encounter include:
+
+* NotFound: Corresponds to HTTP 404, indicating that the requested resource was not found.
+* PermissionDenied: As discussed above, corresponds to HTTP 403, indicating an authorization failure.
+* DeadlineExceeded: Corresponds to HTTP 504, indicating that the API call took longer than the allowed timeout.
+
+Understanding these exceptions allows developers using the google-generativeai SDK to implement more specific and effective error handling logic in their applications.
+
+## **4\. Safety Filtering Errors**
+
+The Google Gemini API incorporates a safety filtering mechanism designed to prevent the generation of content that could be harmful or inappropriate.45 This system analyzes both the input prompts and the generated responses against various categories of harm.
+
+### **4.1. FinishReason.SAFETY**
+
+When the safety filters detect potentially harmful content in a generated response that exceeds the configured blocking threshold, the API stops the token generation process and returns a finishReason of SAFETY in the response.45 In such cases, the response.text field will be empty, as no content was generated due to safety concerns.50
+
+To understand which specific safety filter was triggered, developers can inspect the safety\_ratings list within the API response.45 This list provides details for each harm category, including the probability of the content being harmful (probability) and the severity of the potential harm (severity), along with a boolean blocked field indicating whether the content was blocked for that category.45
+
+An example of a JSON error payload with finishReason: "SAFETY" and safetyRatings is shown below 45:
+
+JSON
+
+{
+  "candidates":
+    }
+  \]
+}
+
+This example illustrates that while the content was flagged as having a "HIGH" probability of being "DANGEROUS\_CONTENT" and was therefore blocked, the probability of "HATE\_SPEECH" was considered "NEGLIGIBLE". This detailed feedback allows developers to understand the specific reasons behind the content filtering.
+
+### **4.2. Configuring Safety Settings**
+
+The Gemini API provides developers with the ability to customize the behavior of the safety filters through the safety\_settings parameter in the generate\_content() request.46 This parameter allows setting different blocking thresholds for various harm categories, including HATE\_SPEECH, HARASSMENT, SEXUALLY\_EXPLICIT, and DANGEROUS.46 The available thresholds include options like BLOCK\_LOW\_AND\_ABOVE, BLOCK\_MEDIUM\_AND\_ABOVE, BLOCK\_ONLY\_HIGH, and BLOCK\_NONE.45 Setting the threshold to BLOCK\_NONE for a specific category will effectively disable the blocking for that type of potentially harmful content, although this should be done with caution and careful consideration of the application's use case and potential risks.46
+
+It is important to note that while developers have control over these adjustable safety filters, the Gemini API also has built-in protections against core harms, such as content that endangers child safety, which are always blocked and cannot be adjusted.46 This reflects Google's commitment to responsible AI development and ensuring a baseline level of safety across all applications utilizing the API.
+
+## **5\. Quota Limit Errors**
+
+To manage resource utilization and prevent abuse, the Google Gemini API enforces various quota limits on API usage.9 These limits are typically measured in terms of Requests Per Minute (RPM), Tokens Per Minute (TPM), and Requests Per Day (RPD).9 It's important to understand that these limits are applied at the Google Cloud project level, not per individual API key, and the specific limits can vary depending on the Gemini model being used.9
+
+When an application exceeds any of these defined quota limits, the API will return an error, typically an HTTP 429 RESOURCE\_EXHAUSTED status code.1 The error message often explicitly states that the quota has been exceeded and might advise checking the user's plan and billing details.38 For instance, the google.api\_core.exceptions representation of this error is ResourceExhausted: 429 Resource has been exhausted (e.g. check quota).10
+
+To effectively handle quota limit errors, developers should consider the following strategies:
+
+* **Implement Retry Logic**: For transient quota limit issues, implementing retry mechanisms with exponential backoff can allow the application to recover once the rate limit window resets.10
+* **Respect Rate Limits**: Ensure that the application's request rate stays within the documented limits for the specific model being used.1
+* **Monitor Usage**: Regularly monitor the API usage and quota limits in the Google Cloud console to proactively identify potential issues.10
+* **Request Quota Increase**: If the application consistently requires higher usage than the default limits allow, a quota increase can be requested through the Google Cloud console.1
+* **Optimize Model Choice**: Consider using Gemini models with higher default quota limits, such as the Flash models, if the application's requirements allow.1
+* **Optimize API Calls**: Restructure the application's logic to reduce the number of API calls needed to achieve the desired outcome, such as by batching requests where appropriate.34
+
+A thorough understanding of the specific rate limits associated with the chosen Gemini model and the project's usage tier is paramount for preventing quota limit errors. Proactive monitoring and the implementation of robust error handling, including retry mechanisms, are essential for building resilient applications that rely on the Gemini API.
+
+## **6\. API Key Issues**
+
+Proper authentication with the Google Gemini API relies on the use of a valid API key. Issues related to API keys are a common source of errors for developers. Several error messages can indicate problems with the API key. An HTTP 403 PERMISSION\_DENIED status code is often returned when the API key is invalid or lacks the necessary permissions.1 More specifically, the API might return a message stating, "API key not valid. Please pass a valid API key," along with the reason API\_KEY\_INVALID.22 The google.api\_core.exceptions representation of this can be InvalidArgument: 400 API key not valid.22
+
+To troubleshoot API key related problems, developers should take the following steps:
+
+* **Verify Key Setup**: Ensure that the API key has been correctly set as an environment variable or within the application's configuration, as per the API key setup guide.1
+* **Check Permissions**: Confirm that the API key has the necessary permissions for the specific action being performed and the model being accessed.1
+* **Project Association**: Verify that the API key is associated with the correct Google Cloud project, especially if using Vertex AI.10
+* **Key Regeneration**: If there is any suspicion that the API key might be invalid or compromised, it should be regenerated through the Google AI Studio or Google Cloud console.62
+* **Billing Status**: Ensure that billing is enabled for the Google Cloud project associated with the API key if the API usage requires a paid account.1
+
+Effective management of API keys is fundamental for secure and functional interaction with the Gemini API. Errors related to API keys typically point to configuration oversights or issues with the validity or permissions associated with the key itself.
+
+## **7\. Invalid Model Name Errors**
+
+The Google Gemini API offers a variety of models, each identified by a specific name. Using an incorrect or unsupported model name will result in an error. The most common error message for an invalid model name is an HTTP 404 NOT\_FOUND.1 This might manifest with a message like "models/gemini-pro is not found for API version v1beta".5 In some cases, the error message might be more explicit, such as "Invalid Model \- The model gemini-\* does not work with your current plan or api key".8
+
+To avoid errors related to invalid model names, developers should:
+
+* **Consult Documentation**: Always refer to the official Google Gemini API documentation for the most up-to-date list of supported models and their exact names.1
+* **Use ListModels API**: If the SDK provides a functionality to list available models (such as a ListModels API call), developers can use this to programmatically retrieve the current list of valid model names.5
+
+Model names are specific and sometimes versioned. Utilizing an outdated or incorrect name will prevent the API from locating the intended model. Therefore, it is crucial for developers to consistently refer to the official documentation for the correct model identifiers to ensure successful API calls.
+
+## **8\. Malformed Request Errors**
+
+The Google Gemini API expects requests to adhere to a specific structure and format. Any deviation from these expectations can lead to malformed request errors. Common scenarios include providing an invalid JSON structure in the request body, omitting required fields, using incorrect data types for parameters, or attempting to use features from a newer API version with an older endpoint.1
+
+The primary error message for a malformed request is typically an HTTP 400 INVALID\_ARGUMENT.1 This often comes with a more detailed message like "Invalid JSON payload received".25 The error might also specify the location and nature of the problem within the JSON payload, such as "Unknown name... at..." indicating an unrecognized field.25
+
+For example, a malformed request due to an unknown parameter in the JSON payload might return an error payload similar to this 63:
+
+JSON
+
+{
+  "error": {
+    "code": 400,
+    "message": "Invalid JSON payload received. Unknown name \\"type\\" at 'tools. function\_declarations. parameters.'",
+    "status": "INVALID\_ARGUMENT"
+  }
+}
+
+Another example highlights an error related to the structure of multi-turn requests 48:
+
+JSON
+
+{
+  "error": {
+    "code": 400,
+    "message": "Please ensure that multiturn requests ends with a user role or a function response.",
+    "status": "INVALID\_ARGUMENT"
+  }
+}
+
+It is crucial for developers to thoroughly validate their request structure against the official Gemini API documentation. Even minor discrepancies in JSON syntax or missing required fields can lead to these errors, preventing the API from correctly processing the request.
+
+## **9\. Content Processing Errors**
