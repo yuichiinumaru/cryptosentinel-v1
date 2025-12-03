@@ -1,7 +1,8 @@
-from pydantic import BaseModel, Field
 from typing import List, Dict, Any
-from agno.tools import tool
+
+from agno.tools.toolkit import Toolkit
 from pycoingecko import CoinGeckoAPI
+from pydantic import BaseModel, Field
 
 
 class FetchMarketDataInput(BaseModel):
@@ -15,7 +16,6 @@ class FetchMarketDataOutput(BaseModel):
     market_data: Dict[str, Any] = Field(..., description="A dictionary containing the market data.")
 
 
-@tool
 def fetch_market_data(input: FetchMarketDataInput) -> FetchMarketDataOutput:
     """
     Fetches market data (price, volume, history) for a list of cryptocurrencies from CoinGecko.
@@ -43,3 +43,7 @@ def fetch_market_data(input: FetchMarketDataInput) -> FetchMarketDataOutput:
 
 
     return FetchMarketDataOutput(market_data=market_data)
+
+
+market_data_toolkit = Toolkit(name="market_data")
+market_data_toolkit.register(fetch_market_data)

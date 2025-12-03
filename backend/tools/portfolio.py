@@ -1,52 +1,138 @@
-from pydantic import BaseModel, Field
+import os
+from datetime import datetime
 from typing import List, Dict, Any, Optional
-from agno.tools import tool
+
+from agno.tools.toolkit import Toolkit
+from pycoingecko import CoinGeckoAPI
+from pydantic import BaseModel, Field
+
+from backend.storage.models import PortfolioPosition
 from backend.storage.sqlite import SqliteStorage
+
+
+def _get_storage() -> SqliteStorage:
+    return SqliteStorage(os.getenv("STORAGE_URL", "sqlite.db"))
+
 
 class PortfolioItem(BaseModel):
     token_address: str
     symbol: str
     amount: float
+    chain: Optional[str] = None
+    coingecko_id: Optional[str] = None
+    average_price: Optional[float] = None
     current_price: Optional[float] = None
     value_usd: Optional[float] = None
+    last_updated: Optional[datetime] = None
+
 
 class GetPortfolioOutput(BaseModel):
     items: List[PortfolioItem]
     total_value_usd: float = 0.0
+    as_of: datetime = Field(default_factory=datetime.utcnow)
 
-@tool
+
 def get_portfolio() -> GetPortfolioOutput:
-    """
-    Retrieves the current portfolio from the database and calculates its total value.
-    """
-    storage = SqliteStorage()
-    portfolio_items = storage.get_all_portfolio_items()
+    storage = _get_storage()
+    positions = storage.get_portfolio_positions()
+    now = datetime.utcnow()
 
-    # In a real implementation, you would fetch the current prices for each token
-    # and calculate the total value. For this example, we'll use placeholder values.
-    for item in portfolio_items:
-        item.current_price = 1.0 # Placeholder
-        item.value_usd = item.amount * item.current_price
+    coin_ids = {pos.coingecko_id for pos in positions if pos.coingecko_id}
+    latest_prices: Dict[str, Dict[str, float]] = {}
+    if coin_ids:
+        cg = CoinGeckoAPI()
+        try:
+            latest_prices = cg.get_price(ids=list(coin_ids), vs_currencies="usd")
+        except Exception:
+            latest_prices = {}
 
-    total_value = sum(item.value_usd for item in portfolio_items if item.value_usd is not None)
+    items: List[PortfolioItem] = []
+    for position in positions:
+        price: Optional[float] = None
+        if position.coingecko_id and position.coingecko_id in latest_prices:
+            price = latest_prices[position.coingecko_id].get("usd")
+        if price is None:
+            price = position.last_price
 
-    return GetPortfolioOutput(items=portfolio_items, total_value_usd=total_value)
+        value = price * position.amount if price is not None else None
+        if value is not None:
+            position.last_price = price
+            position.last_valuation_usd = value
+            position.updated_at = now
+            storage.upsert_portfolio_position(position)
+
+        items.append(
+            PortfolioItem(
+                token_address=position.token_address,
+                symbol=position.symbol,
+                amount=position.amount,
+                chain=position.chain,
+                coingecko_id=position.coingecko_id,
+                average_price=position.average_price,
+                current_price=price,
+                value_usd=value,
+                last_updated=position.updated_at,
+            )
+        )
+
+    total_value = sum(item.value_usd or 0.0 for item in items)
+    return GetPortfolioOutput(items=items, total_value_usd=total_value, as_of=now)
+
 
 class UpdatePortfolioInput(BaseModel):
     token_address: str
     symbol: str
-    amount_change: float
-    price: float
+    amount_change: float = Field(..., description="Positive for buys, negative for sells")
+    price: float = Field(..., description="Execution price in USD")
+    chain: Optional[str] = Field(None, description="Blockchain network identifier")
+    coingecko_id: Optional[str] = Field(None, description="CoinGecko identifier for price retrieval")
 
-@tool
+
 def update_portfolio(input: UpdatePortfolioInput) -> None:
-    """
-    Updates the portfolio in the database after a trade.
-    """
-    storage = SqliteStorage()
-    storage.update_portfolio_item(
-        token_address=input.token_address,
-        symbol=input.symbol,
-        amount_change=input.amount_change,
-        price=input.price
-    )
+    storage = _get_storage()
+    positions = {p.token_address: p for p in storage.get_portfolio_positions()}
+    token_key = input.token_address.lower()
+    now = datetime.utcnow()
+
+    position = positions.get(token_key)
+    if position is None and input.amount_change <= 0:
+        raise ValueError("Cannot reduce or close a non-existent position")
+
+    if position is None:
+        position = PortfolioPosition(
+            token_address=token_key,
+            symbol=input.symbol,
+            chain=input.chain,
+            coingecko_id=input.coingecko_id,
+            amount=0.0,
+            average_price=0.0,
+            last_price=None,
+            last_valuation_usd=None,
+            updated_at=now,
+        )
+
+    new_amount = position.amount + input.amount_change
+    if new_amount < -1e-9:
+        raise ValueError("Resulting position amount cannot be negative")
+
+    if input.amount_change > 0:
+        total_cost = position.average_price * position.amount + input.price * input.amount_change
+        position.average_price = total_cost / new_amount if new_amount else input.price
+    elif new_amount == 0:
+        position.average_price = 0.0
+
+    position.amount = max(new_amount, 0.0)
+    position.last_price = input.price
+    position.last_valuation_usd = position.amount * input.price if position.amount else 0.0
+    position.updated_at = now
+    if input.chain:
+        position.chain = input.chain
+    if input.coingecko_id:
+        position.coingecko_id = input.coingecko_id
+
+    storage.upsert_portfolio_position(position)
+
+
+portfolio_toolkit = Toolkit(name="portfolio")
+portfolio_toolkit.register(get_portfolio)
+portfolio_toolkit.register(update_portfolio)

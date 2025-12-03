@@ -1,7 +1,15 @@
 from abc import ABC, abstractmethod
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 
-from .models import Team, Workflow, TradeData, ActivityData
+from .models import (
+    Team,
+    Workflow,
+    TradeData,
+    ActivityData,
+    PortfolioPosition,
+    AlertRecord,
+    AgentMessageRecord,
+)
 
 
 class Storage(ABC):
@@ -90,5 +98,64 @@ class Storage(ABC):
     def get_recent_activities(self, limit: int) -> List["ActivityData"]:
         """
         Retrieves recent activities from the storage.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_portfolio_positions(self) -> List["PortfolioPosition"]:
+        """
+        Retrieves all portfolio positions.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def upsert_portfolio_position(
+        self,
+        position: "PortfolioPosition",
+    ) -> None:
+        """
+        Inserts or updates a portfolio position.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def record_alert(self, alert: "AlertRecord") -> None:
+        """
+        Persists an alert record for auditing.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_recent_alerts(self, limit: int) -> List["AlertRecord"]:
+        """
+        Retrieves recently generated alerts.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def record_agent_message(self, message: "AgentMessageRecord") -> None:
+        """
+        Stores a message exchanged between agents or systems.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_recent_agent_messages(self, limit: int) -> List["AgentMessageRecord"]:
+        """
+        Retrieves recent agent messages.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def set_state_value(self, namespace: str, key: str, value: Dict[str, Any]) -> None:
+        """
+        Persists a configuration or state value identified by namespace and key.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_state_value(self, namespace: str, key: str) -> Optional[Dict[str, Any]]:
+        """
+        Retrieves a stored configuration or state value.
         """
         raise NotImplementedError

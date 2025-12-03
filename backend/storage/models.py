@@ -35,3 +35,42 @@ class ActivityData(BaseModel):
     type: str
     message: str
     details: Dict[str, Any]
+
+
+class PortfolioPosition(BaseModel):
+    token_address: str
+    symbol: str
+    chain: Optional[str] = None
+    coingecko_id: Optional[str] = None
+    amount: float
+    average_price: float
+    last_price: Optional[float] = None
+    last_valuation_usd: Optional[float] = None
+    updated_at: datetime
+
+
+class AlertRecord(BaseModel):
+    id: str
+    timestamp: datetime
+    recipient: str
+    channel: str
+    message: str
+    status: str
+    metadata: Dict[str, Any]
+
+
+class AgentMessageRecord(BaseModel):
+    id: str
+    timestamp: datetime
+    sender: str
+    recipient: str
+    content: Dict[str, Any]
+    status: str
+    correlation_id: Optional[str] = None
+
+
+class KeyValueRecord(BaseModel):
+    namespace: str
+    key: str
+    value: Dict[str, Any]
+    updated_at: datetime

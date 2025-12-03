@@ -1,6 +1,7 @@
-from pydantic import BaseModel, Field
-from agno.tools import tool
 import os
+
+from agno.tools.toolkit import Toolkit
+from pydantic import BaseModel, Field
 from web3 import Web3
 
 class GetAccountBalanceInput(BaseModel):
@@ -11,7 +12,6 @@ class GetAccountBalanceOutput(BaseModel):
     balance: float = Field(..., description="The balance of the wallet.")
     error: str = Field(None, description="An error message if the balance could not be retrieved.")
 
-@tool
 def get_account_balance(input: GetAccountBalanceInput) -> GetAccountBalanceOutput:
     """
     Gets the balance of a wallet on a given blockchain.
@@ -26,3 +26,7 @@ def get_account_balance(input: GetAccountBalanceInput) -> GetAccountBalanceOutpu
         return GetAccountBalanceOutput(balance=float(balance))
     except Exception as e:
         return GetAccountBalanceOutput(balance=0.0, error=str(e))
+
+
+wallet_toolkit = Toolkit(name="wallet")
+wallet_toolkit.register(get_account_balance)

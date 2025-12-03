@@ -1,8 +1,9 @@
-from pydantic import BaseModel, Field
-from typing import Optional, List
-from agno.tools import tool
-import requests
 import os
+from typing import Optional, List
+
+import requests
+from agno.tools.toolkit import Toolkit
+from pydantic import BaseModel, Field
 from web3 import Web3
 
 # Simplified ERC-20 ABI for totalSupply
@@ -19,7 +20,6 @@ class CheckTokenSecurityOutput(BaseModel):
     rugcheck_score: Optional[int] = Field(None, description="Security score from Rugcheck.xyz.")
     reasons: List[str] = Field([], description="List of reasons if the token is not safe.")
 
-@tool
 def check_token_security(input: CheckTokenSecurityInput) -> CheckTokenSecurityOutput:
     """
     Checks the security of a token contract by verifying its total supply and using Rugcheck.xyz.
@@ -67,3 +67,7 @@ def check_token_security(input: CheckTokenSecurityInput) -> CheckTokenSecurityOu
         rugcheck_score=rugcheck_score,
         reasons=reasons,
     )
+
+
+token_security_toolkit = Toolkit(name="token_security")
+token_security_toolkit.register(check_token_security)

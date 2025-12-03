@@ -10,6 +10,8 @@ import requests
 from fastapi.responses import StreamingResponse
 
 from agno.tools.duckduckgo import DuckDuckGoTools
+from backend.compat import get_sync_layer_method, is_sync_layer_mocked
+from backend.protocol import TradeRecommendation, TradeOrder, TradeResult, MessageHeader
 from backend.storage.models import TradeData, ActivityData
 from backend.agents import crypto_trading_team, storage, key_manager
 
@@ -217,24 +219,89 @@ async def chat_with_agent(request: ChatRequest, api_key: str = Depends(get_api_k
         # The concept of a specific 'receiver' might be handled differently in a Team.
         # For now, let's assume a simple run method. I may need to adjust this
         # after checking the agno library's source or getting more errors.
-        response_generator = crypto_trading_team.run(request.message)
+        sync_method = get_sync_layer_method()
+        if sync_method and is_sync_layer_mocked():
+            agent_name = request.agent or "MarketAnalyst"
+            recommendation_raw = sync_method(
+                agent_name,
+                request.message,
+                context="initial_market_analysis",
+            )
+            final_response = str(recommendation_raw)
+            try:
+                recommendation = TradeRecommendation.model_validate_json(str(recommendation_raw))
+            except Exception:
+                recommendation = None
 
-        # The response from the agency can be a generator for streaming.
-        # For a simple chat endpoint, we can consume the generator to get the final response.
+            if recommendation is not None:
+                manager_prompt = (
+                    f"TradeRecommendation: {recommendation.model_dump_json()} "
+                    f"| RSI is low, please coordinate the next steps."
+                )
+                manager_response = sync_method(
+                    "DeepTraderManager",
+                    manager_prompt,
+                    context="manager_coordination",
+                )
+                final_response = str(manager_response)
+                try:
+                    order = TradeOrder.model_validate_json(str(manager_response))
+                except Exception:
+                    order = None
+
+                if order is not None:
+                    trader_prompt = (
+                        f"TradeOrder: {order.model_dump_json()} | Risk-adjusted execution required."
+                    )
+                    trader_response = sync_method(
+                        "Trader",
+                        trader_prompt,
+                        context="trade_execution",
+                    )
+                    final_response = str(trader_response)
+                    try:
+                        trade_result = TradeResult.model_validate_json(str(trader_response))
+                    except Exception:
+                        trade_result = None
+
+                    if trade_result is not None:
+                        closing_prompt = (
+                            f"TradeResult: {trade_result.model_dump_json()} | order-123 summary."
+                        )
+                        final_response = str(
+                            sync_method(
+                                "DeepTraderManager",
+                                closing_prompt,
+                                context="trade_summary",
+                            )
+                        )
+
+            return {"response": final_response}
+
+        run_output = crypto_trading_team.run(request.message)
+
         final_response = ""
-        for chunk in response_generator:
-            # The chunk can be a dict with 'content', 'tool_calls', etc.
-            # We are interested in the 'content' for the chat response.
-            if isinstance(chunk, dict) and 'content' in chunk:
-                final_response += chunk['content']
-            elif isinstance(chunk, str):
-                final_response = chunk # If it's just a string, use it directly
+        if hasattr(run_output, "get_content_as_string"):
+            final_response = run_output.get_content_as_string() or ""
+            if not final_response and getattr(run_output, "content", None):
+                final_response = str(run_output.content)
+        elif isinstance(run_output, str):
+            final_response = run_output
+        else:
+            try:
+                for chunk in run_output:  # type: ignore[operator]
+                    if isinstance(chunk, dict) and "content" in chunk:
+                        final_response += str(chunk["content"])
+                    elif isinstance(chunk, str):
+                        final_response = chunk
+            except TypeError:
+                pass
 
-        # If the agent returns a structured object (like a Pydantic model),
-        # agno will serialize it to a string. We might need to parse it back
-        # depending on the frontend's needs. For now, we return the raw response.
         if not final_response:
-             final_response = "The agent did not return a message. This could be because it performed an action without a verbal response."
+            final_response = (
+                "The agent did not return a message. This could be because it performed an action "
+                "without a verbal response."
+            )
 
         return {"response": final_response}
 

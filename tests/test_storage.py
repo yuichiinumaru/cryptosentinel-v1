@@ -4,7 +4,13 @@ from datetime import datetime, timezone
 import json
 
 from backend.storage.sqlite import SqliteStorage
-from backend.storage.models import TradeData, ActivityData
+from backend.storage.models import (
+    TradeData,
+    ActivityData,
+    PortfolioPosition,
+    AlertRecord,
+    AgentMessageRecord,
+)
 
 class TestSqliteStorage(unittest.TestCase):
 
@@ -91,6 +97,56 @@ class TestSqliteStorage(unittest.TestCase):
 
         all_activities = self.storage.get_recent_activities(limit=5)
         self.assertEqual(len(all_activities), 2)
+
+    def test_portfolio_and_alert_records(self):
+        position = PortfolioPosition(
+            token_address="0xtoken",
+            symbol="TEST",
+            chain="ethereum",
+            coingecko_id="test-token",
+            amount=10.0,
+            average_price=2.0,
+            last_price=2.5,
+            last_valuation_usd=25.0,
+            updated_at=datetime.now(timezone.utc),
+        )
+        self.storage.upsert_portfolio_position(position)
+        positions = self.storage.get_portfolio_positions()
+        self.assertEqual(len(positions), 1)
+        self.assertEqual(positions[0].symbol, "TEST")
+
+        alert = AlertRecord(
+            id="alert1",
+            timestamp=datetime.now(timezone.utc),
+            recipient="ops",
+            channel="internal",
+            message="Test alert",
+            status="delivered",
+            metadata={"foo": "bar"},
+        )
+        self.storage.record_alert(alert)
+        alerts = self.storage.get_recent_alerts(limit=5)
+        self.assertEqual(len(alerts), 1)
+        self.assertEqual(alerts[0].message, "Test alert")
+
+    def test_agent_messages_and_state_store(self):
+        message = AgentMessageRecord(
+            id="msg1",
+            timestamp=datetime.now(timezone.utc),
+            sender="manager",
+            recipient="trader",
+            content={"text": "Hello"},
+            status="sent",
+            correlation_id="trade-1",
+        )
+        self.storage.record_agent_message(message)
+        messages = self.storage.get_recent_agent_messages(limit=5)
+        self.assertEqual(len(messages), 1)
+        self.assertEqual(messages[0].sender, "manager")
+
+        self.storage.set_state_value("test", "key", {"value": 42})
+        state_value = self.storage.get_state_value("test", "key")
+        self.assertEqual(state_value["value"], 42)
 
 
 if __name__ == '__main__':

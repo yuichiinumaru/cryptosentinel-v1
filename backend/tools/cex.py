@@ -1,58 +1,67 @@
-import ccxt
-from pydantic import BaseModel, Field
+import os
 from typing import Dict, Any
-from agno.tools import tool
+
+import ccxt
+from agno.tools.toolkit import Toolkit
+from pydantic import BaseModel, Field
 
 
 class ExecuteOrderInput(BaseModel):
-    exchange: str = Field(..., description="The CEX to execute the order on.")
-    symbol: str = Field(..., description="The symbol to trade (e.g., 'BTC/USDT').")
-    type: str = Field(..., description="The type of order ('market' or 'limit').")
-    side: str = Field(..., description="The side of the order ('buy' or 'sell').")
-    amount: float = Field(..., description="The amount to trade.")
-    price: float = Field(None, description="The price for a limit order.")
+    exchange: str = Field(..., description="CEX identifier, e.g., 'binance'.")
+    symbol: str = Field(..., description="Trading symbol, e.g., 'BTC/USDT'.")
+    type: str = Field(..., description="Order type: 'market' or 'limit'.")
+    side: str = Field(..., description="Order side: 'buy' or 'sell'.")
+    amount: float = Field(..., description="Quantity to trade.")
+    price: float | None = Field(None, description="Limit price (required for limit orders).")
 
 
 class ExecuteOrderOutput(BaseModel):
-    order: Dict[str, Any] = Field(..., description="The order details.")
-    error: str = Field(None, description="An error message if the order failed.")
+    order: Dict[str, Any] = Field(..., description="Exchange order payload.")
+    error: str | None = Field(None, description="Error message if execution failed.")
 
 
-@tool(input_schema=ExecuteOrderInput, output_schema=ExecuteOrderOutput)
-def ExecuteOrder(exchange: str, symbol: str, type: str, side: str, amount: float, price: float = None) -> Dict[str, Any]:
-    """
-    Executes an order on a CEX.
-    """
+def _build_exchange(exchange_name: str):
+    exchange_class = getattr(ccxt, exchange_name)
+    client = exchange_class({
+        "apiKey": os.getenv(f"{exchange_name.upper()}_API_KEY"),
+        "secret": os.getenv(f"{exchange_name.upper()}_API_SECRET"),
+    })
+    return client
+
+
+def execute_order(input: ExecuteOrderInput) -> ExecuteOrderOutput:
     try:
-        exchange_class = getattr(ccxt, exchange)()
-        # ... (Add API key and secret from environment variables)
-        if type == 'limit':
-            order = exchange_class.create_limit_order(symbol, side, amount, price)
+        client = _build_exchange(input.exchange)
+        if input.type == "limit":
+            if input.price is None:
+                raise ValueError("Price is required for limit orders")
+            order = client.create_limit_order(input.symbol, input.side, input.amount, input.price)
         else:
-            order = exchange_class.create_market_order(symbol, side, amount)
-        return {"order": order}
-    except Exception as e:
-        return {"order": {}, "error": f"Could not execute order: {e}"}
+            order = client.create_market_order(input.symbol, input.side, input.amount)
+        return ExecuteOrderOutput(order=order, error=None)
+    except Exception as exc:
+        return ExecuteOrderOutput(order={}, error=str(exc))
 
 
 class GetOrderBookInput(BaseModel):
-    exchange: str = Field(..., description="The CEX to get the order book from.")
-    symbol: str = Field(..., description="The symbol to get the order book for.")
+    exchange: str = Field(..., description="CEX identifier, e.g., 'binance'.")
+    symbol: str = Field(..., description="Trading symbol to fetch order book for.")
 
 
 class GetOrderBookOutput(BaseModel):
-    order_book: Dict[str, Any] = Field(..., description="The order book.")
-    error: str = Field(None, description="An error message if the order book could not be retrieved.")
+    order_book: Dict[str, Any] = Field(..., description="Order book snapshot.")
+    error: str | None = Field(None, description="Error message if retrieval failed.")
 
 
-@tool(input_schema=GetOrderBookInput, output_schema=GetOrderBookOutput)
-def GetOrderBook(exchange: str, symbol: str) -> Dict[str, Any]:
-    """
-    Gets the order book for a symbol from a CEX.
-    """
+def get_order_book(input: GetOrderBookInput) -> GetOrderBookOutput:
     try:
-        exchange_class = getattr(ccxt, exchange)()
-        order_book = exchange_class.fetch_order_book(symbol)
-        return {"order_book": order_book}
-    except Exception as e:
-        return {"order_book": {}, "error": f"Could not get order book: {e}"}
+        client = _build_exchange(input.exchange)
+        order_book = client.fetch_order_book(input.symbol)
+        return GetOrderBookOutput(order_book=order_book, error=None)
+    except Exception as exc:
+        return GetOrderBookOutput(order_book={}, error=str(exc))
+
+
+cex_toolkit = Toolkit(name="cex")
+cex_toolkit.register(execute_order)
+cex_toolkit.register(get_order_book)
