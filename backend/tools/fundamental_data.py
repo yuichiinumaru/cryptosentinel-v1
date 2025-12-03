@@ -1,25 +1,27 @@
-from pydantic import BaseModel, Field
 from typing import Dict, Any
-from agno.tools import tool
+
+from agno.tools.toolkit import Toolkit
 from pycoingecko import CoinGeckoAPI
+from pydantic import BaseModel, Field
 
 
 class FetchFundamentalDataInput(BaseModel):
-    coin_id: str = Field(..., description="The ID of the coin from CoinGecko.")
+    coin_id: str = Field(..., description="CoinGecko identifier of the asset.")
 
 
 class FetchFundamentalDataOutput(BaseModel):
-    data: Dict[str, Any] = Field(..., description="A dictionary containing the fundamental data.")
+    data: Dict[str, Any] = Field(..., description="Fundamental data payload.")
+    error: str | None = Field(None, description="Error message when retrieval fails.")
 
 
-@tool(input_schema=FetchFundamentalDataInput, output_schema=FetchFundamentalDataOutput)
-def FetchFundamentalDataTool(coin_id: str) -> Dict[str, Any]:
-    """
-    Fetches fundamental data for a cryptocurrency from CoinGecko.
-    """
-    cg = CoinGeckoAPI()
+def fetch_fundamental_data(input: FetchFundamentalDataInput) -> FetchFundamentalDataOutput:
+    client = CoinGeckoAPI()
     try:
-        data = cg.get_coin_by_id(id=coin_id)
-        return {"data": data}
-    except Exception as e:
-        return {"data": {}, "error": f"Could not fetch data: {e}"}
+        data = client.get_coin_by_id(id=input.coin_id)
+        return FetchFundamentalDataOutput(data=data, error=None)
+    except Exception as exc:
+        return FetchFundamentalDataOutput(data={}, error=str(exc))
+
+
+fundamental_data_toolkit = Toolkit(name="fundamental_data")
+fundamental_data_toolkit.register(fetch_fundamental_data)

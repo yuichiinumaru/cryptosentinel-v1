@@ -1,7 +1,9 @@
 import os
+
+import backend.compat  # noqa: F401  # Ensure Agno compatibility hooks are registered
 from dotenv import load_dotenv
 from agno.agent import Agent
-from agno.workflow import Workflow as Team
+from agno.team.team import Team
 from agno.models.google import Gemini
 
 # Import all agent definitions
