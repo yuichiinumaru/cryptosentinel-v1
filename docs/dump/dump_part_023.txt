@@ -1,0 +1,231 @@
+Beyond these libraries, exploring GitHub projects like huseinzol05/Stock-Prediction-Models can provide pre-existing code and notebooks, offering specialized implementations that you can adapt to your needs. This is an unexpected detail, as it expands your options beyond traditional libraries, potentially saving time with ready-made solutions.
+
+A Comprehensive Survey of Open-Source Advanced Price Prediction Models for Trading Bots
+This survey note provides an in-depth exploration of open-source advanced price prediction models suitable for integration into a trading bot, focusing on tools that are ready to use and can be employed efficiently. Given the dynamic nature of financial markets and the need for rapid deployment, the analysis prioritizes Python libraries and specific GitHub projects, ensuring a comprehensive set of options for users. The current time is 06:08 PM PDT on Tuesday, March 11, 2025, and all recommendations are based on the latest available information.
+
+Background and Methodology
+The search for suitable tools began with identifying open-source libraries and projects specifically designed for financial time series prediction, given their relevance to trading bots. The focus was on models that are advanced, meaning they leverage state-of-the-art machine learning or deep learning techniques, and ready to use, implying minimal setup or training from scratch. The analysis considered libraries with easy-to-use APIs, pre-trained models where available, and projects with comprehensive documentation and examples. Given the user's likely preference for Python, due to its prevalence in machine learning communities, the survey primarily targets Python-based solutions, though R options were briefly explored and found less suitable.
+
+Key Findings: Recommended Tools
+After evaluating various options, two Python libraries and one category of GitHub projects emerged as the most comprehensive and ready-to-use for advanced price prediction:
+
+Darts:
+Darts, developed by Unit8, is a Python library for time series forecasting that offers a wide range of models, including statistical (e.g., ARIMA, ExponentialSmoothing) and deep learning (e.g., RNNModel, NBEATSModel, TransformerModel) approaches. It supports both univariate and multivariate time series, which is crucial for financial data that often includes multiple variables like price, volume, and technical indicators. Key features include probabilistic forecasting, support for covariates (past-observed, future-known, and static), and backtesting utilities, making it highly flexible for trading bot applications. The library is sklearn-friendly, using fit() and predict() functions, and is well-documented at Darts User Guide. Installation is straightforward with pip install darts, requiring Python 3.9+. Given its extensive model selection and active maintenance, Darts is ideal for users seeking flexibility and scalability, especially for handling the non-stationarity and volatility clustering common in financial time series.
+PyAF:
+PyAF, or Python Automatic Forecasting, is an open-source Python library for automated time series forecasting built on top of NumPy, SciPy, Pandas, and scikit-learn. It is designed for ease of use, offering a fully automated process for predicting future values with minimal setup, which aligns with the user's need for quick deployment. PyAF decomposes signals into trend, periodic, and AR components, competes between transformations (e.g., Box-Cox, Logit), and supports exogenous data via ARX models, making it suitable for financial data with external factors. It provides prediction intervals and can handle irregular frequencies, with options for fast mode (popular models) and slow mode (all possible models). Documentation includes an introductory notebook at PyAF Introduction Notebook, and installation is via pip install pyaf. While it may have fewer deep learning options compared to Darts, its automation capabilities make it a strong candidate for users prioritizing speed and simplicity.
+Specific GitHub Projects:
+Beyond libraries, specific GitHub projects offer specialized implementations that can be adapted for trading bots. Notably, huseinzol05/Stock-Prediction-Models is a repository gathering machine learning and deep learning models for stock forecasting, including trading bots and simulations. It includes models like LSTM, GRU, Attention-is-all-you-Need, and ensemble methods, with usage guidance provided through Jupyter notebooks (e.g., forecasting example). This project is particularly useful for users looking for pre-existing code to adapt, offering a range of models from recurrent neural networks to trading agents like Turtle-trading and Q-learning agents. While not a unified library, it expands options by providing ready-made implementations, which is an unexpected detail given the focus on libraries.
+Comparative Analysis
+To aid in selection, a comparison of Darts and PyAF is provided below, focusing on key attributes relevant to financial time series prediction:
+
+Attribute	Darts	PyAF
+Model Variety	Extensive (statistical, deep learning, ensembles)	Automated, focuses on popular models
+Ease of Use	Flexible, requires some setup for specific models	Highly automated, minimal setup needed
+Multivariate Support	Yes, with many models consuming/producing multivariate seriehttps://dexscreener.com/polygon
+https://docs.dexscreener.com/api/reference
+
+https://rugcheck.xyz/tokens
+https://api.rugcheck.xyz/swagger/index.html
+
+https://docs.pancakeswap.finance/developers/smart-contracts
+https://docs.uniswap.org/contracts/v2/guides/smart-contract-integration/quick-start
+
+https://docs.ccxt.com/#/
+
+https://grok.com/chat/a008ce31-ede1-4d2a-a5db-a136da3efc76
+
+Ok, farei uma revisão exaustiva de toda a nossa conversa, listando todos os detalhes definidos sobre o DeepTrader Agency Swarm até agora, sem omitir informações e sem apresentar resumos. Apresentarei tudo de forma estruturada, categorizada e detalhada, indicando onde há esboços de código.
+
+**DeepTrader: Sistema Autônomo de Trading de Criptomoedas com Multiagentes (Agency Swarm)**
+
+**1. Visão Geral e Objetivos:**
+
+- **Objetivo Principal:** Maximizar o valor do portfólio de criptomoedas de forma autônoma e contínua, operando em exchanges descentralizadas (DEXs).
+
+- **Abordagem:** Sistema multiagente baseado no framework Agency Swarm, com agentes especializados que colaboram para analisar o mercado, identificar oportunidades, executar trades e gerenciar riscos.
+
+- **Autonomia:** O sistema é projetado para ser completamente autônomo, com a LLM (Large Language Model) tomando decisões de trading sem intervenção humana constante, baseada em raciocínio (Chain of Thought) e utilizando ferramentas (Tools) e conhecimento contextual (RAG). Não há regras "hardcoded" do tipo "if-then-else" para as decisões de trading.
+
+- **Aprendizado Contínuo:** O sistema é projetado para aprender e se adaptar continuamente com base no desempenho passado, ajustando estratégias e parâmetros para otimizar os resultados.
+
+- **Segurança:** Ênfase em segurança, com mecanismos de proteção contra MEV (Miner Extractable Value), sandwich attacks, rug pulls e outras ameaças.
+
+- **MVP (Minimum Viable Product):** O desenvolvimento é focado em um MVP inicial funcional, com funcionalidades básicas e segurança reforçada, para depois expandir com recursos mais avançados.
+
+
+**2. Arquitetura e Componentes:**
+
+- **Framework:** Agency Swarm.
+
+- **Abordagem:** Modular, com componentes separados para diferentes responsabilidades (análise de mercado, trading, gestão de risco, etc.).
+
+- **Agentes:**
+
+    - **MarketAnalyst:**
+
+        - **Descrição:** Analisa dados de mercado, verifica a segurança dos tokens e fornece recomendações de trading.
+
+        - **Instruções (Prompt):** "Você é um analista de mercado de criptomoedas experiente. Seu objetivo é identificar oportunidades de trading (compra e venda) com base em dados de mercado, análise técnica e verificação de segurança. Use as ferramentas disponíveis para obter informações e fornecer recomendações claras e concisas, explicando seu raciocínio passo a passo (Chain of Thought)." (Adaptar este prompt com a estratégia de trading inicial do MVP).
+
+        - **Ferramentas (Tools):**
+
+            - FetchMarketData: (Código esboçado). Busca dados de mercado (preço, volume, etc.) da CoinGecko API.
+
+            - CheckTokenSecurity: (Código esboçado). Verifica a segurança de um token, consultando informações na blockchain (via web3.py) e, opcionalmente, usando APIs externas (GoPlus Security API, etc.).
+
+            - GetTokenPrice: Obtém o preço atual de um token (pode ser parte do FetchMarketData ou uma ferramenta separada, dependendo da API usada).
+
+            - CalculateTechnicalIndicator: (Ainda não implementada). Calcula indicadores técnicos (RSI, SMA, MACD, etc.). Serão criadas Tools separadas para cada indicador, ou uma Tool genérica.
+
+            - ConsultKnowledgeBase: (Código esboçado, implementação do RAG). Consulta uma base de conhecimento (vector store) para obter informações relevantes (manuais de estratégia, artigos, etc.).
+
+            - SearchNews: (RAG, opcional). Busca notícias relevantes que possam impactar o mercado. (Descartada no MVP, já que o ConsultKnowledgeBase cobre uma variedade de documentos e fontes).
+
+            - AnalyzeSentiment: (Opcional) Analisa o sentimento do mercado em textos. (Descartada no MVP)
+
+            - GetPricePrediction (Opcional): Usa um modelo de previsão de preço. (Descartada no MVP, faremos isso via prompt inicialmente)
+
+    - **Trader:**
+
+        - **Descrição:** Executa ordens de compra e venda em DEXs, e gerencia o portfólio.
+
+        - **Instruções (Prompt):** "Você é um trader de criptomoedas. Seu objetivo é executar as ordens de compra e venda da forma mais eficiente possível, respeitando os limites de risco e as instruções do DeepTraderManager. Use as ferramentas disponíveis para executar trades, gerenciar o portfólio e verificar o saldo da carteira."
+
+        - **Ferramentas (Tools):**
+
+            - ExecuteSwap: (Código esboçado - DexClient). Executa trades em DEXs (Uniswap, PancakeSwap, etc.) via web3.py.
+
+            - GetPortfolio: (Código esboçado). Obtém informações sobre o portfólio atual (posições abertas, valor total, etc.).
+
+            - GetAccountBalance: (Código esboçado). Verifica o saldo da carteira (hot wallet).
+
+            - CheckArbitrageOpportunities: (Código esboçado - classe ArbitrageChecker). Verifica oportunidades de arbitragem entre exchanges centralizadas (CEXs) usando a biblioteca ccxt.
+
+            - ExecuteArbitrageTrade: (Não implementada). Executa trades de arbitragem (depende da implementação do CheckArbitrageOpportunities).
+
+            - AddLiquidity: (Não implementada, mas há código de exemplo) Adiciona liquidez a pools em DEXs.
+
+            - RemoveLiquidity: (Não implementada, mas há código de exemplo). Remove liquidez de pools em DEXs.
+
+    - **PortfolioManager:**
+
+        - **Descrição:** Gerencia o portfólio, define alocação de capital, calcula o risco e monitora o desempenho.
+
+        - **Instruções (Prompt):** "Você é um gerente de portfólio. Seu objetivo é otimizar a alocação de capital, monitorar os riscos, rebalancear o portfólio periodicamente e acompanhar o desempenho geral."
+
+        - **Ferramentas (Tools):**
+
+            - GetPortfolio: (Já implementada, usada por outros agentes).
+
+            - CalculatePortfolioRisk: (Não implementada). Calcula métricas de risco do portfólio (ex: volatilidade, Value at Risk).
+
+            - RebalancePortfolio: (Não implementada). Executa o rebalanceamento do portfólio (ajusta as alocações de ativos).
+
+            - GetMarketData: (Já implementada, usada por outros agentes).
+
+            - GetPricePrediction: (Descartada para o MVP).
+
+    - **DeepTraderManager:**
+
+        - **Descrição:** Gerencia a equipe DeepTrader, define metas, monitora riscos e otimiza a alocação de capital.
+
+        - **Instruções (Prompt):** "Você é o gerente da equipe DeepTrader. Seu objetivo é garantir que os agentes colaborem para maximizar o valor do portfólio, dentro dos limites de risco aceitáveis. Priorize a preservação de capital. Bloqueie qualquer trade que arrisque mais de 2% do portfólio ou envolva tokens não verificados." (Este prompt deve ser adaptado com as regras de risco específicas do MVP).
+
+        - **Ferramentas (Tools):**
+
+            - GetRiskReport: (Não implementada). Obtém um relatório de risco do PortfolioManager.
+
+            - AdjustTradingStrategy: (Não implementada). Envia novas instruções ou ajusta parâmetros de estratégia para o MarketAnalyst.
+
+            - BlockTrade: (Código esboçado). Cancela ou bloqueia trades considerados arriscados antes da execução.
+
+            - AllocateCapital: (Não implementada). Redistribui fundos entre diferentes estratégias ou agentes (funcionalidade avançada).
+
+            - MonitorMarketConditions: (Não implementada, mas pode ser combinada com o FetchMarketData). Verifica eventos macroeconômicos ou notícias relevantes que possam impactar o mercado.
+
+    - **LearningCoordinator (Opcional, para Self-Learning):**
+
+        - **Descrição:** Analisa o desempenho do sistema e ajusta as estratégias dos outros agentes para aprendizado contínuo.
+
+        - **Instruções (Prompt):** "Você é o coordenador de aprendizado do DeepTrader. Seu objetivo é analisar o histórico de trades e o desempenho do sistema para identificar oportunidades de melhoria e ajustar as estratégias dos agentes."
+
+        - **Ferramentas (Tools):**
+
+            - GetTradeHistory: (Não implementada, mas o banco de dados já suporta). Obtém o histórico de trades do banco de dados.
+
+            - AnalyzePerformance: (Não implementada). Analisa o desempenho do sistema com base em métricas (ROI, Sharpe Ratio, etc.).
+
+            - AdjustAgentInstructions: (Não implementada). Modifica as instruções (prompts) dos agentes.
+
+            - AdjustToolParameters: (Não implementada). Ajusta os parâmetros das Tools (ex: limiares de risco, parâmetros de indicadores técnicos).
+
+- **Comunicação entre Agentes:**
+
+    - **Mecanismo:** Mensagens diretas assíncronas usando self.send_message(recipient, message).
+
+    - **Formato:** JSON, com estrutura definida por classes Pydantic. (Código esboçado para MessageHeader, MessageBody e exemplos de tipos de mensagens como TradeRecommendation, TradeApprovalRequest, TradeApprovalResponse).
+
+    - **Protocolo:** Um arquivo protocol.py (a ser criado) definirá todos os tipos de mensagens, seus campos e semântica.
+
+- **Loop Principal:**
+
+    - Combinação de agency.run_loop() (do Agency Swarm) com AsyncIOScheduler para tarefas periódicas. (Código esboçado).
+
+    - Tarefas agendadas incluem check_market_conditions (executada pelo MarketAnalyst) e outras a serem definidas.
+
+    - Inicialização: Configurações e chaves de API carregadas de um arquivo .env.
+
+
+**3. Segurança:**
+
+- **MEV Protection:** Uso do Flashbots Protect RPC (alterando a URL do provedor Web3). (Código esboçado).
+
+- **Sandwich Attack Detection:** Simulação de transações com w3.eth.call antes do envio, verificando o slippage. (Código esboçado).
+
+- **Rug Pull Detection:** Combinação de:
+
+    - Consulta a APIs externas (GoPlus, Rugcheck.xyz - a definir qual usar).
+
+    - Verificações básicas na blockchain (via web3.py, se possível - totalSupply, mas não num_holders ou is_verified).
+
+    - Não faremos bundle purchase detection no MVP, pois depende de dados complexos.
+
+- **Fake Volume Detection:** Implementada no método _detect_fake_volume da classe DexBotAdvanced, usando Pocket Universe API (opcional, se tiver chave) ou heurísticas (volume/transações).
+
+- **Blacklists:** Listas de tokens e desenvolvedores maliciosos (implementadas).
+
+- **Fund Isolation:** Uso de hot wallet (para trading) e cold wallet (para armazenamento seguro), mas a implementação da transferência de fundos entre as carteiras não foi detalhada. A interação com um bot de terceiros (BonkBot) foi descartada.
+
+- **Approval Revocation:** Revogação automática de aprovações de token após cada trade (implementada no TradingModule).
+
+
+**4. Dados e Persistência:**
+
+- **Banco de Dados:** SQLite (para o MVP).
+
+- **Tabelas:**
+
+    - tokens: Informações sobre tokens (endereço, símbolo, cadeia, histórico de preços, etc.).
+
+    - events: Eventos detectados (ex: "potencial_pump", "blacklisted_dev").
+
+    - transactions: Histórico de transações (trades).
+
+    - portfolio: Estado atual do portfólio.
+
+- **RAG (Retrieval-Augmented Generation):**
+
+    - **Vector Store:** ChromaDB (sugerido), FAISS, Qdrant ou Weaviate (a definir).
+
+    - **Documentos:** Manuais de estratégia de trading, artigos, notícias, etc.
+
+    - **Tool:** ConsultKnowledgeBase (código esboçado).
+
+    - **Técnicas Avançadas:** HyDE (Hypothetical Document Embeddings), re-ranking.
+
+
+**5. Estratégia de Trading (MVP):**
+
+- **Definição:** A ser definida posteriormente, via prompts para os agentes (MarketAnalyst e DeepTraderManager).
+
+- **Exemplo Inicial (Simples):**

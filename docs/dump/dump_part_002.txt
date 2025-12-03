@@ -1,0 +1,444 @@
+                'dump': -35,
+                'liquidity_rug': -90,
+                'min_age_hours': 2,
+                'fake_volume_txn_ratio': 5000  # $ per txn threshold
+            },
+            'blacklists': {
+                'tokens': ['0x...'],  # Add known scam addresses
+                'devs': ['0x...'],     # Known malicious developers
+            },
+            'pocket_universe': {
+                'api_key': 'your_api_key',
+                'endpoint': 'https://api.pocketuniverse.app/v1/contract-risk'
+            },
+            'advanced': {
+                'cex_listing_detection': True,
+                'token_age_analysis': True,
+                'volume_validation': True
+            }
+        }
+        self.db = 'dex_data_advanced.db'
+        self.ollama = Client(host='http://localhost:11434')
+        self._init_db()
+
+    def _init_db(self):
+        with sqlite3.connect(self.db) as conn:
+            # Enhanced schema
+            conn.execute('''CREATE TABLE IF NOT EXISTS tokens
+                         (address TEXT PRIMARY KEY,
+                          symbol TEXT,
+                          chain TEXT,
+                          dev_address TEXT,
+                          price_history JSON,
+                          volume_history JSON,
+                          liquidity_history JSON,
+                          created_at DATETIME,
+                          updated_at DATETIME,
+                          risk_score REAL,
+                          is_blacklisted BOOLEAN)''')
+
+            conn.execute('''CREATE TABLE IF NOT EXISTS events
+                         (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                          address TEXT,
+                          event_type TEXT,
+                          details JSON,
+                          detected_at DATETIME)''')
+
+    def _apply_filters(self, token: Dict) -> bool:
+        """Apply all filters and blacklists"""
+        if token['address'] in self.config['blacklists']['tokens']:
+            return False
+
+        if token['dev'] in self.config['blacklists']['devs']:
+            self._log_event(token, 'blacklisted_dev', {'dev': token['dev']})
+            return False
+
+        if self.config['advanced']['token_age_analysis']:
+            age = datetime.utcnow() - datetime.fromisoformat(token['createdAt'])
+            if age < timedelta(hours=self.config['thresholds']['min_age_hours']):
+                self._log_event(token, 'new_token', {'age': str(age)})
+
+        return True
+
+    def _detect_fake_volume(self, token: Dict) -> Optional[bool]:
+        """Check volume authenticity using multiple methods"""
+        # Method 1: Pocket Universe API
+        try:
+            if self.config['pocket_universe']['api_key']:
+                response = requests.post(
+                    self.config['pocket_universe']['endpoint'],
+                    json={
+                        'chain': token['chain'],
+                        'address': token['address']
+                    },
+                    headers={'x-api-key': self.config['pocket_universe']['api_key']}
+                )
+                if response.json().get('is_volume_fake', False):
+                    return True
+        except Exception as e:
+            print(f"Pocket Universe Error: {e}")
+
+        # Method 2: Algorithmic check
+        try:
+            volume = token['volume']['usd']
+            txns = token['txCount']
+            if txns == 0:
+                return False
+
+            ratio = volume / txns
+            if ratio > self.config['thresholds']['fake_volume_txn_ratio']:
+                return True
+
+            # Check volume/price correlation
+            price_change = token['priceChange']['h1']
+            volume_change = token['volumeChange']['h1']
+            if abs(volume_change) > 500 and abs(price_change) < 10:
+                return True
+        except KeyError:
+            pass
+
+        return False
+
+    def _enhanced_analysis(self, token: Dict):
+        """Advanced pattern detection"""
+        # Fake volume check
+        if self.config['advanced']['volume_validation']:
+            if self._detect_fake_volume(token):
+                self._log_event(token, 'fake_volume', token['volume'])
+                return  # Skip further analysis
+
+        # Original anomaly detection
+        self._detect_anomalies(token)
+
+        # CEX listing potential
+        if self.config['advanced']['cex_listing_detection']:
+            self._detect_cex_listings(token)
+
+    def _detect_cex_listings(self, token: Dict):
+        """Enhanced CEX listing detection"""
+        criteria = {
+            'high_volume': token['volume']['usd'] > 1e6,
+            'low_volatility': abs(token['priceChange']['h24']) < 15,
+            'large_liquidity': token['liquidity']['usd'] > 5e5,
+            'whale_txns': token['txns']['m5'] > 50
+        }
+
+        if all(criteria.values()):
+            analysis = self._analyze_with_ai({
+                'token': token,
+                'criteria': criteria,
+                'prompt': 'Assess CEX listing probability (1-100) with reasoning'
+            })
+            self._log_event(token, 'cex_listing_analysis', analysis)
+
+    def scan_cycle(self):
+        for chain in self.config['chains_to_monitor']:
+            try:
+                tokens = self._fetch_dex_data(chain)
+                for token in tokens:
+                    if self._apply_filters(token):
+                        self._enhanced_analysis(token)
+                self._update_database(tokens)
+            except Exception as e:
+                print(f"Chain {chain} scan failed: {e}")
+
+    def _update_database(self, tokens: List[Dict]):
+        """Store data with risk assessment"""
+        with sqlite3.connect(self.db) as conn:
+            for token in tokens:
+                risk_score = self._calculate_risk_score(token)
+                conn.execute('''INSERT OR REPLACE INTO tokens VALUES
+                             (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''', (
+                    token['address'],
+                    token['symbol'],
+                    token['chain'],
+                    token.get('dev', ''),
+                    str(token['priceHistory']),
+                    str(token['volumeHistory']),
+                    str(token['liquidity']),
+                    token['createdAt'],
+                    datetime.utcnow(),
+                    risk_score,
+                    False  # Blacklisted status
+                ))
+
+    def _calculate_risk_score(self, token: Dict) -> float:
+        """Quantitative risk assessment"""
+        score = 0
+        # Add risk factors here
+        if self._detect_fake_volume(token):
+            score += 0.4
+        if token.get('priceChange', {}).get('m5', 0) > 100:
+            score += 0.3
+        if token['liquidity']['usd'] < 10000:
+            score += 0.2
+        return min(score, 1.0)
+
+    # Previous core methods remain with improved error handling
+    # (_fetch_dex_data, _analyze_with_ai, _detect_anomalies, etc)
+
+if __name__ == "__main__":
+    bot = DexBotAdvanced()
+    bot.run()
+Key Enhancements:
+
+Advanced Filtering System
+
+python
+Copy
+# Blacklist implementation
+self.config['blacklists'] = {
+    'tokens': ['0x...'],  # Token addresses
+    'devs': ['0x...']     # Developer addresses
+}
+
+def _apply_filters(self, token):
+    # Check both token and developer blacklists
+    if token['address'] in self.config['blacklists']['tokens']:
+        return False
+    if token.get('dev') in self.config['blacklists']['devs']:
+        return False
+    # Additional age filter
+    if token_age < minimum_age:
+        return False
+    return True
+Fake Volume Detection
+
+python
+Copy
+def _detect_fake_volume(self, token):
+    # Dual verification system
+    if self.config['pocket_universe']['api_key']:
+        # API-based check
+        response = requests.post(...)
+        if response.json()['fake_volume']:
+            return True
+
+    # Algorithmic check
+    volume_txn_ratio = token['volume'] / token['txCount']
+    if volume_txn_ratio > threshold:
+        return True
+    # Price-volume correlation check
+    if volume_change >> price_change:
+        return True
+    return False
+Risk Scoring System
+
+python
+Copy
+def _calculate_risk_score(self, token):
+    score = 0
+    # Multiple risk factors
+    if fake_volume: score += 0.4
+    if extreme_price_move: score += 0.3
+    if low_liquidity: score += 0.2
+    return min(score, 1.0)
+Enhanced CEX Listing Detection
+
+python
+Copy
+def _detect_cex_listings(self, token):
+    # Multiple criteria check
+    criteria = {
+        'high_volume': >1M,
+        'low_volatility': <15%,
+        'large_liquidity': >500k,
+        'whale_txns': >50/5m
+    }
+    if all(criteria):
+        # AI final verification
+        ai_analysis = self._analyze_with_ai(...)
+Usage Recommendations:
+
+Blacklist Maintenance
+
+bash
+Copy
+# Query for frequently appearing bad actors
+SELECT dev_address, COUNT(*) FROM events
+WHERE event_type = 'ai_rug_alert'
+GROUP BY dev_address
+ORDER BY COUNT(*) DESC
+Fake Volume Monitoring
+
+python
+Copy
+# Enable both detection methods in config
+self.config['advanced']['volume_validation'] = True
+self.config['pocket_universe']['api_key'] = 'your_key_here'
+Alert Prioritization
+
+python
+Copy
+# Use risk scores for alert prioritization
+SELECT * FROM tokens
+WHERE risk_score > 0.7
+ORDER BY created_at DESC
+Pattern Analysis
+
+python
+Copy
+# Train model on historical data
+def train_rug_pattern_model(self):
+    # Get all rug pull events
+    # Create training dataset
+    # Fine-tune model
+    pass
+This enhanced version includes:
+
+Multi-layered blacklisting system
+
+Hybrid fake volume detection (API + algorithmic)
+
+Quantitative risk scoring
+
+Developer behavior tracking
+
+Enhanced CEX listing prediction
+
+Age-based filtering
+
+Improved data schema for forensic analysis
+
+To further improve:
+
+Add on-chain analysis integration (Etherscan API)
+
+Implement automatic blacklist updating
+
+Add social media monitoring component
+
+Create a reporting dashboard with PySimpleGUI
+
+Add multi-model consensus system for AI analysis
+
+To make it even safer, add support of rugcheck.xyz and checker on Bundle purchases. Check each token on rugcheck.xyz and interact only with contracts that marked as "Good". Also, check if the supply of the coin wasn't bundled. If Bundled - Blacklist+dev blacklist.
+
+Also, to trade tokens, we need a trading bot. Using an existing one - Bonkbot, Trojan, or any other is easier. To trade selected tokens, use BonkBot via Telegram, also add TG support to get notifications of buy/sell.
+
+Decide if the code is better merged all in one or might work better in another architecture
+Okay, let's tackle this problem step by step. The user wants to enhance the existing DexBotAdvanced by integrating more safety checks and adding trading functionality. They mentioned using rugcheck.xyz for contract verification, checking for bundled purchases, and integrating a Telegram bot for notifications and trading via BonkBot. Also, they're considering the architecture—whether to keep everything in one codebase or split it up.
+
+First, I need to understand the new safety requirements. The user wants every token checked on rugcheck.xyz and only interact with contracts marked as "Good". So, I'll need to add an API call to rugcheck.xyz and parse the response. Also, checking if the token supply was bundled (like all tokens bought at once) might indicate a scam, so that's another check. If a token is bundled, it should be blacklisted along with the dev.
+
+Next, adding trading functionality. The user suggested using existing bots like BonkBot via Telegram. So, I need to integrate Telegram API to send commands to BonkBot. This involves handling messages, sending buy/sell orders, and receiving notifications. Also, the user wants notifications for buy/sell events, so the bot needs to send messages to a Telegram channel or chat.
+
+Now, architecture considerations. The current code is a single class handling data collection, analysis, and storage. Adding trading and Telegram interaction might complicate it. Microservices could be better here—separate services for monitoring, analysis, trading, and notifications. But the user might prefer a simpler approach if they're running it locally. Maybe keep it modular within the same codebase but split into different classes for each concern.
+
+Looking at the existing code, the DexBotAdvanced class has methods for scanning, filtering, analyzing, and updating the database. To add the new safety checks, I'll create a new method for rugcheck.xyz API and bundled supply check. Then, modify the _apply_filters method to include these checks.
+
+For Telegram integration, using the python-telegram-bot library would help. Need to set up handlers for commands and notifications. Also, interact with BonkBot, which might require simulating Telegram messages or using their API if available.
+
+Potential challenges: Handling asynchronous events for Telegram interactions, ensuring the trading bot doesn't interfere with the monitoring cycle, and managing API rate limits for rugcheck.xyz and Dexscreener.
+
+Testing each component separately would be crucial. Maybe mock the API responses during testing to avoid hitting rate limits. Also, error handling for failed API calls and Telegram communication.
+
+Finally, deciding on the architecture. If the user wants simplicity, keeping it monolithic but modular is okay. But if scalability is a concern, moving to a microservice architecture with message queues (like Redis or RabbitMQ) between components would be better. However, given the context of running locally with ollama, a single codebase with clear separation of concerns might be more manageable.
+
+In conclusion, I'll modify the existing code to include the new safety checks, add Telegram integration for notifications and trading, and structure the code into separate modules for monitoring, trading, and utilities to keep it organized. This approach balances functionality with maintainability for a local setup.
+
+Here's the enhanced architecture with safety checks and trading integration. The solution uses a modular microservice approach for better security isolation:
+
+python
+Copy
+# ------------ Safety Module (safety_checker.py) ------------
+import requests
+
+class SafetyEngine:
+    def __init__(self):
+        self.config = {
+            'rugcheck_api': 'https://rugcheck.xyz/api/v1/contracts/',
+            'blacklist': {
+                'bundled_supply': True,
+                'rugcheck_threshold': 85  # Minimum safety score
+            }
+        }
+
+    def verify_contract(self, chain: str, address: str) -> dict:
+        """Check contract safety through multiple providers"""
+        checks = {
+            'rugcheck': self._check_rugcheck(chain, address),
+            'bundle_check': self._check_bundle_purchases(chain, address)
+        }
+
+        return {
+            'is_safe': checks['rugcheck']['score'] >= self.config['blacklist']['rugcheck_threshold']
+                      and not checks['bundle_check']['is_bundled'],
+            'details': checks
+        }
+
+    def _check_rugcheck(self, chain: str, address: str) -> dict:
+        try:
+            response = requests.get(
+                f"{self.config['rugcheck_api']}{chain}/{address}"
+            )
+            return {
+                'score': response.json().get('score', 0),
+                'assessment': response.json().get('assessment', 'Unknown')
+            }
+        except Exception as e:
+            return {'error': str(e)}
+
+    def _check_bundle_purchases(self, chain: str, address: str) -> dict:
+        """Detect if entire supply was purchased in one transaction"""
+        try:
+            response = requests.get(
+                f"https://api.bundlewatch.com/{chain}/token/{address}/supply"
+            )
+            data = response.json()
+            return {
+                'is_bundled': data['initial_buy_percent'] >= 95,
+                'dev_wallet': data['dev_wallet']
+            }
+        except Exception as e:
+            return {'error': str(e)}
+
+# ------------ Trading Module (telegram_trader.py) ------------
+from telegram import Update, Bot
+from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
+
+class TelegramTrader:
+    def __init__(self, bot_token: str):
+        self.bot = Bot(token=bot_token)
+        self.updater = Updater(bot_token, use_context=True)
+        self._setup_handlers()
+
+    def _setup_handlers(self):
+        self.updater.dispatcher.add_handler(
+            CommandHandler('buy', self._handle_buy)
+        self.updater.dispatcher.add_handler(
+            CommandHandler('sell', self._handle_sell))
+        self.updater.dispatcher.add_handler(
+            MessageHandler(Filters.text, self._handle_message))
+
+    def _handle_buy(self, update: Update, context):
+        """Execute buy through BonkBot-like interface"""
+        # Format: /buy [token_address] [chain] [amount]
+        command = update.message.text.split()
+        # Execute trading logic here
+        self._send_bonkbot_command(f"!buy {command[1]} {command[2]} {command[3]}")
+
+    def _send_bonkbot_command(self, command: str):
+        """Simulate user sending commands to trading bot"""
+        # Implementation depends on specific trading bot API
+        pass
+
+    def send_alert(self, message: str):
+        """Send notifications to Telegram channel"""
+        self.bot.send_message(
+            chat_id='@your_channel',
+            text=message
+        )
+
+# ------------ Main Bot Architecture (main.py) ------------
+from safety_checker import SafetyEngine
+from telegram_trader import TelegramTrader
+
+class DexTradingBot(DexBotAdvanced):
+    def __init__(self):
+        super().__init__()
+        self.safety = SafetyEngine()
+        self.trader = TelegramTrader(os.getenv('TELEGRAM_TOKEN'))
+        self._add_safety_checks()
+
+    def _add_safety_checks(self):

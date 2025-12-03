@@ -1,0 +1,388 @@
+        *   *Importante:* O cálculo do `total_value_usd` *requer a integração com a `FetchMarketData`*. O exemplo acima mostra uma chamada *síncrona* como ilustração. O ideal é que essa chamada seja *assíncrona* para evitar bloqueios.
+        *   O tratamento de erros é básico; adicione tratamento mais robusto em produção.
+
+*   **`GetAccountBalance` (web3.py)**
+
+    *   **Descrição:** (Conforme definido anteriormente)
+    *   **Código:** (Já fornecido anteriormente, mas revisado):
+
+        ```python
+        from web3 import Web3
+        from pydantic import BaseModel, Field
+        from agency_swarm.tools import BaseTool
+        import os
+
+        class GetAccountBalanceInput(BaseModel):
+            wallet_address: str = Field(..., description="Wallet address to check balance")
+            chain: str = Field(..., description="Blockchain (e.g., 'ethereum', 'bsc')")
+
+        class GetAccountBalanceOutput(BaseModel):
+            balance: float = Field(..., description="Balance in the native currency (e.g., ETH, BNB)")
+            error: Optional[str] = Field(None, description="Error message, if any")
+
+        class GetAccountBalance(BaseTool):
+            """Gets the balance of a wallet on a given blockchain."""
+            input_type: type[BaseModel] = GetAccountBalanceInput
+            output_type: type[BaseModel] = GetAccountBalanceOutput
+
+            def run(self, wallet_address: str, chain: str) -> GetAccountBalanceOutput:
+                try:
+                    w3 = Web3(Web3.HTTPProvider(os.getenv(f"{chain.upper()}_RPC_URL")))  # Ex: ETHEREUM_RPC_URL, BSC_RPC_URL
+                    balance_wei = w3.eth.get_balance(w3.to_checksum_address(wallet_address))
+                    balance = w3.from_wei(balance_wei, 'ether') # Ou a unidade apropriada
+                    return GetAccountBalanceOutput(balance=float(balance))
+                except Exception as e:
+                    return GetAccountBalanceOutput(balance=0.0, error=str(e))
+
+        # Exemplo de uso:
+        # balance_tool = GetAccountBalance()
+        # input_data = GetAccountBalanceInput(wallet_address='0x...', chain='ethereum')
+        # result = await balance_tool.run(**input_data.model_dump()) # .dict() para pydantic v1
+        # print(result.balance)
+        ```
+
+    *   **Observações:**
+        *   Código revisado para maior clareza e tratamento de erros.
+        *   Usa Pydantic.
+        *   Carrega a URL do nó RPC do ambiente (`.env`).
+
+*   **`ConsultKnowledgeBase` (RAG - ChromaDB + Langchain - *Futuro*)**
+
+    *   **Descrição:** (Conforme definido anteriormente)
+    *   **Código (Esboço - A Ser Implementado Posteriormente):**
+
+        ```python
+        # (Este código é um ESBOÇO e precisa ser implementado em um módulo separado,
+        #  quando você decidir implementar o RAG.  Ele serve como um placeholder
+        #  para mostrar a estrutura geral.)
+
+        from agency_swarm.tools import BaseTool
+        from pydantic import BaseModel, Field
+        from typing import List
+        from langchain.document_loaders import DirectoryLoader #Ou outro loader
+        from langchain.text_splitter import RecursiveCharacterTextSplitter #Ou outro splitter
+        from langchain.embeddings.openai import OpenAIEmbeddings #Ou outro embedding
+        from langchain.vectorstores import Chroma #Ou outro vector store
+        # from langchain.llms import OpenAI # Para gerar respostas (opcional)
+        # from langchain.chains.question_answering import load_qa_chain
+
+        class ConsultKnowledgeBaseInput(BaseModel):
+            query: str = Field(..., description="The question or topic to search for in the knowledge base.")
+
+        class ConsultKnowledgeBaseOutput(BaseModel):
+            relevant_documents: List[str] = Field(..., description="List of relevant document excerpts.")
+            # error: Optional[str] = Field(None, description="Error message, if any") # Opcional
+
+        class ConsultKnowledgeBase(BaseTool):
+            """Consults the knowledge base to find relevant information."""
+            input_type: type[BaseModel] = ConsultKnowledgeBaseInput
+            output_type: type[BaseModel] = ConsultKnowledgeBaseOutput
+
+            def __init__(self, docs_path: str, persist_directory: str = "db"):
+                super().__init__()
+                self.docs_path = docs_path
+                self.persist_directory = persist_directory
+                self.embeddings = OpenAIEmbeddings()  # Ou outro modelo de embedding
+                self.db = None # Inicializa o banco de dados vetorial
+
+
+            def run(self, query: str) -> ConsultKnowledgeBaseOutput:
+                try:
+                    # 1. Carregar e indexar documentos (se o índice não existir):
+                    if not self.db:
+                      self.db = self._create_index()
+
+                    # 2. Consultar o banco de dados vetorial:
+                    docs = self.db.similarity_search(query, k=5)  # Ajuste 'k' (número de documentos)
+
+                    # 3. Formatar a saída:
+                    relevant_docs = [doc.page_content for doc in docs] # Pega só texto
+                    return ConsultKnowledgeBaseOutput(relevant_documents=relevant_docs)
+
+                except Exception as e:
+                    print(f"Error consulting knowledge base: {e}")
+                    return ConsultKnowledgeBaseOutput(relevant_documents=[]) #Retorna vazio em caso de erro
+
+            def _create_index(self):
+                """
+                Carrega documentos de um diretório, divide em chunks, cria embeddings e armazena em um banco vetorial.
+                """
+                try:
+                  loader = DirectoryLoader(self.docs_path, glob="**/*.txt") #Só carrega txt
+                  documents = loader.load()
+
+                  text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200) #Parametros importantes
+                  texts = text_splitter.split_documents(documents)
+
+                  db = Chroma.from_documents(texts, self.embeddings, persist_directory=self.persist_directory)
+                  db.persist()
+                  return db
+
+                except Exception as e:
+                  print('Error creating index')
+
+        # Exemplo de uso (dentro de um agente):
+        # knowledge_tool = ConsultKnowledgeBase(docs_path="./knowledge_base")
+        # input_data = ConsultKnowledgeBaseInput(query="Qual a melhor estratégia para trading de altcoins?")
+        # result = await knowledge_tool.run(**input_data.model_dump()) #.dict() se for pydantic v1
+        # print(result.relevant_documents)
+
+        ```
+
+    *   **Observações:**
+        *   Este é um *esboço* da implementação do RAG.
+        *   Usa `langchain` para carregar, dividir e incorporar documentos.
+        *   Usa `ChromaDB` como vector store (mas você pode escolher outro).
+        *   *Requer a criação de uma pasta `knowledge_base` com os documentos `.txt`*.
+        *   *Requer a instalação das bibliotecas `langchain`, `chromadb`, `tiktoken` e `openai` (se usar `OpenAIEmbeddings`)*.
+        *   *Adapte* o código para o seu caso específico (tipo de documento, modelo de embedding, etc.).
+
+*   **`CalculateTechnicalIndicator` (TA-Lib/pandas-ta - *Futuro*)**
+
+    *   **Descrição:** (Conforme definido anteriormente)
+    *   **Implementação:** (A ser implementada posteriormente.  Pode ser uma Tool separada para cada indicador ou uma Tool genérica).
+
+**3. Comunicação entre Agentes (protocol.py):**
+
+*   **Arquivo `protocol.py`:**
+
+    ```python
+    # protocol.py
+    from pydantic import BaseModel, Field, field_validator
+    from typing import List, Optional, Dict, Literal
+
+    class MessageHeader(BaseModel):
+        sender: str = Field(..., description="Name of the sending agent")
+        recipient: str = Field(..., description="Name of the receiving agent")
+        timestamp: str = Field(..., description="ISO8601 timestamp")
+        message_id: str = Field(..., description="Unique message ID")
+        priority: Literal["low", "medium", "high", "critical"] = Field("medium", description="Message priority") #Adicionado níveis de prioridade
+
+        @field_validator('timestamp')
+        def validate_timestamp(cls, value):
+            # Validar formato do timestamp, se necessário. Exemplo (usando datetime):
+            # from datetime import datetime
+            # try:
+            #     datetime.fromisoformat(value)
+            # except ValueError:
+            #     raise ValueError("Invalid timestamp format.  Use ISO8601.")
+            return value
+
+
+    class TradeRecommendation(BaseModel):
+        header: MessageHeader
+        token_address: str = Field(..., description="Address of the token to trade")
+        chain: str = Field(..., description="Blockchain (e.g., 'ethereum')")
+        action: Literal["buy", "sell"] = Field(..., description="Action: 'buy' or 'sell'") #Melhor usar Literal type
+        amount: float = Field(..., description="Amount to trade (in base units, e.g., ETH)")
+        confidence: float = Field(..., description="Confidence level of the recommendation (0.0 - 1.0)")
+        reasoning: str = Field(..., description="Chain-of-thought reasoning for the recommendation")
+
+    class TradeApprovalRequest(BaseModel):  # Manager para Trader
+        header: MessageHeader
+        trade_id: str = Field(..., description="ID of the trade recommendation")
+        recommendation: TradeRecommendation = Field(..., description="The original trade recommendation")
+
+    class TradeApprovalResponse(BaseModel):  # Trader para Manager
+        header: MessageHeader
+        trade_id: str = Field(..., description="ID of the trade recommendation")
+        approved: bool = Field(..., description="Whether the trade was approved")
+        reason: Optional[str] = Field(None, description="Reason for rejection, if applicable")
+        tx_hash: Optional[str] = Field(None, description="Transaction hash, if approved and executed")
+
+    class PortfolioUpdate(BaseModel): # Trader para PortfolioManager
+        header: MessageHeader
+        trade_id: str = Field(..., description="ID of the executed trade")
+        token_address: str = Field(..., description="Address of the traded token")
+        chain: str
+        action: Literal["buy", "sell"]
+        amount: float
+        price_per_unit: float
+        tx_hash: str
+
+    class RiskReportRequest(BaseModel): # DeepTraderManager para PortfolioManager
+        header: MessageHeader
+        period: Literal["daily", "weekly", "monthly"] = Field(..., description='daily')
+
+    class RiskReport(BaseModel): #PortfolioManager para DeepTraderManager
+        header: MessageHeader
+        total_value: float
+        volatility: Optional[float]
+        sharpe_ratio: Optional[float]
+        max_drawdown: Optional[float]
+        VaR: Optional[float]
+        risks: List[str]
+
+    # Adicione outros tipos de mensagem conforme necessário (ex: para o LearningCoordinator,
+    #  para alertas de segurança, etc.).
+
+    # Exemplo de como usar:
+    # from protocol import TradeRecommendation, MessageHeader
+    # recommendation = TradeRecommendation(...)
+    # message_json = recommendation.model_dump_json() #Para usar com pydantic v2
+
+    ```
+
+    *   **Observações:**
+        *   Define *todos* os tipos de mensagens como classes Pydantic.
+        *   Inclui um `MessageHeader` comum para metadados (remetente, destinatário, timestamp, ID, prioridade).
+        *   Usa `Literal` para restringir os valores de campos como `action` e `chain`.
+        *   Inclui exemplos de mensagens para `TradeRecommendation`, `TradeApprovalRequest`, `TradeApprovalResponse`, `PortfolioUpdate`. Adicione outros conforme necessário.
+        *   Adicionei validação de timestamp (opcional).
+
+**4. Loop Principal e Agendamento (main.py - Esboço):**
+
+```python
+import asyncio
+from agency_swarm import Agency
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from market_analyst import MarketAnalyst  # Importe seus agentes
+from trader import Trader
+from portfolio_manager import PortfolioManager
+from deep_trader_manager import DeepTraderManager
+# from learning_coordinator import LearningCoordinator  # Se for implementar
+import os
+
+async def check_market_conditions():
+    """Tarefa agendada para análise de mercado."""
+    try:
+        print('Market Analyst Task Running')
+        await agency.get_agent("MarketAnalyst").run_async("Analisar mercado agora e fornecer recomendações.") #Ou instrução mais detalhada
+    except Exception as e:
+        print('Market Analyst Task Failed')
+
+async def main():
+    """Função principal para iniciar o DeepTrader."""
+
+    # 1. Inicializar a Agência:
+    agency = Agency([
+        MarketAnalyst(),
+        Trader(),
+        PortfolioManager(),
+        DeepTraderManager(),
+        # LearningCoordinator(), # Descomente quando implementar
+    ], shared_instructions="./shared_instructions.md")  # Opcional
+
+    # 2. Configurar o Agendador:
+    scheduler = AsyncIOScheduler()
+    scheduler.add_job(check_market_conditions, 'interval', minutes=int(os.getenv('MARKET_CHECK_INTERVAL', 5)))  # Intervalo configurável (padrão: 5 minutos)
+    # scheduler.add_job(check_arbitrage, 'interval', seconds=30) # Adicione outras tarefas
+    # scheduler.add_job(learning_coordinator.analyze_performance, 'interval', days=1)
+
+    # 3. Iniciar o Agendador:
+    scheduler.start()
+
+    # 4. Iniciar o Loop da Agência:
+    await agency.run_loop()
+
+if __name__ == "__main__":
+    asyncio.run(main())
+Use code with caution.
+Python
+Observações:
+
+O código acima é um esboço do loop principal.
+
+Usa asyncio.run para executar a função assíncrona main.
+
+Inicializa a Agency com os agentes.
+
+91.6s
+continue
+
+Continuando a documentação detalhada do DeepTrader MVP...
+
+5. Segurança e Robustez (Detalhes de Implementação)
+
+5.1. MEV Protection (Flashbots Protect RPC):
+
+Implementação: A proteção contra MEV será implementada principalmente através do uso do Flashbots Protect RPC. Isso não requer modificações significativas no código, apenas a alteração da URL do provedor Web3:
+
+# Em vez de:
+# w3 = Web3(Web3.HTTPProvider('YOUR_INFURA_URL'))
+
+# Use:
+w3 = Web3(Web3.HTTPProvider('https://relay.flashbots.net')) # Para Ethereum Mainnet
+
+# Ou, para testnet (Goerli):
+# w3 = Web3(Web3.HTTPProvider('https://relay-goerli.flashbots.net'))
+Use code with caution.
+Python
+Observações:
+
+O Flashbots Protect RPC automaticamente roteia as transações para mineradores que suportam Flashbots, reduzindo a exposição ao mempool público e, portanto, o risco de front-running e sandwich attacks.
+
+Não há garantia de 100% de proteção, pois depende da participação dos mineradores.
+
+Para maior controle, você pode considerar o uso de Flashbots Bundles (mais complexo) no futuro.
+
+5.2. Sandwich Attack Detection (Simulação com eth_call):
+
+Implementação: A detecção de sandwich attacks será feita através da simulação da transação antes do envio, usando o método w3.eth.call. O código do ExecuteSwap (já fornecido anteriormente) já inclui um esboço dessa funcionalidade. Aqui está uma versão mais detalhada e comentada:
+
+# Dentro da classe ExecuteSwap, no método run():
+
+# ... (código anterior para construir a transação 'tx') ...
+
+# 7. Simular a transação (detecção de sandwich attack)
+try:
+    # Simulando a transação com eth_call:
+    simulated_result = w3.eth.call(tx, 'latest')
+
+    # Decodificando o resultado:
+    # *IMPORTANTE*: A forma de decodificar o resultado *depende da ABI do contrato*
+    # e da função específica que você está chamando (swapExactTokensForTokens, etc.).
+    # O exemplo abaixo assume que a função retorna a quantidade de tokens recebidos.
+    # VOCÊ PRECISA ADAPTAR ESTA PARTE.
+    simulated_amount_out = w3.eth.abi.decode(['uint256'], simulated_result)[0]
+
+    # Calculando o slippage *real* (simulado):
+    # Usamos o 'expected_amount_out' que foi calculado *antes* da simulação.
+    actual_slippage = (expected_amount_out - simulated_amount_out) / expected_amount_out
+
+    # Verificando se o slippage simulado excede o limite máximo:
+    if actual_slippage > slippage:
+        return ExecuteSwapOutput(success=False, error=f"Slippage too high! Expected: {expected_amount_out}, Simulated: {simulated_amount_out}, Max Slippage: {slippage}")
+
+except Exception as e:
+    print(f"Error simulating transaction: {e}")
+    return ExecuteSwapOutput(success=False, error=f"Error simulating transaction: {e}")
+
+# ... (código posterior para assinar e enviar a transação, se a simulação passar) ...
+Use code with caution.
+Python
+Observações:
+
+O código simula a execução da transação no estado mais recente da blockchain ('latest').
+
+A decodificação do resultado da simulação é crítica e depende da ABI do contrato da DEX. Você precisa saber o que a função de swap retorna.
+
+O actual_slippage é calculado comparando o resultado simulado com o resultado esperado (calculado antes da simulação).
+
+Se o slippage simulado for maior que o slippage máximo permitido, a transação não é enviada.
+
+O tratamento de erros captura exceções durante a simulação.
+
+5.3. Rug Pull Detection (Refinado):
+
+Implementação: A detecção de rug pulls é feita pela Tool CheckTokenSecurity. O código (já fornecido anteriormente) combina:
+
+Verificações Básicas (web3.py):
+
+get_total_supply: Obtém o total supply do token (se a função existir no contrato - ERC-20).
+
+(Opcional) get_num_holders: Tenta obter o número de holders (não confiável sem indexadores).
+
+(Opcional) is_verified: Tenta verificar se o contrato é verificado (requer API de explorador de blocos).
+
+Integração com APIs Externas (Opcional):
+
+GoPlus Security API: Consulta a API da GoPlus (se a chave estiver configurada) para obter informações de segurança do token.
+
+Rugcheck.xyz API: Consulta a API da Rugcheck.xyz (se a chave estiver configurada) para obter uma pontuação de segurança.
+
+Blacklists:
+
+Verifica se o endereço do token está na blacklist de tokens.
+
+Verifica se o endereço do desenvolvedor (se disponível) está na blacklist de desenvolvedores.

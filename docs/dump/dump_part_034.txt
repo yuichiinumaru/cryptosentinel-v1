@@ -1,0 +1,652 @@
+    { "name": "getitimer", "action": "SCMP_ACT_ALLOW" },
+    { "name": "alarm", "action": "SCMP_ACT_ALLOW" },
+    { "name": "setitimer", "action": "SCMP_ACT_ALLOW" },
+    { "name": "getpid", "action": "SCMP_ACT_ALLOW" },
+    { "name": "exit", "action": "SCMP_ACT_ALLOW" },
+    { "name": "exit_group", "action": "SCMP_ACT_ALLOW" },
+    { "name": "wait4", "action": "SCMP_ACT_ALLOW" },
+    { "name": "kill", "action": "SCMP_ACT_ALLOW" },
+    { "name": "uname", "action": "SCMP_ACT_ALLOW" },
+    { "name": "fcntl", "action": "SCMP_ACT_ALLOW" },
+    { "name": "flock", "action": "SCMP_ACT_ALLOW" },
+    { "name": "fsync", "action": "SCMP_ACT_ALLOW" },
+    { "name": "fdatasync", "action": "SCMP_ACT_ALLOW" },
+    { "name": "truncate", "action": "SCMP_ACT_ALLOW" },
+    { "name": "ftruncate", "action": "SCMP_ACT_ALLOW" },
+    { "name": "getcwd", "action": "SCMP_ACT_ALLOW" },
+    { "name": "chdir", "action": "SCMP_ACT_ALLOW" },
+    { "name": "fchdir", "action": "SCMP_ACT_ALLOW" },
+    { "name": "fstatfs", "action": "SCMP_ACT_ALLOW" },
+    { "name": "statfs", "action": "SCMP_ACT_ALLOW" },
+    { "name": "gettid", "action": "SCMP_ACT_ALLOW" },
+    { "name": "readlink", "action": "SCMP_ACT_ALLOW" },
+    { "name": "umask", "action": "SCMP_ACT_ALLOW" },
+    { "name": "gettimeofday", "action": "SCMP_ACT_ALLOW" },
+    { "name": "getrlimit", "action": "SCMP_ACT_ALLOW" },
+    { "name": "getrusage", "action": "SCMP_ACT_ALLOW" },
+    { "name": "clock_gettime", "action": "SCMP_ACT_ALLOW" },
+    { "name": "clock_getres", "action": "SCMP_ACT_ALLOW" },
+    { "name": "clock_nanosleep", "action": "SCMP_ACT_ALLOW" },
+    { "name": "sysinfo", "action": "SCMP_ACT_ALLOW" },
+    { "name": "clone", "action": "SCMP_ACT_ALLOW" }
+  ]
+}
+```
+
+This seccomp profile restricts the system calls available to the container, providing kernel-level isolation even though containers share the host kernel[1][4].
+
+### AppArmor Profile
+
+Create a file named `python-sandbox-profile` with the following:
+
+```
+#include
+
+profile python-sandbox flags=(attach_disconnected,mediate_deleted) {
+  #include
+  #include
+
+  # Deny all file writes by default
+  deny /** rwlx,
+
+  # Allow read access to necessary files
+  /usr/bin/python3.10 rix,
+  /usr/bin/python3.11 rix,
+  /usr/lib/python3/** r,
+  /usr/local/lib/python3/** r,
+  /etc/python3/** r,
+
+  # Allow limited write access to specific directories
+  owner /home/pythonuser/output/** rw,
+  owner /tmp/pythonuser/** rw,
+
+  # Deny network access
+  deny network inet,
+  deny network inet6,
+  deny network unix,
+  deny network raw,
+
+  # Disable capabilities
+  deny capability sys_admin,
+  deny capability net_admin,
+  deny capability sys_ptrace,
+  deny capability sys_module,
+  deny capability mknod,
+}
+```
+
+Load this profile with:
+
+```bash
+sudo apparmor_parser -r -W python-sandbox-profile
+```
+
+Then add `--security-opt "apparmor=python-sandbox"` to your Docker run command[1][4].
+
+## Kubernetes SecurityContext Configuration
+
+For running this sandbox in Kubernetes, use the following Pod specification:
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: python-sandbox
+spec:
+  containers:
+  - name: python-sandbox
+    image: python-sandbox:latest
+    command: ["python", "-c", "print('Hello from sandbox')"]
+    securityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+        - ALL
+      privileged: false
+      readOnlyRootFilesystem: true
+      runAsNonRoot: true
+      runAsUser: 10001
+      runAsGroup: 10001
+      seccompProfile:
+        type: Localhost
+        localhostProfile: "sandbox-seccomp.json"
+    resources:
+      limits:
+        cpu: "0.5"
+        memory: "512Mi"
+      requests:
+        cpu: "0.1"
+        memory: "256Mi"
+    volumeMounts:
+    - name: tmp-volume
+      mountPath: /tmp/pythonuser
+    - name: output-volume
+      mountPath: /home/pythonuser/output
+  volumes:
+  - name: tmp-volume
+    emptyDir:
+      medium: Memory
+      sizeLimit: 100Mi
+  - name: output-volume
+    emptyDir:
+      medium: Memory
+      sizeLimit: 100Mi
+```
+
+This configuration applies similar security measures to the Docker run command but in a Kubernetes-native format, ensuring read-only filesystem with specific writable directories[2][5].
+
+## Using gVisor for Enhanced Container Isolation
+
+For enhanced kernel-level isolation, you can use gVisor with Docker:
+
+```bash
+docker run --rm \
+  --name python-sandbox \
+  --runtime=runsc \
+  --read-only \
+  --tmpfs /tmp/pythonuser:rw,noexec,size=100M \
+  --mount type=tmpfs,destination=/home/pythonuser/output,tmpfs-size=100M \
+  --cpus=0.5 \
+  --memory=512m \
+  --network=none \
+  python-sandbox:latest \
+  python -c "print('Hello from sandboxed environment')"
+```
+
+gVisor provides an additional security layer between the container and the host kernel, intercepting and virtualizing system calls to prevent direct kernel access[1][4].
+
+## Implementing a Python Control Wrapper
+
+Create a control script that enforces execution time limits and handles the output:
+
+```python
+#!/usr/bin/env python3
+import subprocess
+import time
+import signal
+import sys
+import os
+
+def run_sandbox(code, timeout_seconds=10):
+    # Create a temporary file with the code
+    with open("/tmp/code.py", "w") as f:
+        f.write(code)
+
+    # Run the docker container
+    command = [
+        "docker", "run", "--rm",
+        "--name", f"python-sandbox-{int(time.time())}",
+        "--read-only",
+        "--cap-drop=ALL",
+        "--security-opt=no-new-privileges:true",
+        "--security-opt", "seccomp=sandbox-seccomp.json",
+        "--tmpfs", "/tmp/pythonuser:rw,noexec,size=100M",
+        "--mount", "type=tmpfs,destination=/home/pythonuser/output,tmpfs-size=100M",
+        "--cpus=0.5",
+        "--memory=512m",
+        "--memory-swap=512m",
+        "--pids-limit=50",
+        "--network=none",
+        "--ulimit", "nofile=64:64",
+        "--mount", f"type=bind,source=/tmp/code.py,destination=/home/pythonuser/code/script.py,readonly",
+        "python-sandbox:latest",
+        "python", "/home/pythonuser/code/script.py"
+    ]
+
+    # Start the process
+    process = subprocess.Popen(
+        command,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True
+    )
+
+    # Wait for the process with timeout
+    try:
+        stdout, stderr = process.communicate(timeout=timeout_seconds)
+        return {
+            "success": process.returncode == 0,
+            "stdout": stdout,
+            "stderr": stderr,
+            "execution_time": timeout_seconds
+        }
+    except subprocess.TimeoutExpired:
+        # Kill the container if it exceeds the timeout
+        kill_cmd = ["docker", "kill", f"python-sandbox-{int(time.time())}"]
+        subprocess.run(kill_cmd)
+        process.kill()
+        stdout, stderr = process.communicate()
+        return {
+            "success": False,
+            "stdout": stdout,
+            "stderr": stderr,
+            "error": "Execution timed out"
+        }
+
+if __name__ == "__main__":
+    code = sys.stdin.read()
+    result = run_sandbox(code)
+    print(result["stdout"])
+    if not result["success"]:
+        print(f"ERROR: {result['stderr']}", file=sys.stderr)
+        sys.exit(1)
+```
+
+This script enforces execution time limits and provides a clean interface for running sandboxed Python code[6][7].
+
+## Conclusion
+
+Creating a secure sandbox for untrusted Python code requires implementing multiple layers of security:
+
+1. **Minimal base image** with only necessary dependencies
+2. **Non-root user execution** to limit privileges[3]
+3. **Read-only filesystem** with specific writable temporary directories[1][5]
+4. **Resource limits** on CPU, memory, processes, and execution time[6]
+5. **Network isolation** to prevent unwanted connections[1]
+6. **Kernel-level isolation** using seccomp, AppArmor, or gVisor[1][4]
+
+By combining these techniques, you can create a sandbox environment similar to OpenAI's Code Interpreter that safely executes untrusted Python code while minimizing security risks. However, remember that no sandboxing solution is 100% secure, and you should regularly update and patch your systems to address new vulnerabilities[4].
+
+Citations:
+[1] https://piotrek-k.pl/posts/sandboxing/
+[2] https://github.com/ESMValGroup/ESMValTool/issues/2575
+[3] https://www.reddit.com/r/docker/comments/89u3h1/running_docker_as_nonroot_python_pyc_files/
+[4] https://stackoverflow.com/questions/53075809/creating-a-secure-environment-for-untrusted-python-code
+[5] https://www.reddit.com/r/docker/comments/qtcaab/creating_readonly_file_systems_with_aspnet_core/
+[6] https://github.com/christophetd/docker-python-sandbox
+[7] https://healeycodes.com/running-untrusted-python-code
+[8] https://stackoverflow.com/questions/52526219/docker-mkdir-read-only-file-system
+[9] https://stackoverflow.com/questions/70520205/docker-non-root-user-best-practices-for-python-images
+[10] https://docs.docker.com/engine/swarm/secrets/
+[11] https://www.reddit.com/r/docker/comments/1ixrpwt/running_docker_containers_as_non_root_user/
+[12] https://www.software.ac.uk/blog/executing-python-code-submitted-web-service
+[13] https://docs.docker.com/engine/security/rootless/
+[14] https://stackoverflow.com/questions/73109762/run-dockerfile-python-script-as-non-root-user/73110019
+[15] https://dev.to/narasimha1997/building-a-secure-sandboxed-environment-for-executing-untrusted-code-7e8
+[16] https://github.com/moby/moby/issues/18010
+[17] https://github.com/StepicOrg/epicbox
+[18] https://docs.docker.com/build/building/best-practices/
+[19] https://www.valentinog.com/blog/caging-the-agent/
+[20] https://www.youtube.com/watch?v=8Cn3nj0U9yw
+[21] https://docs.docker.com/engine/storage/drivers/
+[22] https://blog.theredguild.org/where-do-you-run-your-code-part-ii-2/
+[23] https://neo4j.com/developer/kb/running-docker-as-nonroot-user/
+
+---
+Answer from Perplexity: pplx.ai/share
+
+
+# Comprehensive Guide to OpenAI Assistants API v2 Streaming Events
+
+The OpenAI Assistants API v2 streaming endpoint provides real-time updates about threads, runs, messages, and steps through a series of typed events. This report details the JSON structure, event names, and data payload formats for all event types emitted when using the `threads/{thread_id}/runs/{run_id}/stream` endpoint.
+
+## General Structure of Streaming Events
+
+All events from the Assistants API streaming endpoint follow a consistent structure with a `type` field identifying the event and a `data` object containing the event-specific payload[3][4]. The streaming responses use semantic events, where each event has a predefined schema that allows you to listen for specific events you care about.
+
+```json
+{
+  "type": "event_name",
+  "data": {
+    // Event-specific fields
+  }
+}
+```
+
+## Thread-related Events
+
+### thread.created
+
+This event is emitted when a new thread is created.
+
+```json
+{
+  "type": "thread.created",
+  "data": {
+    "id": "thread_abc123",
+    "object": "thread",
+    "created_at": 1682033042,
+    "metadata": {},
+    "tool_resources": {}
+  }
+}
+```
+
+The thread object includes essential metadata about the thread, including its unique identifier, creation timestamp, and any metadata provided during creation[2].
+
+## Run-related Events
+
+### thread.run.created
+
+Emitted when a new run is initiated on a thread.
+
+```json
+{
+  "type": "thread.run.created",
+  "data": {
+    "id": "run_abc123",
+    "object": "thread.run",
+    "created_at": 1682033042,
+    "assistant_id": "asst_abc123",
+    "thread_id": "thread_abc123",
+    "status": "created",
+    "required_action": null,
+    "last_error": null,
+    "model": "gpt-4o",
+    "instructions": null,
+    "tools": [],
+    "metadata": {}
+  }
+}
+```
+
+### thread.run.queued
+
+Triggered when a run enters the queue for processing.
+
+```json
+{
+  "type": "thread.run.queued",
+  "data": {
+    "id": "run_abc123",
+    "object": "thread.run",
+    "created_at": 1682033042,
+    "assistant_id": "asst_abc123",
+    "thread_id": "thread_abc123",
+    "status": "queued",
+    "required_action": null,
+    "last_error": null,
+    "model": "gpt-4o",
+    "tools": [],
+    "metadata": {}
+  }
+}
+```
+
+### thread.run.in_progress
+
+Emitted when the assistant begins processing the run.
+
+```json
+{
+  "type": "thread.run.in_progress",
+  "data": {
+    "id": "run_abc123",
+    "object": "thread.run",
+    "created_at": 1682033042,
+    "assistant_id": "asst_abc123",
+    "thread_id": "thread_abc123",
+    "status": "in_progress",
+    "required_action": null,
+    "last_error": null,
+    "model": "gpt-4o",
+    "tools": [],
+    "metadata": {}
+  }
+}
+```
+
+### thread.run.requires_action
+
+This event occurs when the assistant needs the application to perform an action, such as executing a function call.
+
+```json
+{
+  "type": "thread.run.requires_action",
+  "data": {
+    "id": "run_abc123",
+    "object": "thread.run",
+    "created_at": 1682033042,
+    "assistant_id": "asst_abc123",
+    "thread_id": "thread_abc123",
+    "status": "requires_action",
+    "required_action": {
+      "type": "submit_tool_outputs",
+      "submit_tool_outputs": {
+        "tool_calls": [
+          {
+            "id": "call_abc123",
+            "type": "function",
+            "function": {
+              "name": "get_weather",
+              "arguments": "{\"location\":\"San Francisco, CA\"}"
+            }
+          }
+        ]
+      }
+    },
+    "last_error": null,
+    "model": "gpt-4o",
+    "tools": [
+      {
+        "type": "function",
+        "function": {
+          "name": "get_weather",
+          "description": "Get the current weather in a given location",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "location": {
+                "type": "string",
+                "description": "The city and state, e.g. San Francisco, CA"
+              }
+            },
+            "required": ["location"]
+          }
+        }
+      }
+    ],
+    "metadata": {}
+  }
+}
+```
+
+### thread.run.completed
+
+Emitted when a run is successfully completed.
+
+```json
+{
+  "type": "thread.run.completed",
+  "data": {
+    "id": "run_abc123",
+    "object": "thread.run",
+    "created_at": 1682033042,
+    "assistant_id": "asst_abc123",
+    "thread_id": "thread_abc123",
+    "status": "completed",
+    "required_action": null,
+    "last_error": null,
+    "model": "gpt-4o",
+    "tools": [],
+    "metadata": {},
+    "completed_at": 1682033100
+  }
+}
+```
+
+### thread.run.failed
+
+Emitted when a run fails due to an error.
+
+```json
+{
+  "type": "thread.run.failed",
+  "data": {
+    "id": "run_abc123",
+    "object": "thread.run",
+    "created_at": 1682033042,
+    "assistant_id": "asst_abc123",
+    "thread_id": "thread_abc123",
+    "status": "failed",
+    "required_action": null,
+    "last_error": {
+      "code": "rate_limit_exceeded",
+      "message": "Rate limit exceeded. Please retry after 20s."
+    },
+    "model": "gpt-4o",
+    "tools": [],
+    "metadata": {},
+    "failed_at": 1682033080
+  }
+}
+```
+
+## Message-related Events
+
+### thread.message.created
+
+Emitted when a new message is created.
+
+```json
+{
+  "type": "thread.message.created",
+  "data": {
+    "id": "msg_abc123",
+    "object": "thread.message",
+    "created_at": 1682033042,
+    "thread_id": "thread_abc123",
+    "role": "assistant",
+    "content": [],
+    "assistant_id": "asst_abc123",
+    "run_id": "run_abc123",
+    "metadata": {}
+  }
+}
+```
+
+### thread.message.in_progress
+
+Triggered when the assistant starts generating a message.
+
+```json
+{
+  "type": "thread.message.in_progress",
+  "data": {
+    "id": "msg_abc123",
+    "object": "thread.message",
+    "created_at": 1682033042,
+    "thread_id": "thread_abc123",
+    "role": "assistant",
+    "content": [],
+    "assistant_id": "asst_abc123",
+    "run_id": "run_abc123",
+    "metadata": {}
+  }
+}
+```
+
+### thread.message.delta
+
+This event provides incremental updates to a message as it is being generated.
+
+```json
+{
+  "type": "thread.message.delta",
+  "data": {
+    "id": "msg_abc123",
+    "object": "thread.message.delta",
+    "created_at": 1682033042,
+    "thread_id": "thread_abc123",
+    "role": "assistant",
+    "delta": {
+      "content": [
+        {
+          "type": "text",
+          "text": {
+            "value": "Hello",
+            "annotations": []
+          }
+        }
+      ]
+    },
+    "assistant_id": "asst_abc123",
+    "run_id": "run_abc123",
+    "metadata": {}
+  }
+}
+```
+
+A more complex delta with annotations might look like:
+
+```json
+{
+  "type": "thread.message.delta",
+  "data": {
+    "id": "msg_abc123",
+    "object": "thread.message.delta",
+    "created_at": 1682033042,
+    "thread_id": "thread_abc123",
+    "role": "assistant",
+    "delta": {
+      "content": [
+        {
+          "type": "text",
+          "text": {
+            "value": "According to the weather data",
+            "annotations": [
+              {
+                "type": "file_citation",
+                "file_citation": {
+                  "file_id": "file-abc123",
+                  "quote": "Temperature is 72°F"
+                },
+                "start_index": 24,
+                "end_index": 42
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "assistant_id": "asst_abc123",
+    "run_id": "run_abc123",
+    "metadata": {}
+  }
+}
+```
+
+### thread.message.completed
+
+Emitted when a message is fully generated.
+
+```json
+{
+  "type": "thread.message.completed",
+  "data": {
+    "id": "msg_abc123",
+    "object": "thread.message",
+    "created_at": 1682033042,
+    "thread_id": "thread_abc123",
+    "role": "assistant",
+    "content": [
+      {
+        "type": "text",
+        "text": {
+          "value": "Hello! How can I help you today?",
+          "annotations": []
+        }
+      }
+    ],
+    "assistant_id": "asst_abc123",
+    "run_id": "run_abc123",
+    "metadata": {},
+    "completed_at": 1682033060
+  }
+}
+```
+
+## Step-related Events
+
+### thread.run.step.created
+
+Emitted when a new step in a run is created.
+
+```json
+{
+  "type": "thread.run.step.created",
+  "data": {
+    "id": "step_abc123",
+    "object": "thread.run.step",
+    "created_at": 1682033042,
+    "run_id": "run_abc123",

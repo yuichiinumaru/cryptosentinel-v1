@@ -1,0 +1,341 @@
+    parameters=[
+        Parameter(
+            name="text_to_summarize",
+            description="The text content to be summarized.",
+            typ=Annotated[str, "The text to summarize"]
+        ),
+        Parameter(
+            name="max_length",
+            description="Approximate maximum length of the summary in words (optional).",
+            typ=Annotated[int | None, "Optional max length"],
+            required=False,
+        )
+    ],
+    returns=Returns(
+        description="The generated summary.",
+        typ=Annotated[str, "The summary text"]
+    )
+)
+async def summarize_gemini_tool(text_to_summarize: str, max_length: int | None = None) -> str:
+    """Implementation of the MCP tool that calls Gemini."""
+    print(f"MCP TOOL: Received request to summarize (Length: {len(text_to_summarize)} chars)")
+    try:
+        prompt = f"Please summarize the following text concisely:"
+        if max_length:
+            prompt += f" Aim for approximately {max_length} words."
+        prompt += f"\n\nText:\n{text_to_summarize}"
+
+        # Using async version for potential concurrency in the MCP server
+        response = await gemini_model.generate_content_async(prompt)
+
+        # Handle potential safety blocks or empty responses
+        # Accessing parts and checking for text is safer
+        summary_text = ""
+        if response.candidates and response.candidates[0].content.parts:
+            summary_text = response.candidates[0].content.parts[0].text
+
+        if not summary_text:
+             print("WARN: Gemini response text is empty or blocked.")
+             return "[Summary could not be generated or was blocked]"
+
+        print(f"MCP TOOL: Gemini summarization successful.")
+        return summary_text
+    except Exception as e:
+        # Log the full error for debugging on the server
+        print(f"ERROR in summarize_gemini_tool: {type(e).__name__} - {e}")
+        # Return a user-friendly error message via MCP
+        return f"[Error during summarization]"
+
+# --- Define a simple Resource (Optional Example) ---
+@resource(
+    name="gemini_mcp_server_status", # More specific name
+    description="Provides the status of the Gemini MCP server.",
+    schema={ # OpenAPI schema for the resource
+        "type": "object",
+        "properties": {
+            "status": {"type": "string", "enum": ["running"]},
+            "gemini_model_used": {"type": "string"},
+        },
+        "required": ["status", "gemini_model_used"],
+    }
+)
+async def get_server_status() -> dict:
+    """Implementation of the resource getter."""
+    return {
+        "status": "running",
+        "gemini_model_used": gemini_model.model_name,
+    }
+
+# --- Create and Run MCP Server ---
+async def main():
+    config = Config(
+        host="127.0.0.1",
+        port=6789, # Default MCP WebSocket port
+        # Add other config if needed (e.g., logging level)
+    )
+    server = Server(
+        config=config,
+        tools=[summarize_gemini_tool], # Register the Gemini tool
+        resources=[get_server_status], # Register the optional resource
+    )
+    print(f"Starting Gemini MCP Server on ws://{config.host}:{config.port}...")
+    await server.serve()
+
+if __name__ == "__main__":
+    # Using asyncio.run() is standard for standalone scripts.
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        print("\nGemini MCP Server stopped.")
+```
+
+**To Run:**
+
+1.  Save the code as a Python file (e.g., `gemini_mcp_server.py`).
+2.  Set the `GOOGLE_API_KEY` environment variable.
+3.  Run the script: `python gemini_mcp_server.py`
+
+This server now listens for MCP connections on `ws://127.0.0.1:6789` and offers the `summarize_text_with_gemini` tool, which uses the Gemini API internally.
+
+### **4.3 Integrating MCP Server with Agency Swarm**
+
+To use the tools exposed by your custom MCP server within Agency Swarm, you create an Agency Swarm **custom tool** (`BaseTool`) that acts as an **MCP client**. This tool handles the communication with the MCP server.
+
+**Steps:**
+
+1.  **Create an Agency Swarm Tool:** Define a class inheriting from `agency_swarm.tools.BaseTool`. Its fields (`pydantic.Field`) should represent the parameters needed by the MCP tool.
+2.  **Use MCP Python SDK Client:** Inside the tool's `run` method (or `arun` for async), use `mcp.client.client.ClientSession` to connect to your MCP server.
+3.  **Call MCP Tool:** Use the `session.call_tool` method to invoke the desired tool on the MCP server (e.g., `summarize_text_with_gemini`), passing the parameters received by the Agency Swarm tool.
+4.  **Return Result:** Return the result received from the MCP server back to the Agency Swarm agent.
+
+**Example: Agency Swarm Tool acting as MCP Client**
+
+```python
+import asyncio
+import os
+from pydantic import Field, validator
+from agency_swarm.tools import BaseTool
+# Ensure MCP client library is installed: pip install modelcontextprotocol
+from mcp.client.client import ClientSession, ClientParameters
+from mcp.exceptions import MCPError
+
+# Define connection parameters for your MCP server
+MCP_SERVER_URL = os.getenv("MCP_SERVER_URL", "ws://127.0.0.1:6789") # Use env var or default
+
+class GeminiSummarizerMCPTool(BaseTool):
+    """
+    Summarizes text by calling the 'summarize_text_with_gemini' tool
+    on a remote MCP server powered by Google Gemini.
+    """
+    text_to_summarize: str = Field(
+        ...,
+        description="The text content that needs to be summarized by the Gemini MCP tool."
+    )
+    max_length: int | None = Field(
+        default=None,
+        description="Optional approximate maximum length in words for the summary."
+    )
+    mcp_server_url: str = Field(
+        default=MCP_SERVER_URL,
+        description="URL of the MCP server hosting the Gemini summarizer tool."
+    )
+
+    @validator('mcp_server_url')
+    def check_mcp_url(cls, v):
+        if not v.startswith(('ws://', 'wss://')):
+            raise ValueError('MCP Server URL must start with ws:// or wss://')
+        return v
+
+    # Use arun for async operation, recommended for network calls
+    async def arun(self) -> str:
+        """Connects to the MCP server and calls the summarization tool."""
+        print(f"AGENCY SWARM TOOL: Connecting to MCP server at {self.mcp_server_url}")
+        mcp_params = ClientParameters(uri=self.mcp_server_url)
+        session = None
+        try:
+            # Using ClientSession as an async context manager
+            async with ClientSession(params=mcp_params) as session:
+                print("AGENCY SWARM TOOL: Connected to MCP. Calling 'summarize_text_with_gemini'.")
+
+                # Prepare parameters for the MCP tool call
+                mcp_tool_params = {
+                    "text_to_summarize": self.text_to_summarize,
+                }
+                if self.max_length is not None:
+                    mcp_tool_params["max_length"] = self.max_length
+
+                # Call the tool on the MCP server
+                mcp_response = await session.call_tool(
+                    "summarize_text_with_gemini",
+                    params=mcp_tool_params
+                )
+                print(f"AGENCY SWARM TOOL: Received MCP response.")
+
+                # --- Robustly extract the result ---
+                # Check for MCP-level errors first
+                if mcp_response.get("error"):
+                    error_info = mcp_response["error"]
+                    print(f"MCP Error Response: Code={error_info.get('code')}, Message={error_info.get('message')}")
+                    return f"[MCP Error: {error_info.get('message', 'Unknown MCP error')}]"
+
+                # Extract result assuming standard MCP success structure
+                # result.content is typically a list of Content objects
+                result_content = mcp_response.get("result", {}).get("content", [])
+                if result_content and isinstance(result_content, list) and result_content[0].get("text"):
+                    summary = result_content[0]["text"]
+                    return summary
+                else:
+                    print(f"MCP Warning: Unexpected result format: {mcp_response}")
+                    return "[MCP Error: Could not parse successful result]"
+                # --- End Robust Extraction ---
+
+        except MCPError as e:
+            # Catch specific MCP exceptions (connection, protocol errors)
+            print(f"ERROR in Agency Swarm MCP Tool (MCPError): {e}")
+            return f"[MCP Connection/Protocol Error: {e}]"
+        except Exception as e:
+            # Catch other potential errors (e.g., network issues)
+            print(f"ERROR in Agency Swarm MCP Tool (General): {type(e).__name__} - {e}")
+            return f"[Error connecting to or calling MCP server]"
+        # Context manager handles disconnect automatically
+
+# --- How to use this tool within an Agency Swarm Agent ---
+# from agency_swarm import Agent
+# class MyAgentUsingMCP(Agent):
+#     def __init__(self):
+#         super().__init__(
+#             name="MCPUserAgent",
+#             description="Uses an MCP tool to summarize.",
+#             instructions="Summarize provided text using your tool.",
+#             # Configure the agent to use *any* backend model compatible with
+#             # Agency Swarm's core loop (could be OpenAI or Gemini via Proxy
+#             # IF the initialization hurdle is overcome, or default OpenAI).
+#             # The MCP tool abstracts the Gemini call away.
+#             model="gpt-4o", # Or your proxied model alias if that setup works
+#             tools=[GeminiSummarizerMCPTool] # Add the MCP client tool
+#         )
+#
+# # Then, the agent can be prompted:
+# # agency.get_completion("Summarize this long article using the Gemini Summarizer MCP tool: [article text]")
+```
+
+**MCP Client Management Note:** For applications making frequent MCP calls, consider implementing a more sophisticated client management strategy (like a singleton `MCPClientManager` class as shown in `geminiaswarm.md`) to reuse connections and potentially cache responses, improving performance and efficiency. The simple example above creates a new connection for each `arun` call.
+
+This MCP approach decouples the Gemini interaction from the core Agency Swarm framework, making it a more robust integration strategy compared to relying on direct proxy compatibility, especially given Agency Swarm's Assistants API dependency.
+
+---
+
+## **5. Full Integration Steps: Gemini in Agency Swarm (via LiteLLM Proxy)**
+
+This section outlines the practical steps to integrate Google Gemini models using the **LiteLLM proxy approach**. **Be aware of the significant limitations and potential failures outlined in Section 2 due to the Assistants API incompatibility.** This approach is most likely to succeed only for simple, potentially stateless tasks where core Assistants API features are not required, and *if* the agent initialization step can be bypassed or modified.
+
+**Goal:** Allow Agency Swarm agents to *attempt* to utilize Gemini models via a proxy.
+**Recommended Method:** Using LiteLLM as an OpenAI-compatible proxy.
+**Warning:** High likelihood of encountering issues, especially during agent initialization.
+
+### **Step 1: Set up LiteLLM Proxy for Gemini**
+
+1.  **Install Dependencies:**
+    ```bash
+    pip install agency-swarm litellm "google-generativeai>=0.3.0"
+    # Add 'optillm' if you plan to use OptiLLM on top
+    # pip install optillm
+    ```
+
+2.  **Get Gemini API Key:** Obtain your API key from Google AI Studio ([ai.google.dev](https://ai.google.dev/)).
+
+3.  **Set Environment Variable:** Make the API key available to LiteLLM.
+    ```bash
+    export GOOGLE_API_KEY="YOUR_GEMINI_API_KEY"
+    ```
+    *(On Windows, use `set GOOGLE_API_KEY=YOUR_GEMINI_API_KEY` or set it via system properties)*
+
+4.  **Create LiteLLM Configuration (`config.yaml`):**
+    ```yaml
+    # config.yaml
+    model_list:
+      - model_name: gemini-agent-model # Alias for Agency Swarm 'model' field
+        litellm_params:
+          model: gemini/gemini-1.5-pro-latest # Specify the desired Gemini model
+          api_key: os.environ/GOOGLE_API_KEY
+
+    litellm_settings:
+      set_verbose: True # Enable detailed logs for debugging proxy issues
+    ```
+
+5.  **Run LiteLLM Proxy Server:**
+    ```bash
+    litellm --config config.yaml --port 8000 # Or another port
+    ```
+    Keep this server running. It listens on `http://localhost:8000` and translates `/chat/completions` requests.
+
+### **Step 2: Configure Agency Swarm to Use the Proxy**
+
+1.  **Set OpenAI API Base:** Tell Agency Swarm to send API requests to the LiteLLM proxy.
+    *   Use `set_openai_client` (Recommended):
+        ```python
+        import openai
+        from agency_swarm import set_openai_client
+
+        # Ensure the URL matches your proxy and includes '/v1' if needed
+        client = openai.OpenAI(
+            base_url="http://localhost:8000/v1",
+            api_key="dummy-key" # Key usually handled by LiteLLM via env var
+        )
+        set_openai_client(client)
+        ```
+    *   Or set Environment Variable (Less flexible):
+        ```bash
+        export OPENAI_API_BASE="http://localhost:8000/v1"
+        export OPENAI_API_KEY="dummy-key"
+        ```
+
+### **Step 3: Define Agency Swarm Agents with Gemini Model**
+
+1.  **Use the LiteLLM Alias:** Specify the `model_name` from `config.yaml` in your agent definition.
+
+    ```python
+    # Example: /my_agency/my_gemini_agent/agent.py
+    from agency_swarm import Agent
+
+    class MyGeminiAgent(Agent):
+        def __init__(self):
+            super().__init__(
+                name="MyGeminiAgent",
+                description="Attempting to use Gemini via LiteLLM proxy.",
+                instructions="Follow these instructions carefully...",
+                model="gemini-agent-model", # Use the alias from LiteLLM config
+                # tools=[...],
+                # openai_api_key="dummy-key" # Usually set via set_openai_client
+            )
+        # >>>>> WARNING: Calling agency.py or agent.init_oai() on this agent
+        # >>>>>          will likely FAIL with a 404 error due to Assistants API calls.
+    ```
+
+### **Step 4: Attempt to Run Your Agency Swarm Application**
+
+Execute your Agency Swarm `main.py` or entry point script.
+
+*   **Expected Outcome:** During the agent initialization process (e.g., when `Agency([...])` is called or `agent.init_oai()` is triggered), Agency Swarm will attempt to call `client.beta.assistants.create`. Because the LiteLLM proxy doesn't implement the `/assistants` endpoint, this call is **highly likely to fail with a `404 Not Found` error**, preventing the agency from running properly.
+*   **If Initialization is Bypassed/Modified:** If somehow the initialization succeeds (e.g., using a modified Agency Swarm version or a specific workflow that avoids assistant creation), subsequent calls might reach the `/chat/completions` endpoint. LiteLLM will translate these to Gemini, get the response, translate it back, and return it. Functionality will depend on Agency Swarm's ability to handle the state and tool loop via this proxied Completions API.
+
+### **Considerations & Potential Issues (Critical)**
+
+*   **Assistants API Incompatibility (Primary Blocker):** Agency Swarm's core dependency on the OpenAI Assistants API for agent creation and state management is fundamentally incompatible with the stateless Completions API exposed by LiteLLM/OptiLLM proxies. This usually leads to agent initialization failure (`404 Not Found` on `/assistants` endpoint).
+*   **State Management:** Without OpenAI Threads, conversation history must be managed manually by the application layer and re-sent with each request, increasing complexity and token cost. Agency Swarm's built-in state mechanisms may not function.
+*   **Built-in Tools:** OpenAI's Code Interpreter and File Search are unavailable. Custom `BaseTool` implementations are necessary for similar functionality.
+*   **Function Calling / Tool Use:** While LiteLLM translates schemas, you must test if Agency Swarm's control flow correctly handles the tool execution loop (detecting `tool_calls`, running the tool, sending back results) when operating against a Completions API proxy. Nuances in Gemini's function calling might also cause issues despite translation.
+*   **Performance:** The proxy adds network latency.
+*   **Error Handling:** Errors from the Gemini API are passed through LiteLLM. Check proxy logs (`--set_verbose True`) for debugging.
+
+**Conclusion:** Using LiteLLM as a proxy primarily addresses API *syntax* compatibility for `/chat/completions`. It **does not resolve the core architectural mismatch** with Agency Swarm's reliance on the *stateful Assistants API*. Expect significant limitations and likely failures, especially during agent initialization. The **MCP approach (Section 4)** offers a more robust, albeit more complex, integration path by abstracting Gemini behind a standard protocol.
+
+---
+
+## **6. Limitations of Using Gemini with Agency Swarm**
+
+Due to Agency Swarm's design focus on the OpenAI Assistants API, using Gemini (even via compatibility layers like LiteLLM) introduces significant limitations:
+
+1.  **Agent Initialization Failure:** The standard agent creation process (`agent.init_oai()`) relies on `client.beta.assistants.create`, which fails against LiteLLM/OptiLLM proxies (resulting in a `404 Not Found`), as they don't implement the Assistants API endpoints. This is the most significant blocker.
+2.  **No Managed State (Threads):** Stateful conversations and context persistence across turns, managed by OpenAI Threads, are lost. Manual history management is required, increasing complexity and token costs.
+3.  **No Built-in Tools:** OpenAI's Code Interpreter and File Search/Retrieval are unavailable. Custom `BaseTool` implementations are necessary for equivalent functionality.
