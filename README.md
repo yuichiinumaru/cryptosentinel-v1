@@ -2,86 +2,57 @@
 
 ## 1. Project Overview
 
-CryptoSentinel is an advanced, autonomous trading bot for cryptocurrencies. It is designed to provide secure, efficient, and intelligent trading capabilities. The system utilizes a multi-agent AI framework to analyze market data, execute trades, and continuously learn and improve its strategies.
+CryptoSentinel is an advanced, autonomous trading bot for cryptocurrencies. It utilizes a sophisticated multi-agent AI framework to analyze market data, execute trades, and continuously learn. The system features a **Memory-Centric Architecture** powered by `khala-agentmemory`, enabling long-term reasoning and strategy evolution.
 
-This project is a full-stack application with a Python backend and a React/TypeScript frontend. The backend is a sophisticated multi-agent system built with FastAPI and the Agency Swarm framework. The frontend is a comprehensive dashboard for monitoring and interacting with the backend.
+## 2. Architecture
 
-## 2. Features
+The system is composed of three main pillars:
 
-*   **Real-time Dashboard:** A comprehensive overview of trading activity, funds, agent activities, and market data.
-*   **Autonomous Trading:** The system executes trades automatically based on market analysis and configured strategies.
-*   **Multi-Agent AI System:** A team of specialized AI agents for market analysis, trading, risk management, and more.
-*   **Advanced Security:** Features like MEV protection, rug pull detection, and fund isolation to ensure the security of your assets.
-*   **Technical and Fundamental Analysis:** In-depth analysis of market data, news, and social sentiment.
-*   **AI Learning System:** The system continuously learns and improves its strategies based on historical data.
-*   **Customization:** The ability to customize the system's configuration, including API keys and trading strategies.
+### 2.1. Backend (`backend/`)
+*   **Framework:** FastAPI + Agno (formerly Phidata).
+*   **Agents:** 12 specialized AI agents (e.g., `MarketAnalyst`, `Trader`, `RiskAnalyst`).
+*   **Tools:** Over 130 tools for analysis, execution, and research.
 
-## 3. Architecture
+### 2.2. Frontend (`src/`)
+*   **Stack:** React, TypeScript, Vite, Tailwind CSS.
+*   **Features:** Real-time dashboard, agent activity monitoring, and manual overrides.
 
-The system is composed of two main components: a backend and a frontend.
+### 2.3. Intelligence Engine (`packages/khala-agentmemory/`)
+*   **Core:** SurrealDB-based memory system.
+*   **Strategies:** Implements ~115 of 170 planned strategies, including:
+    *   Vector & Hybrid Search (RRF).
+    *   Graph Knowledge Base.
+    *   Prompt Optimization (PromptWizard).
+    *   Multi-Agent Coordination protocols.
 
-### 3.1. Backend
+## 3. Getting Started
 
-The backend is a Python application built with FastAPI and the Agency Swarm framework. It is a multi-agent system with 12 specialized AI agents that collaborate to perform trading tasks. The agents communicate with each other using a standardized messaging protocol and use a variety of tools to interact with the outside world.
+### 3.1. Prerequisites
+*   Python 3.10+
+*   Node.js 18+
+*   SurrealDB (Local or Cloud)
 
-For more details on the backend architecture and the individual agents, please refer to the documentation in the `docs` directory.
-
-### 3.2. Frontend
-
-The frontend is a React/TypeScript application that provides a user-friendly interface for interacting with the backend. It uses the TanStack Query library for data fetching and state management, and the `shadcn/ui` component library for the UI. The frontend communicates with the backend through a REST API.
-
-## 4. Getting Started
-
-To get started with CryptoSentinel, you will need to set up both the backend and the frontend.
-
-### 4.1. Backend Setup
-
-1.  Navigate to the `backend` directory: `cd backend`
-2.  Install the required dependencies: `pip install -r requirements.txt`
-3.  Create a `.env` file and configure your API keys and other settings.
-4.  Run the backend server: `uvicorn main:app --host 0.0.0.0 --port 8000 --reload`
-
-### 4.2. Frontend Setup
-
-1.  Navigate to the root directory of the project.
-2.  Install the required dependencies: `npm install`
-3.  Run the frontend development server: `npm run dev`
-
-## 5. Usage
-
-Once the backend and frontend are running, you can access the application in your web browser at `http://localhost:5173`. From the dashboard, you can monitor the system's activity, view market data, and interact with the AI agents.
-
-## 6. Testing
-
-The project includes a suite of tests for both the backend and the frontend.
-
-### 6.1. Backend Tests
-
-To run the backend tests, navigate to the `backend` directory and run the following command:
-
+### 3.2. Backend Setup
 ```bash
-pytest
+cd backend
+pip install -r requirements.txt
+# Configure .env (see deployment_guide.md)
+uvicorn main:app --reload
 ```
 
-### 6.2. Frontend Tests
-
-To run the frontend tests, navigate to the root directory of the project and run the following command:
-
+### 3.3. Frontend Setup
 ```bash
-npm test
+npm install
+npm run dev
 ```
 
-## 7. Documentation
+## 4. Documentation
+*   **Assessment:** See `docs/codebase_assessment.md` for a detailed audit of the current state.
+*   **Strategies:** See `packages/khala-agentmemory/docs/06-strategies-master.md` for the full list of 170 strategies.
+*   **Agents:** See `AGENTS.md` for development guidelines.
 
-This `README.md` file provides a high-level overview of the project. For more detailed documentation, please refer to the files in the `docs` directory. The `docs` directory contains the following documents:
+## 5. Contributing
+Please refer to `tasklist.md` for current priorities. All contributions must include tests.
 
-*   `TDD.md`: A guide to the Test-Driven Development (TDD) methodology and its application to this project.
-*   `old/`: A directory containing the old documentation files.
-
-## 8. Contributing
-
-We welcome contributions to CryptoSentinel! If you would like to contribute, please follow these.
-
-## 9. License
-
-This project is licensed under the MIT License. See the `LICENSE` file for more details.
+## 6. License
+MIT License.
