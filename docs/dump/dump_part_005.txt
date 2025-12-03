@@ -1,0 +1,125 @@
+For most people, this is simply not feasible. Either they don’t have the knowledge, or they don’t have the time, or they don’t have the stomach to deal with the emotional rollercoaster of crypto trading.
+
+The Solution: DeepTrader – Autonomy, Intelligence and Security
+
+DeepTrader was designed to solve these problems, democratizing access to crypto trading and leveling the playing field. It is an open-source autonomous trading system built on three pillars:
+- Full Autonomy: DeepTrader is not a robot that executes pre-programmed rules. It is an intelligent system that makes decisions independently, based on state-of-the-art Large Language Models, with reasoning. It’s like having an experienced trader working for you, 24/7.
+- Multi-Agent Architecture (Agency Swarm): DeepTrader is not a “single agent”, but rather a team of specialized agents, each with their own role (market analyst, trade executor, portfolio manager, etc.). This approach, based on the modern Agency Swarm framework, allows the system to deal with the complexity of the cryptocurrency market in an organized and efficient way. Each agent is like an expert in a specific area, working together to achieve the common goal.
+- Security First: DeepTrader was designed with security as a top priority. It incorporates multiple layers of protection against the most common threats in the crypto world, such as:
+--- MEV (Miner Extractable Value) Protection: Uses technologies such as Flashbots Protect RPC to prevent your transactions from being exploited by malicious bots.
+--- Sandwich Attack Detection: Analyzes the market in real time to identify and prevent attempts at price manipulation.
+--- Token Security Verification: Uses APIs and algorithms to identify rug pulls, honeypots and other scams, ensuring that the system only trades trusted tokens.
+--- Fund Isolation: Adopts the best practice of separating funds into "hot wallets" (for trading) and "cold wallets" (for secure storage).
+--- --- Automatic Approval Revocation: Minimizes the risk of attacks by automatically removing access permissions to your tokens after each trade.
+
+How DeepTrader Works:
+--- Think of DeepTrader as a team of financial experts working for you. The “Market Analyst” is always keeping an eye on the charts, news, and trends. He uses advanced tools (that we built specifically for him) to collect data from various sources (exchanges, analytics APIs, etc.) and interpret this data, looking for profit opportunities.
+--- When the "Analyst" finds a good opportunity, he sends a recommendation to the "Team Manager". The "Manager" is the head of the system, responsible for approving or rejecting recommendations based on strict risk criteria and the overall trading strategy. He is like the guardian of your capital, ensuring that the system does not make reckless decisions.
+--- If the "Manager" approves the trade, the "Trade Executor" comes into action. He is responsible for executing the buy or sell order on the decentralized exchange (DEX), quickly, efficiently and safely.
+--- The "Portfolio Manager", in turn, monitors all your positions, calculates the system's performance and alerts the "Team Manager" of any excessive risk.
+--- The "Learning Coordinator", an agent that analyzes the trade history and learns from the system's mistakes and successes, adjusts strategies to improve performance over time.
+--- All this communication and coordination between agents is done automatically and transparently, using a common language (based on JSON messages) and a well-defined communication protocol.
+
+Some of the Security Features:
+- MEV Protection: Using Flashbots Protect RPC
+- Sandwich Attack Detection: Simulating transactions with w3.eth.call before sending, checking for slippage (or something)
+- Rug Pull Detection: Querying external APIs (GoPlus, Rugcheck.xyz - to be defined which one to use), Basic checks on the blockchain (via web3.py, if possible - totalSupply, but not num_holders or is_verified), etc
+- Fake Volume Detection: Pocket Universe API + heuristics (volume/transactions).
+- Fund Isolation: Using hot wallet (for trading) and cold wallet (for safe storage)
+- Approval Revocation: Automatic revocation of token approvals after each trade
+
+
+Why is DeepTrader Different?
+--- Artificial Intelligence (AI) in Charge: Most trading bots use fixed rules (“if this happens, do that”). DeepTrader uses an LLM to reason about the market and make contextual decisions.
+--- Focus on DEXs: Unlike many bots that focus on centralized exchanges (CEXs), DeepTrader is designed to operate on decentralized exchanges (DEXs), which offers greater control over your funds and more trading opportunities (especially on new and niche tokens).
+--- Advanced Security: DeepTrader goes beyond basic security measures, incorporating protections against crypto-specific threats.
+--- Open Source: DeepTrader’s code is open, allowing the community to audit, contribute, and improve the system.
+--- Easy to Use (Eventually): Although the initial implementation will be complex, the goal is to create a user-friendly interface that allows anyone, even without technical knowledge, to use DeepTrader.
+
+DeepTrader is an ambitious and constantly evolving project. This post describes the vision for the MVP (Minimum Viable Product), the initial version of the system, which focuses on basic functionality and security. Over time, we will add more features, strategies, and tools, making DeepTrader even more powerful and intelligent.
+
+
+SOFTWARE PLANNING
+------
+
+Below is a description of a software I am developing. Do some research that
+1 - Determine all the necessary aspects to be covered in a complete implementation,
+2 - Establish criteria to evaluate each aspect according to the project (such as security, efficiency, accuracy of the final product, ease of implementation),
+3 - Discover all the technical aspects involved in creating the software,
+4 - What are the best open source solutions for each one, what are the best APIs, what are the best ways to implement each thing, consult the documentation for each one online
+5 - Decide which is the winner in each case and include in the final project a detailed method for implementation
+6 - Create a complete implementation roadmap (include a link to the documentation for each chosen tool)
+
+Focus: I want a complete final product implementation roadmap, but it envolves many phases, one of which is creation of a functional MVP / POC, testing several areas, etc. Estabilish what are the crucial functions that need to be functioning in the MVP/POC  and leave the implementation of others for a later stage.
+
+Requirements/Preference: Since it is an autonomous solution, it needs to have LLM's involved in a multiagent framework, and it's agents need to have acess to tools and RAG. The only reliable framework I know for this is Agency Swarm (from VRSEN) - this is my only requirement. Everything else I'd like you to figure out. There's a draft to the architecture of the agents, but it's completely up to you, so if you think it needs improvement, include that. For example, if you think that the Manager and the Learning Coordinator should actually be the same agent, do that. If you think there should be a 'fullstack developer' agent in the team to build new tools for the other agents when they need, do that.
+
+Time and Budget constraints: Ignore time when you write the roadmap, allow me to define that later when building the project. Consider budget ZERO for programming - i'm starting it alone and I'll probably be able to acquire funds after the MVP/POC. I have some credits in Azure, which I can use to run opensource LLM models (such as deepseek R1 or QwQ reasoning)
+
+
+The software:
+------
+DeepTrader: Your Smart and Autonomous Partner in the World of Cryptocurrencies
+Imagine a world where you could invest in cryptocurrencies without having to spend hours analyzing charts, reading news or worrying about scams and market manipulation. A world where artificial intelligence takes care of everything for you, making buying and selling decisions autonomously, 24 hours a day, 7 days a week. This is the world that DeepTrader seeks to create.
+
+The Problem: The Complexity of Cryptocurrency Trading
+
+The cryptocurrency market is fascinating, but also extremely complex and volatile. To be successful, you need:
+- Deep Knowledge: Understanding technical analysis, fundamental analysis, blockchain, smart contracts, DeFi (Decentralized Finance) and much more.
+- Full-Time: Monitoring the market constantly, as opportunities (and risks!) appear and disappear in a matter of minutes.
+- Emotional Control: Making rational and strategic decisions, without being carried away by fear or greed.
+- Extreme Security: Protecting yourself against scams, hacks, rug pulls and other threats that are unfortunately common in this market.
+
+For most people, this is simply not feasible. Either they don’t have the knowledge, or they don’t have the time, or they don’t have the stomach to deal with the emotional rollercoaster of crypto trading.
+
+The Solution: DeepTrader – Autonomy, Intelligence and Security
+
+DeepTrader was designed to solve these problems, democratizing access to crypto trading and leveling the playing field. It is an open-source autonomous trading system built on three pillars:
+- Full Autonomy: DeepTrader is not a robot that executes pre-programmed rules. It is an intelligent system that makes decisions independently, based on state-of-the-art Large Language Models, with reasoning. It’s like having an experienced trader working for you, 24/7.
+- Multi-Agent Architecture (Agency Swarm): DeepTrader is not a “single agent”, but rather a team of specialized agents, each with their own role (market analyst, trade executor, portfolio manager, etc.). This approach, based on the modern Agency Swarm framework, allows the system to deal with the complexity of the cryptocurrency market in an organized and efficient way. Each agent is like an expert in a specific area, working together to achieve the common goal.
+- Security First: DeepTrader was designed with security as a top priority. It incorporates multiple layers of protection against the most common threats in the crypto world, such as:
+--- MEV (Miner Extractable Value) Protection: Uses technologies such as Flashbots Protect RPC to prevent your transactions from being exploited by malicious bots.
+--- Sandwich Attack Detection: Analyzes the market in real time to identify and prevent attempts at price manipulation.
+--- Token Security Verification: Uses APIs and algorithms to identify rug pulls, honeypots and other scams, ensuring that the system only trades trusted tokens.
+--- Fund Isolation: Adopts the best practice of separating funds into "hot wallets" (for trading) and "cold wallets" (for secure storage).
+--- --- Automatic Approval Revocation: Minimizes the risk of attacks by automatically removing access permissions to your tokens after each trade.
+
+How DeepTrader Works:
+--- Think of DeepTrader as a team of financial experts working for you. The “Market Analyst” is always keeping an eye on the charts, news, and trends. He uses advanced tools (that we built specifically for him) to collect data from various sources (exchanges, analytics APIs, etc.) and interpret this data, looking for profit opportunities.
+--- When the "Analyst" finds a good opportunity, he sends a recommendation to the "Team Manager". The "Manager" is the head of the system, responsible for approving or rejecting recommendations based on strict risk criteria and the overall trading strategy. He is like the guardian of your capital, ensuring that the system does not make reckless decisions.
+--- If the "Manager" approves the trade, the "Trade Executor" comes into action. He is responsible for executing the buy or sell order on the decentralized exchange (DEX), quickly, efficiently and safely.
+--- The "Portfolio Manager", in turn, monitors all your positions, calculates the system's performance and alerts the "Team Manager" of any excessive risk.
+--- The "Learning Coordinator", an agent that analyzes the trade history and learns from the system's mistakes and successes, adjusts strategies to improve performance over time.
+--- All this communication and coordination between agents is done automatically and transparently, using a common language (based on JSON messages) and a well-defined communication protocol.
+
+Some of the Security Features:
+- MEV Protection: Using Flashbots Protect RPC
+- Sandwich Attack Detection: Simulating transactions with w3.eth.call before sending, checking for slippage (or something)
+- Rug Pull Detection: Querying external APIs (GoPlus, Rugcheck.xyz - to be defined which one to use), Basic checks on the blockchain (via web3.py, if possible - totalSupply, but not num_holders or is_verified), etc
+- Fake Volume Detection: Pocket Universe API + heuristics (volume/transactions).
+- Fund Isolation: Using hot wallet (for trading) and cold wallet (for safe storage)
+- Approval Revocation: Automatic revocation of token approvals after each trade
+
+
+Why is DeepTrader Different?
+--- Artificial Intelligence (AI) in Charge: Most trading bots use fixed rules (“if this happens, do that”). DeepTrader uses an LLM to reason about the market and make contextual decisions.
+--- Focus on DEXs: Unlike many bots that focus on centralized exchanges (CEXs), DeepTrader is designed to operate on decentralized exchanges (DEXs), which offers greater control over your funds and more trading opportunities (especially on new and niche tokens).
+--- Advanced Security: DeepTrader goes beyond basic security measures, incorporating protections against crypto-specific threats.
+--- Open Source: DeepTrader’s code is open, allowing the community to audit, contribute, and improve the system.
+--- Easy to Use (Eventually): Although the initial implementation will be complex, the goal is to create a user-friendly interface that allows anyone, even without technical knowledge, to use DeepTrader.
+
+DeepTrader is an ambitious and constantly evolving project. This post describes the vision for the MVP (Minimum Viable Product), the initial version of the system, which focuses on basic functionality and security. Over time, we will add more features, strategies, and tools, making DeepTrader even more powerful and intelligent.
+
+
+Estou construindo um trader de criptomoedas completamente autônomo, usando o framework multiagente Agency Swarm (VRSEN), e gostaria de saber o que vc acha desta agência, como melhoraria ela, quais competencias vc acha que cada agente deveria ter, se a descrição de cada agente esta completa, se essa agencia está completa ou falta algum agente ou competencia, se vc acha que a arquitetura de agentes poderia ser melhor de outra forma a fim de complementar melhor as competencias, etc.
+
+No momento, a agência é composta pelos agentes descritos no anexo 'agents.txt'. Os agentes que tem função de busca na internet (todos os analistas e o dev) tem também a capacidade de compartilhar noticias no newsfeed (que fica visivel para o user que acompanha os agentes).
+
+Gostaria que desse uma analisada nesses documentos e na estrutura, e se puder, sugerir melhorias na descrição, competências, instruções e/ou ferramentas à disposição dos agentes. Temos várias competências para serem desempenhadas, algumas com funções semelhantes (por exemplo as de análise que envolvem busca e browsing em sites) e no contexto dos agentes é importante termos as ferramentas/MCP's bem pensadas para cada um também, considerando as competências e responsabilidades deles.
+
+Contexto:
+O paradigma antigo era um em que os desenvolvedores basicamente tinham que prever todas as condições e variáveis de um programa, e escrever uma lista enorme de IF's, THEN's e ELSE's, e em cada caso tinham de escrever uma rotina programada para acontecer. O paradigma dos agentes autônomos é diferente - nós removemos os IF's e em vez disso damos um conjunto de instruções para os agentes seguirem e decidirem QUANDO e SE vão usar cada ferramenta. Decidir entre utilizar ou não uma ferramenta (tool/MCP) depende de vários fatores, e essa escolha pode ser guiada por alguns critérios chave:
+- Automatização e Repetibilidade: Se a tarefa for altamente repetitiva, intensiva em dados ou que exija execução em alta frequência (como a execução de ordens no mercado), o uso de uma ferramenta automatizada tende a ser mais eficaz (e também economiza tokens). Por exemplo, algoritmos de execução podem operar de forma mais rápida e consistente que uma intervenção manual, e podem acelerar e dar mais assertividade ao trabalho do agente.
+- Complexidade e Juízo Crítico: Tarefas que envolvem juízo crítico, criatividade ou análise qualitativa profunda podem se beneficiar da intervenção humana ou de agentes que operem sem uma ferramenta totalmente automatizada, permitindo maior flexibilidade e adaptação a contextos que fogem do padrão.
+- Ambiente de Dados e Latência: Em cenários onde o tempo de resposta é crítico (como em mercados voláteis), ferramentas que operam com baixa latência e alta disponibilidade podem oferecer uma vantagem decisiva. Se o ambiente permitir atrasos sem grandes prejuízos, pode ser mais seguro ou até desejável um controle menos automatizado. Nesse caso, como quero fazer uma agência que opera de forma completamente automatizada, será preciso implementar um conjunto compreensivo de tools / MCP's para serem deixados disponíveis à mão dos agentes para eficientizar o trabalho deles.
+- Risco e Robustez: Em operações que demandam um alto grau de segurança e mitigação de riscos, o uso de uma ferramenta pode reduzir erros operacionais. Entretanto, se a automação envolver riscos (como decisões baseadas em dados incompletos), é melhor manter uma camada de supervisão.

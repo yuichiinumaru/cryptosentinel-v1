@@ -1,0 +1,459 @@
+        queue_name = f"user_events.{user_id}.{uuid.uuid4()}"
+        queue = await channel.declare_queue(queue_name, auto_delete=True)
+
+        # Bind the queue to the exchange with user_id as routing key
+        await queue.bind(exchange, routing_key=user_id)
+
+        try:
+            # Start consuming messages
+            async with queue.iterator() as queue_iter:
+                async for message in queue_iter:
+                    async with message.process():
+                        # Check if client is still connected
+                        if await request.is_disconnected():
+                            break
+
+                        # Parse and send message
+                        try:
+                            event_data = json.loads(message.body.decode())
+                            yield {
+                                "event": event_data.get("event_type", "message"),
+                                "data": json.dumps(event_data["payload"])
+                            }
+                        except Exception as e:
+                            print(f"Error processing message: {str(e)}")
+        except Exception as e:
+            print(f"RabbitMQ connection error: {str(e)}")
+        finally:
+            # Ensure cleanup on any exit
+            try:
+                await queue.unbind(exchange, routing_key=user_id)
+                await queue.delete()
+                await connection.close()
+            except Exception as e:
+                print(f"Cleanup error: {str(e)}")
+
+    return EventSourceResponse(event_generator())
+```
+
+### 2. Celery with RabbitMQ Configuration
+
+```python
+# worker.py
+from celery import Celery
+import pika
+import json
+
+# Initialize Celery with RabbitMQ as broker
+celery_app = Celery('tasks', broker='amqp://guest:guest@localhost//')
+
+# Configure RabbitMQ connection
+def get_rabbitmq_channel():
+    connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost'))
+    channel = connection.channel()
+    # Declare the fanout exchange
+    channel.exchange_declare(exchange='user_events', exchange_type='fanout')
+    return connection, channel
+
+@celery_app.task(bind=True, max_retries=3)
+def process_data_and_notify(self, data, user_id):
+    """Process data and notify user through RabbitMQ"""
+    try:
+        # Simulate processing
+        result = {"processed": data, "status": "completed"}
+
+        # Prepare event message
+        event_message = {
+            "event_type": "process_complete",
+            "payload": result
+        }
+
+        # Send message to RabbitMQ
+        connection, channel = get_rabbitmq_channel()
+        try:
+            channel.basic_publish(
+                exchange='user_events',
+                routing_key=user_id,  # Use user_id as routing key
+                body=json.dumps(event_message),
+                properties=pika.BasicProperties(
+                    delivery_mode=2,  # Make message persistent
+                )
+            )
+        finally:
+            connection.close()
+
+        return True
+    except Exception as e:
+        # Retry with exponential backoff
+        print(f"Error in task: {str(e)}")
+        raise self.retry(exc=e, countdown=2 ** self.request.retries)
+```
+
+## Handling Multiple FastAPI Instances
+
+To support multiple FastAPI instances, we need a shared communication layer. Both the Redis and RabbitMQ implementations above support this natively, but we need to ensure proper configuration:
+
+```python
+# configuration.py for horizontal scaling
+import os
+
+# Environment-based configuration
+REDIS_HOST = os.getenv("REDIS_HOST", "redis")
+REDIS_PORT = int(os.getenv("REDIS_PORT", 6379))
+RABBITMQ_URL = os.getenv("RABBITMQ_URL", "amqp://guest:guest@rabbitmq//")
+
+# FastAPI instance identifier (unique per instance)
+INSTANCE_ID = os.getenv("INSTANCE_ID", f"fastapi-{os.getpid()}")
+
+# For health checks and monitoring
+def register_instance():
+    """Register this FastAPI instance in the service registry"""
+    # Implementation depends on your service discovery mechanism
+    pass
+```
+
+## Comprehensive Error Handling and Reconnection Strategy
+
+Robust error handling is crucial for production systems. Here's a more comprehensive approach:
+
+```python
+# error_handling.py
+import asyncio
+import logging
+from functools import wraps
+from typing import Callable, Any
+
+logger = logging.getLogger(__name__)
+
+class ConnectionError(Exception):
+    """Exception raised for connection-related errors"""
+    pass
+
+async def with_reconnect(func: Callable, max_retries: int = 5, initial_backoff: float = 0.1):
+    """Decorator for functions that need reconnection logic"""
+    retries = 0
+    backoff = initial_backoff
+
+    while True:
+        try:
+            return await func()
+        except ConnectionError as e:
+            retries += 1
+            if retries > max_retries:
+                logger.error(f"Max retries exceeded: {e}")
+                raise
+
+            logger.warning(f"Connection error, retrying in {backoff}s: {e}")
+            await asyncio.sleep(backoff)
+            # Exponential backoff with jitter
+            backoff = min(backoff * 2, 30) * (0.9 + 0.2 * random.random())
+        except Exception as e:
+            logger.exception(f"Unexpected error: {e}")
+            raise
+
+class MessageDeliveryManager:
+    """Manages reliable delivery of messages to clients"""
+
+    def __init__(self, redis_client):
+        self.redis = redis_client
+        self.pending_messages = {}
+
+    async def send_with_confirmation(self, channel: str, message: dict, timeout: int = 30):
+        """Send message and wait for delivery confirmation"""
+        message_id = str(uuid.uuid4())
+        message["_id"] = message_id
+
+        # Store in pending messages
+        self.pending_messages[message_id] = {
+            "message": message,
+            "channel": channel,
+            "sent_at": time.time(),
+            "delivered": False
+        }
+
+        # Publish message
+        await self.redis.publish(channel, json.dumps(message))
+
+        # Wait for confirmation or timeout
+        start_time = time.time()
+        while time.time() - start_time < timeout:
+            if self.pending_messages[message_id]["delivered"]:
+                del self.pending_messages[message_id]
+                return True
+            await asyncio.sleep(0.1)
+
+        # Message delivery timed out
+        del self.pending_messages[message_id]
+        return False
+
+    async def confirm_delivery(self, message_id: str):
+        """Mark message as delivered"""
+        if message_id in self.pending_messages:
+            self.pending_messages[message_id]["delivered"] = True
+```
+
+## Monitoring Message Delivery
+
+Adding monitoring capabilities helps track message delivery success rates:
+
+```python
+# monitoring.py
+import time
+from prometheus_client import Counter, Histogram, start_http_server
+
+# Metrics
+SSE_CONNECTIONS = Counter('sse_connections_total', 'Total number of SSE connections', ['instance_id'])
+SSE_DISCONNECTIONS = Counter('sse_disconnections_total', 'Total number of SSE disconnections', ['instance_id'])
+MESSAGE_PUBLISH = Counter('messages_published_total', 'Total number of messages published', ['channel'])
+MESSAGE_DELIVERY = Counter('messages_delivered_total', 'Total number of messages delivered', ['channel'])
+MESSAGE_DELIVERY_TIME = Histogram('message_delivery_seconds', 'Message delivery time in seconds', ['channel'])
+
+class MessageTracker:
+    """Tracks message delivery statistics"""
+
+    def __init__(self, instance_id):
+        self.instance_id = instance_id
+        self.messages = {}
+
+    def track_publish(self, message_id, channel):
+        """Record when a message is published"""
+        self.messages[message_id] = {
+            "published_at": time.time(),
+            "channel": channel,
+            "delivered": False
+        }
+        MESSAGE_PUBLISH.labels(channel=channel).inc()
+
+    def track_delivery(self, message_id):
+        """Record when a message is delivered"""
+        if message_id in self.messages:
+            msg = self.messages[message_id]
+            msg["delivered"] = True
+            delivery_time = time.time() - msg["published_at"]
+            MESSAGE_DELIVERY.labels(channel=msg["channel"]).inc()
+            MESSAGE_DELIVERY_TIME.labels(channel=msg["channel"]).observe(delivery_time)
+```
+
+## Comparison: Redis Pub/Sub vs RabbitMQ Fanout
+
+### Performance Characteristics
+
+**Redis Pub/Sub:**
+- Lightweight and fast for high-throughput scenarios[2][5]
+- Lower latency for simple message passing
+- In-memory operation provides speed advantages
+- Less overhead for simple pub/sub patterns
+
+**RabbitMQ Fanout:**
+- More sophisticated message routing capabilities[3]
+- Better handling of high message volumes with backpressure mechanisms
+- Optimized for complex routing scenarios
+- Higher overhead but more features
+
+### Reliability Features
+
+**Redis Pub/Sub:**
+- Simple implementation with fewer moving parts
+- No built-in message persistence (messages are lost if no consumers are listening)
+- No acknowledgment mechanism for message delivery
+- Requires custom implementation for delivery guarantees
+
+**RabbitMQ Fanout:**
+- Built-in message persistence options
+- Acknowledgment-based delivery confirmation
+- Automatic message redelivery on failure
+- Dead letter exchanges for failed message handling
+
+### Scalability Considerations
+
+**Redis Pub/Sub:**
+- Works well with multiple FastAPI instances
+- Simpler to set up in containerized environments
+- Redis Cluster for higher availability
+- Limited by memory capacity for active connections
+
+**RabbitMQ Fanout:**
+- Designed for horizontal scaling
+- Better handling of large numbers of consumers
+- More configuration options for load balancing
+- Clustering for high availability
+
+### Ease of Implementation
+
+**Redis Pub/Sub:**
+- Simpler API and fewer concepts to understand
+- Easier to debug and monitor
+- Lightweight client libraries
+- Less boilerplate code required
+
+**RabbitMQ Fanout:**
+- More complex setup and configuration
+- Steeper learning curve
+- More robust error handling capabilities
+- More sophisticated topology options
+
+## Conclusion
+
+Both Redis Pub/Sub and RabbitMQ Fanout exchanges can successfully implement SSE communication between Celery workers and FastAPI applications. The choice depends on specific requirements:
+
+- For simpler applications with moderate loads, Redis Pub/Sub offers a lightweight, easy-to-implement solution with good performance characteristics.
+- For enterprise applications requiring guaranteed message delivery, sophisticated routing, and higher reliability, RabbitMQ Fanout exchanges provide more robust features at the cost of additional complexity.
+
+The implementations provided in this report offer horizontally scalable solutions for both approaches, with comprehensive error handling for message delivery and client disconnection scenarios. These patterns can be adapted to specific application requirements while maintaining the core architectural principles.
+
+Citations:
+[1] https://stackoverflow.com/questions/68998881/separate-fastapi-server-from-celery-workers-server-directory-structure
+[2] https://gist.github.com/lbatteau/1bc7ae630d5b7844d58f038085590f97
+[3] https://stackoverflow.com/questions/24284518/celery-broadcast-vs-rabbitmq-fanout
+[4] https://github.com/Madi-S/fastapi-celery-template
+[5] https://python.plainenglish.io/server-sent-events-for-push-notifications-on-fastapi-73e7ac4a2c2e
+[6] https://www.youtube.com/watch?v=a0ODIWsCgDI
+[7] https://testdriven.io/blog/fastapi-and-celery/
+[8] https://www.linkedin.com/pulse/fastapi-celery-redis-flower-anton-aksonov-ae8vf
+[9] https://blog.stackademic.com/using-celery-rabbitmq-with-fastapi-2e6f0236841e
+[10] https://derlin.github.io/introduction-to-fastapi-and-celery/03-celery/
+[11] https://itnext.io/scalable-real-time-apps-with-python-and-redis-exploring-asyncio-fastapi-and-pub-sub-79b56a9d2b94
+[12] https://www.linkedin.com/pulse/server-sent-events-sse-fastapi-manikandan-parasuraman-q07ff
+[13] https://www.youtube.com/watch?v=eAHAKowv6hk
+[14] https://github.com/permitio/fastapi_websocket_pubsub/issues/28
+[15] https://testdriven.io/courses/fastapi-celery/getting-started/
+[16] https://stackoverflow.com/questions/8379513/start-python-celery-task-via-redis-pub-sub
+[17] https://github.com/andgineer/fastapi-celery
+[18] https://redis.io/learn/develop/python/fastapi
+[19] https://celery.school/celery-progress-bars-with-fastapi-htmx
+[20] https://fastapi.tiangolo.com/pt/project-generation/
+[21] https://github.com/ulvidamirli/fastapi-celery
+[22] https://www.reddit.com/r/Python/comments/qox33b/fastapi_with_celery_and_rabbitmq/
+
+---
+Answer from Perplexity: pplx.ai/share
+
+
+
+# Creating a Secure Sandbox for Untrusted Python Code Execution
+
+This comprehensive guide details the best practices and provides concrete configurations for creating a highly secure Docker-based sandbox environment to execute untrusted Python code, similar to OpenAI's Code Interpreter. The configurations presented here implement multiple layers of security to ensure isolation and protection of the host system.
+
+## Creating a Secure Dockerfile
+
+The foundation of our secure sandbox is a properly configured Dockerfile that implements the principle of least privilege while providing necessary functionality for Python code execution.
+
+### Base Image and Minimal Dependencies
+
+```dockerfile
+FROM python:3.11-slim-bullseye
+
+# Install only required system packages
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create a non-root user to run the code
+RUN groupadd -g 10001 pythonuser && \
+    useradd -m -u 10001 -g pythonuser pythonuser
+
+# Create necessary directories with appropriate permissions
+RUN mkdir -p /home/pythonuser/code /home/pythonuser/output /tmp/pythonuser && \
+    chown -R pythonuser:pythonuser /home/pythonuser && \
+    chmod 755 /home/pythonuser
+
+# Install only the required Python libraries
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir \
+    numpy==1.24.3 \
+    pandas==2.0.1 \
+    matplotlib==3.7.1 \
+    scipy==1.10.1
+
+# Pre-compile Python modules as root to avoid permission issues
+RUN python -c "import numpy; import pandas; import matplotlib; import scipy"
+
+# Switch to the non-root user
+USER pythonuser
+WORKDIR /home/pythonuser/code
+
+# Default command runs Python with restricted access
+CMD ["python", "-c", "print('Sandbox ready')"]
+```
+
+This Dockerfile creates a minimal environment with only the necessary Python libraries while implementing non-root user execution[3]. Pre-compiling the Python modules as root avoids the permission issues with .pyc files that would occur when running as a non-root user[3].
+
+### Running the Container with Security Measures
+
+The following Docker run command implements multiple security measures:
+
+```bash
+docker run --rm \
+  --name python-sandbox \
+  --read-only \
+  --cap-drop=ALL \
+  --security-opt=no-new-privileges:true \
+  --security-opt seccomp=sandbox-seccomp.json \
+  --tmpfs /tmp/pythonuser:rw,noexec,size=100M \
+  --mount type=tmpfs,destination=/home/pythonuser/output,tmpfs-size=100M \
+  --cpus=0.5 \
+  --memory=512m \
+  --memory-swap=512m \
+  --pids-limit=50 \
+  --network=none \
+  --ulimit nofile=64:64 \
+  python-sandbox:latest \
+  python -c "print('Hello from sandbox')"
+```
+
+This command implements:
+- Complete read-only filesystem (`--read-only`)[1][5]
+- Temporary writable directories using tmpfs[5]
+- Dropped capabilities and no privilege escalation[4]
+- Strict CPU and memory limits[6]
+- Complete network isolation (`--network=none`)[1]
+- Process ID limiting and file descriptor restrictions
+
+## Advanced Security Configurations
+
+### Seccomp Profile for Python Sandbox
+
+Create a file named `sandbox-seccomp.json` with the following content:
+
+```json
+{
+  "defaultAction": "SCMP_ACT_ERRNO",
+  "architectures": ["SCMP_ARCH_X86_64"],
+  "syscalls": [
+    { "name": "read", "action": "SCMP_ACT_ALLOW" },
+    { "name": "write", "action": "SCMP_ACT_ALLOW" },
+    { "name": "open", "action": "SCMP_ACT_ALLOW" },
+    { "name": "close", "action": "SCMP_ACT_ALLOW" },
+    { "name": "stat", "action": "SCMP_ACT_ALLOW" },
+    { "name": "fstat", "action": "SCMP_ACT_ALLOW" },
+    { "name": "lstat", "action": "SCMP_ACT_ALLOW" },
+    { "name": "poll", "action": "SCMP_ACT_ALLOW" },
+    { "name": "lseek", "action": "SCMP_ACT_ALLOW" },
+    { "name": "mmap", "action": "SCMP_ACT_ALLOW" },
+    { "name": "mprotect", "action": "SCMP_ACT_ALLOW" },
+    { "name": "munmap", "action": "SCMP_ACT_ALLOW" },
+    { "name": "brk", "action": "SCMP_ACT_ALLOW" },
+    { "name": "rt_sigaction", "action": "SCMP_ACT_ALLOW" },
+    { "name": "rt_sigprocmask", "action": "SCMP_ACT_ALLOW" },
+    { "name": "rt_sigreturn", "action": "SCMP_ACT_ALLOW" },
+    { "name": "ioctl", "action": "SCMP_ACT_ALLOW" },
+    { "name": "pread64", "action": "SCMP_ACT_ALLOW" },
+    { "name": "pwrite64", "action": "SCMP_ACT_ALLOW" },
+    { "name": "readv", "action": "SCMP_ACT_ALLOW" },
+    { "name": "writev", "action": "SCMP_ACT_ALLOW" },
+    { "name": "access", "action": "SCMP_ACT_ALLOW" },
+    { "name": "pipe", "action": "SCMP_ACT_ALLOW" },
+    { "name": "select", "action": "SCMP_ACT_ALLOW" },
+    { "name": "sched_yield", "action": "SCMP_ACT_ALLOW" },
+    { "name": "mremap", "action": "SCMP_ACT_ALLOW" },
+    { "name": "msync", "action": "SCMP_ACT_ALLOW" },
+    { "name": "mincore", "action": "SCMP_ACT_ALLOW" },
+    { "name": "madvise", "action": "SCMP_ACT_ALLOW" },
+    { "name": "shmget", "action": "SCMP_ACT_ALLOW" },
+    { "name": "shmat", "action": "SCMP_ACT_ALLOW" },
+    { "name": "shmctl", "action": "SCMP_ACT_ALLOW" },
+    { "name": "dup", "action": "SCMP_ACT_ALLOW" },
+    { "name": "dup2", "action": "SCMP_ACT_ALLOW" },
+    { "name": "pause", "action": "SCMP_ACT_ALLOW" },
+    { "name": "nanosleep", "action": "SCMP_ACT_ALLOW" },

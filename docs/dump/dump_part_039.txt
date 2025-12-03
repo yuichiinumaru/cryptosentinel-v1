@@ -1,0 +1,118 @@
+- [LangChain-RAG-System-with-Google-Gemini GitHub repository](https://github.com/amiegirl/LangChain-RAG-System-with-Google-Gemini)
+- [Using LLM Prompts for Source Attribution](https://jamesg.blog/2023/04/02/llm-prompts-source-attribution)
+- [RAG quickstart for Python](https://cloud.google.com/vertex-ai/generative-ai/docs/rag-quickstart)
+
+# **Source Attribution in RAG with Google Gemini 1.5 Pro using the google-generativeai Python SDK**
+
+## **Introduction: The Importance of Source Attribution in RAG with Gemini 1.5 Pro**
+
+In the realm of artificial intelligence, Retrieval-Augmented Generation (RAG) systems have emerged as a powerful paradigm for enhancing the capabilities of large language models (LLMs). By grounding the LLM's responses on external knowledge sources, RAG systems aim to improve the accuracy, relevance, and reliability of the generated content.1 A critical aspect of ensuring the trustworthiness and utility of RAG outputs is the ability to provide clear and transparent source attribution. Indicating which specific pieces of external information were used to inform different parts of the generated response allows users to verify the information and understand the context from which it originated. This investigation focuses on the specific context of using Google Gemini 1.5 Pro, accessed through the google-generativeai Python SDK, to determine if the model can be reliably prompted to include structured metadata or explicit textual markers that link parts of its response to the specific text segments provided as context within the prompt. Understanding this capability is crucial for developers and researchers seeking to build RAG applications with Gemini models where transparency and verifiability are paramount. This report will outline the findings of an analysis of Google's official documentation and related resources to ascertain the native support for such a feature, the required prompt formats and expected output structures if supported, and any potential workarounds if direct support is limited.
+
+## **Leveraging Retrieval Tools for Source Attribution**
+
+The google-generativeai Python SDK serves as an interface for developers to integrate Google's generative AI models, including the Gemini family, into their Python applications.4 This SDK offers a unified way to interact with the Gemini 2.0 models and also supports the Gemini 1.5 models, providing functionalities for generating content, managing chat sessions, and handling multimodal inputs.6 The SDK is compatible with both the Gemini Developer API and the Gemini API in Vertex AI, offering flexibility in how developers choose to access and utilize these models.6
+
+Within the SDK, the "Retrieval" tool presents itself as a potential mechanism for achieving source attribution in RAG scenarios.4 The types.Retrieval configuration allows developers to integrate their applications with various backend systems designed for document retrieval, such as Vertex AI Search or Vertex RAG Store.4 This integration enables the model to ground its responses on information retrieved from these external data sources. A key parameter within the Retrieval configuration is disable\_attribution. Setting this parameter to False allows the model to include citations in its response when it utilizes information from the retrieved sources. Conversely, setting it to True will prevent the model from citing these sources.4
+
+When attribution is enabled through the disable\_attribution parameter and the model incorporates content retrieved from the configured data sources into its response, the GenerateContentResponse object will contain a citation\_metadata field within its Candidate objects.4 This citation\_metadata is a list of Citation objects, each providing specific details about a source that the model has used. These details include the uri (Uniform Resource Identifier or link) to the source document, the title of the document, information about its license (if available), the publication\_date (if available), and crucially, the start\_index and end\_index, which indicate the specific range of characters within the generated text that are attributed to this particular source.4 This structured approach allows for a clear mapping between the model's output and the external documents it drew upon. However, this mechanism for source attribution is inherently tied to the use of pre-configured and indexed data sources managed by services like Vertex AI Search or RAG Store. It does not directly address the scenario where a user provides specific, ad-hoc text segments as context directly within the prompt and seeks attribution to these particular segments. The presence of metadata such as uri and title strongly suggests that the attribution is designed for identifiable, external documents rather than arbitrary text chunks.
+
+For instance, the following example illustrates how to configure the Retrieval tool with attribution enabled, assuming a Vertex AI Search datastore is being used:
+
+Python
+
+from google import genai
+from google.genai import types
+
+\# Initialize the client (assuming configuration is done)
+client \= genai.Client()
+
+\# Configure the Retrieval tool with Vertex AI Search
+retrieval\_config \= types.Retrieval(
+    vertex\_ai\_search=types.VertexAISearch(
+        datastore='your-datastore-id'  \# Replace with your actual datastore ID
+    ),
+    disable\_attribution=False  \# Ensure attribution is enabled
+)
+
+\# Configure the GenerateContent request with the Retrieval tool
+config \= types.GenerateContentConfig(
+    tools=\[retrieval\_config\]
+)
+
+\# Generate content with a prompt
+response \= client.models.generate\_content(
+    model='gemini-1.5-pro-002',
+    contents='Answer this question based on the provided documents...',
+    config=config
+)
+
+\# Check for citations in the response
+for candidate in response.candidates:
+    if candidate.citation\_metadata:
+        print("Citations:")
+        for citation in candidate.citation\_metadata.citations:
+            print(f"  Title: {citation.title}")
+            print(f"  URI: {citation.uri}")
+            \#... other citation details
+
+This example highlights that the attribution mechanism within the "Retrieval" tool is focused on providing source information for documents managed within an external datastore. The need to specify a datastore ID and the nature of the Citation object, which includes a uri, further underscore that this is not intended for attributing to specific, unreferenced text segments directly included in the prompt's contents.
+
+## **Exploring Google Search Grounding as a Source of Evidence**
+
+Another feature of the Gemini API that involves sourcing information is "Grounding with Google Search".9 This capability allows the Gemini models to enhance the accuracy and recency of their responses by grounding them in the vast information available through Google Search results. When this feature is enabled, the API not only aims to provide more factual answers but also returns grounding sources as in-line supporting links and Google Search Suggestions alongside the generated content.9 It is important to note that Google Search retrieval is specifically compatible with Gemini 1.5 models, while for Gemini 2.0 models, the recommendation is to use "Search as a tool".9
+
+When Google Search is used for grounding, the response will include groundingMetadata.9 This metadata contains a searchEntryPoint field, which in turn includes renderedContent that provides the necessary code for implementing and displaying Google Search Suggestions.9 Additionally, the groundingMetadata contains URIs that redirect to the publishers of the web content that was utilized to generate the grounded result.9 These URIs typically include the vertexaisearch subdomain along with the publisher's domain. These links remain accessible for a period of 30 days after the grounded result is generated. It's crucial to understand that this feature grounds the response in publicly available web content identified through Google Search, rather than in specific context chunks that a user might provide directly in the prompt. The returned "grounding sources" are URLs of web pages, indicating an external origin distinct from user-provided text segments.
+
+Google Search grounding also offers a feature called dynamic retrieval.9 This provides more control over when to use Google Search for grounding, particularly for queries that might not always require it. When dynamic retrieval mode is unspecified, grounding is always triggered. However, when set to dynamic, the model decides whether to use grounding based on a configurable threshold, which is a floating-point value between 0 and 1 (defaulting to 0.3). A threshold of 0 means grounding is always used, while 1 means it's never used.9 When a grounded answer is requested, Gemini assigns a prediction score to the prompt, also a floating-point value between 0 and 1, indicating whether grounding with the most up-to-date information from Google Search would be beneficial.9 If the prediction score meets or exceeds the configured threshold, the answer will be grounded with Google Search. While dynamic retrieval adds a layer of sophistication to when web-based grounding is employed, it does not alter the fundamental aspect of grounding the response against external web sources rather than user-provided context.
+
+An example of how to use Google Search grounding with the Python SDK involves configuring the google\_search tool within the GenerateContentConfig:
+
+Python
+
+from google import genai
+from google.genai import types
+
+client \= genai.Client()
+
+config\_with\_search \= types.GenerateContentConfig(
+    tools=,
+)
+
+response \= client.models.generate\_content(
+    model='gemini-2.0-flash',  \# Or 'gemini-1.5-flash'
+    contents="When and where is Billie Eilish's next concert?",
+    config=config\_with\_search
+)
+
+if response.candidates and response.candidates.grounding\_metadata:
+    chunks \= response.candidates.grounding\_metadata.grounding\_chunks
+    for chunk in chunks:
+        print(f'{chunk.web.title}: {chunk.web.uri}')
+
+This example demonstrates that when Google Search grounding is used, the grounding\_metadata provides information about the web sources, including their titles and URIs. This confirms that the attribution is to external web pages found by Google Search, not to specific text segments provided directly in the prompt.
+
+## **Prompting Strategies for Eliciting Source Information**
+
+Effective prompt design is crucial for eliciting the desired responses from Gemini models.12 This involves providing clear and specific instructions to define the task, specifying any constraints on the response, and even including a few examples to guide the model towards the desired format and content.12 Adding contextual information to the prompt is another key strategy to ensure the model uses the provided data when generating its response.12
+
+While prompt engineering offers significant control over the model's output, the official documentation does not provide evidence that Gemini 1.5 Pro, via the google-generativeai Python SDK, can be reliably prompted to include custom textual markers (e.g., \`\`) that explicitly link parts of the generated response to specific input chunks provided in the contents of the prompt. The SDK's built-in mechanisms for source attribution, namely the Retrieval tools and Google Search grounding, are designed to operate with external, pre-existing data sources or publicly available web content, as discussed earlier.4
+
+The large context window of Gemini 1.5 Pro, which can process up to 2 million tokens, allows developers to provide substantial amounts of information to the model in a single prompt.15 This capability is particularly relevant in RAG scenarios, as it enables the inclusion of multiple relevant documents or text segments directly within the prompt's context. However, the ability to ingest large amounts of context does not inherently translate to the model's capacity to then attribute specific parts of its output back to specific segments within that context using custom, user-defined markers. The focus of the long context window is on improving the model's reasoning and understanding over large inputs, rather than on providing granular control over output attribution to specific input sub-segments.
+
+Furthermore, LLMs, including Gemini 1.5 Pro, are inherently probabilistic in nature, and achieving 100% consistency in their response structure, especially when it involves custom formatting like source markers, can be challenging.20 While providing examples in the prompt can guide the model towards a desired output format, there is no guarantee that it will consistently and accurately apply custom source markers to every part of the response that originates from a specific input chunk. The model might paraphrase, synthesize information from multiple chunks, or even generate novel content, making direct and reliable attribution using prompt engineering alone difficult to achieve.
+
+## **Limitations of Direct Chunk Attribution and Potential Workarounds**
+
+Based on the analysis of the official documentation and related resources, there is no direct support within the google-generativeai Python SDK for prompting Gemini 1.5 Pro to include explicit textual markers or structured metadata that directly link parts of the generated response to specific, ad-hoc context chunks provided in the prompt. The existing attribution mechanisms are tied to external data sources managed by Retrieval tools or to publicly available web content accessed through Google Search grounding.
+
+Given this limitation, several potential workarounds can be considered to achieve a similar goal of source attribution in RAG scenarios using Gemini 1.5 Pro and the google-generativeai Python SDK:
+
+**Workaround 1: Post-processing of the generated text.** One approach involves analyzing the text generated by Gemini 1.5 Pro and attempting to match phrases or sentences back to the original context chunks provided in the prompt.23 This matching could be based on semantic similarity, keyword overlap, or other text comparison techniques. Once a match is found, the desired textual markers (e.g., \`\`) could be programmatically inserted into the generated text. While this method can provide a form of attribution, it requires careful implementation and might not always be accurate, especially if the model paraphrases the source content significantly or synthesizes information from multiple chunks.
+
+**Workaround 2: Structuring the prompt to encourage explicit referencing.** Another strategy is to structure the prompt in a way that encourages the model to explicitly mention the source document or section whenever it uses information from it.12 This could involve providing clear delimiters or formatting for the input context chunks (e.g., prefixing each chunk with an ID) and instructing the model to refer to these IDs in its response. For example, the prompt could include instructions like, "When answering the question using the provided text segments, please indicate the source chunk ID in square brackets after each sentence or phrase." While this approach might increase the likelihood of the model referencing the sources, it does not guarantee precise, structured attribution and relies on the model consistently following the instructions.
+
+**Workaround 3: Using Vertex AI RAG Engine for more advanced RAG capabilities.** For users requiring more sophisticated control over RAG workflows and potentially more granular source attribution, exploring the Vertex AI RAG Engine could be beneficial.1 The Vertex AI RAG Engine is a managed orchestration service designed to streamline the process of retrieving relevant information and feeding it to an LLM. It offers various components for data ingestion, transformation, embedding, indexing, retrieval, and generation. While the direct ability to attribute to arbitrary prompt chunks might still be limited, this engine might provide more advanced features for managing and tracking the sources of information used by Gemini models in a RAG pipeline, potentially offering more structured metadata or mechanisms for indicating source provenance compared to the direct use of the google-generativeai SDK.
+
+**Workaround 4: Combining Retrieval tools with prompt engineering.** Even if direct attribution to specific prompt chunks is not supported, a practical approach could involve using the SDK's Retrieval tools in conjunction with prompt engineering. This would entail configuring the Retrieval tool to fetch relevant documents from an external data source and then prompting the model to cite these retrieved documents in its response. The citation\_metadata returned by the Retrieval tool includes information like the title and URI of the source document, which could be used by the model to provide a form of indirect attribution. For instance, the prompt could instruct the model to say, "According to..." or to include a list of cited sources at the end of its response, drawing information from the citation\_metadata.
+
+## **Conclusion and Recommendations**

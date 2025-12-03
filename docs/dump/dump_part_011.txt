@@ -1,0 +1,326 @@
+                    reasons.append("Could not retrieve total supply.")
+                # Adicione *mais verificações aqui*, usando as informações obtidas e heurísticas.
+                # Exemplos (altamente simplificados - precisam de pesquisa e ajuste):
+                # if total_supply < 1000000:  # Limite arbitrário de total supply
+                #     is_safe = False
+                #     reasons.append("Total supply is very low.")
+                # if num_holders is not None and num_holders < 100: # Limite arbitrário de holders
+                #    is_safe = False
+                #    reasons.append("Number of holders is very low.")
+
+
+                # 5. Integração com API externa (OPCIONAL - GoPlus ou Rugcheck.xyz)
+                goplus_data = None
+                rugcheck_data = None
+
+                # Exemplo com GoPlus (se a chave estiver configurada)
+                if self.goplus_api_key:
+                    try:
+                        chain_id = 1  # Ethereum Mainnet (ajuste para outras blockchains)
+                        response = requests.get(f"https://api.gopluslabs.io/token-security/{chain_id}/{token_address}?apikey={self.goplus_api_key}")
+                        response.raise_for_status() # Lança exceção se a requisição falhar
+                        goplus_data = response.json()
+                        # Analisar a resposta da GoPlus e atualizar is_safe e reasons.  Exemplo:
+                        if goplus_data and goplus_data.get('result') and goplus_data['result'].get('honeypot') == 'yes':
+                            is_safe = False
+                            reasons.append('Potential honeypot (GoPlus)')
+                        # Adicione outras verificações com base nos dados da GoPlus.
+
+                    except Exception as e:
+                        print(f"Error calling GoPlus API: {e}")
+                        reasons.append(f"Error calling GoPlus API: {e}")
+
+                # Exemplo com Rugcheck.xyz (se a chave estiver configurada):
+                if self.rugcheck_api_key:
+                    try:
+                        response = requests.get(f"https://api.rugcheck.xyz/v1/check/{chain}/{token_address}", headers={"Authorization": f"Bearer {self.rugcheck_api_key}"})
+                        response.raise_for_status()
+                        rugcheck_data = response.json()
+                        if rugcheck_data and rugcheck_data.get('score') < 85:  # Exemplo de limite
+                            is_safe = False
+                            reasons.append(f"Low Rugcheck.xyz score: {rugcheck_data.get('score')}")
+
+                    except Exception as e:
+                        print(f"Error calling Rugcheck.xyz API: {e}")
+                        reasons.append(f"Error calling Rugcheck.xyz API: {e}")
+
+
+                return CheckTokenSecurityOutput(
+                    is_safe=is_safe,
+                    total_supply=total_supply,
+                    num_holders=num_holders,
+                    is_contract_verified=is_contract_verified,
+                    goplus_security_data=goplus_data,
+                    rugcheck_data=rugcheck_data,
+                    reasons=reasons,
+                )
+            # Exemplo de uso dentro do MarketAnalyst
+            # security_check = CheckTokenSecurity()
+            # input_data = CheckTokenSecurityInput(token_address='0x...', chain='ethereum')
+            # result = await security_check.run(**input_data.model_dump()) # .dict() para pydantic v1
+            # if not result.is_safe:
+            #     print(f"Token is not safe: {result.reasons}")
+
+        ```
+
+    *   **Tratamento de Erros:**
+        *   Usa `try-except` para capturar exceções durante as chamadas à API e à blockchain.
+        *   Retorna mensagens de erro descritivas na lista `reasons`.
+        *   *Importante*: A Tool *não deve falhar completamente* se uma API externa estiver indisponível. Ela deve retornar o máximo de informações possível (mesmo que incompletas) e indicar o erro.
+
+    *   **Documentação:**
+        *   `web3.py`: [https://web3py.readthedocs.io/en/stable/](https://web3py.readthedocs.io/en/stable/)
+        *   GoPlus Security API (exemplo): [https://docs.gopluslabs.io/](https://docs.gopluslabs.io/)
+        *   Rugcheck.xyz API: [https://api.rugcheck.xyz/swagger/index.html](https://api.rugcheck.xyz/swagger/index.html)
+
+*   **`ExecuteSwap` (web3.py + DEX Contracts)**
+
+    *   **Descrição:** (Conforme definido anteriormente)
+    *   **Código (Refinado - Exemplo com Uniswap V2):**
+
+        ```python
+        from web3 import Web3
+        from pydantic import BaseModel, Field, validator
+        from typing import Literal
+        from agency_swarm.tools import BaseTool
+        import os
+        from wallet import WalletManager  # Importe sua classe WalletManager
+
+        class ExecuteSwapInput(BaseModel):
+            token_in: str = Field(..., description="Address of the token to sell (e.g., WETH address).")
+            token_out: str = Field(..., description="Address of the token to buy.")
+            amount_in: float = Field(..., description="Amount of token_in to sell (in human-readable units, e.g., 1.0 for 1 ETH).")
+            slippage: float = Field(0.01, description="Maximum acceptable slippage (e.g., 0.01 for 1%).")
+            chain: str = Field(..., description="Blockchain (e.g., 'ethereum', 'bsc').")
+            dex: Literal["uniswap_v2", "pancakeswap_v2", "sushiswap"] = Field(..., description="DEX to use.") # Adicionado suporte para diferentes DEXs
+
+            @validator('slippage')
+            def slippage_must_be_positive(cls, v):
+                if v < 0:
+                    raise ValueError('slippage must be >= 0')
+                return v
+
+        class ExecuteSwapOutput(BaseModel):
+            tx_hash: str = Field(..., description="Transaction hash")
+            success: bool = Field(..., description="True if the swap was successful, False otherwise")
+            error: Optional[str] = Field(None, description="Error message if the swap failed")
+
+        class ExecuteSwap(BaseTool):
+            """Executes a token swap on a specified DEX (Uniswap V2, PancakeSwap V2, or SushiSwap)."""
+            input_type: type[BaseModel] = ExecuteSwapInput
+            output_type: type[BaseModel] = ExecuteSwapOutput
+
+
+            def __init__(self):
+                super().__init__()
+                # Carregando as configurações do .env (ou config.json, se preferir)
+                self.wallet_manager = WalletManager(Web3(Web3.HTTPProvider(os.getenv("ETHEREUM_RPC_URL")))) #Inicializa o web3 uma unica vez
+
+                self.dex_routers = { #Dicionario para guardar as informacoes de cada DEX
+                    "uniswap_v2": {
+                        "address": os.getenv("UNISWAP_V2_ROUTER_ADDRESS"),
+                        "abi": json.loads(os.getenv("UNISWAP_V2_ROUTER_ABI")), # Carregar o ABI de um arquivo JSON ou variável de ambiente
+                    },
+                    "pancakeswap_v2": {
+                        "address": os.getenv("PANCAKESWAP_V2_ROUTER_ADDRESS"),
+                        "abi": json.loads(os.getenv("PANCAKESWAP_V2_ROUTER_ABI")),  # Mesma coisa
+                    },
+                    "sushiswap": { #Adicionei Sushiswap
+                        "address": os.getenv("SUSHISWAP_ROUTER_ADDRESS"),
+                        "abi": json.loads(os.getenv("SUSHISWAP_ROUTER_ABI")),
+                    }
+                }
+
+            def run(self, token_in: str, token_out: str, amount_in: float, slippage: float, chain: str, dex: str) -> ExecuteSwapOutput:
+                try:
+
+                    # 1. Selecionar o provedor Web3 correto com base na chain.
+                    if chain == "ethereum":
+                        w3 = self.wallet_manager.w3 # Usar o Web3 já inicializado
+                    elif chain == "bsc":
+                        w3 = Web3(Web3.HTTPProvider(os.getenv("BSC_RPC_URL"))) #Ou inicializar um novo se não existir
+                    else:
+                        return ExecuteSwapOutput(success=False, error=f"Unsupported chain: {chain}")
+
+                    # 2. Selecionar o roteador da DEX correta
+                    if dex not in self.dex_routers:
+                        return ExecuteSwapOutput(success=False, error=f"Unsupported DEX: {dex}")
+
+                    router_address = self.dex_routers[dex]["address"]
+                    router_abi = self.dex_routers[dex]["abi"]
+                    router_contract = w3.eth.contract(address=router_address, abi=router_abi)
+
+                    # 3. Converter amount_in para wei (unidade básica)
+                    amount_in_wei = w3.to_wei(amount_in, 'ether')
+
+                    # 4. Estimar a quantidade de saída (para calcular o min_amount_out)
+                    #    Usando getAmountsOut (requer ABI da DEX).  Implementação *simplificada* para o exemplo:
+                    path = [w3.to_checksum_address(token_in), w3.to_checksum_address(token_out)]
+
+                    try:
+                        #Chamada de API da Uniswap, por exemplo
+                        amounts_out = router_contract.functions.getAmountsOut(amount_in_wei, path).call()
+                        expected_amount_out = amounts_out[-1]  # O último elemento é a quantidade de saída
+                    except Exception as e:
+                        return ExecuteSwapOutput(success=False, error=f"Error estimating output: {e}")
+
+
+                    # 5. Calcular min_amount_out (proteção contra slippage)
+                    min_amount_out = int(expected_amount_out * (1 - slippage))
+
+                    # 6. Construir a transação
+                    #    Usando swapExactTokensForTokens (se vendendo uma quantidade exata de token_in)
+                    #    ou swapTokensForExactTokens (se comprando uma quantidade exata de token_out).
+                    #    Vamos assumir swapExactTokensForTokens para este exemplo.
+                    deadline = w3.eth.get_block('latest')['timestamp'] + 600 # 10 minutos
+
+                    tx = router_contract.functions.swapExactTokensForTokens(
+                        amount_in_wei,
+                        min_amount_out,
+                        path,
+                        self.wallet_manager.signer.address, # Usando o endereço da carteira
+                        deadline
+                    ).build_transaction({
+                        'from': self.wallet_manager.signer.address,
+                        'gas': 250000,  # Estimativa.  Pode precisar de ajuste.
+                        'gasPrice': w3.eth.gas_price, # Usando gas price sugerido.  Pode ser otimizado.
+                        'nonce': w3.eth.get_transaction_count(self.wallet_manager.signer.address),
+                    })
+
+                    # 7. Simular a transação (detecção de sandwich attack)
+                    try:
+                        simulated_result = w3.eth.call(tx, 'latest')
+                        # Decodificar o resultado (depende da ABI do contrato e da função)
+                        simulated_amount_out = w3.eth.abi.decode(['uint256'], simulated_result)[0]
+                        actual_slippage = (expected_amount_out - simulated_amount_out) / expected_amount_out
+                        if actual_slippage > slippage:
+                            return ExecuteSwapOutput(success=False, error=f"Slippage too high! Expected: {expected_amount_out}, Simulated: {simulated_amount_out}")
+
+                    except Exception as e:
+                        print(f"Error simulating transaction: {e}")
+                        return ExecuteSwapOutput(success=False, error=f"Error simulating transaction: {e}")
+
+
+                    # 8. Assinar e enviar a transação (usando WalletManager)
+                    tx_hash = self.wallet_manager.sign_and_send(tx)
+
+
+                    # 9. Esperar pela confirmação da transação (opcional, mas recomendado)
+                    receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
+
+                    # 10. Revogar aprovação (após sucesso)
+                    # self._revoke_approvals(token_in, router_address) #Ainda a ser implementado, função da classe
+
+                    # 11. Retornar o resultado
+                    return ExecuteSwapOutput(success=True, tx_hash=tx_hash.hex())
+
+
+                except Exception as e:
+                    return ExecuteSwapOutput(success=False, error=str(e))
+
+            def _revoke_approvals(self, token_address, router_address):
+                """Revokes token approvals after trading."""
+                #Supondo que seja um token ERC20
+                try:
+                    token_contract = self.web3.eth.contract(address=token_address, abi=ERC20_ABI)
+
+                    # Check current allowance.  Se já for 0, não precisa fazer nada.
+                    allowance = token_contract.functions.allowance(self.wallet_manager.signer.address, router_address).call()
+                    if allowance == 0:
+                        print(f"Allowance for {token_address} on {router_address} is already 0.")
+                        return
+
+                    # Build transaction to set allowance to 0
+                    tx = token_contract.functions.approve(router_address, 0).build_transaction(
+                        {
+                            "from": self.wallet_manager.signer.address,
+                            "gas": 50000,  # Estimate.  Adjust as necessary.
+                            "gasPrice": self.web3.eth.gas_price,
+                            "nonce": self.web3.eth.get_transaction_count(self.wallet_manager.signer.address),
+                        }
+                    )
+                    tx_hash = self.wallet_manager.sign_and_send(tx)
+                    self.web3.eth.wait_for_transaction_receipt(tx_hash)
+                    print('Approval revoked')
+                except Exception as e:
+                    print('Failed to revoke')
+
+
+        # Exemplo de uso (dentro do Trader):
+        # trade_tool = ExecuteSwap()
+        # input_data = ExecuteSwapInput(token_in="0x...", token_out="0x...", amount_in=1.0, slippage=0.01, chain='ethereum', dex='uniswap_v2')
+        # result = await trade_tool.run(**input_data.model_dump())
+        # if result.success:
+        #     print(f"Trade executed: {result.tx_hash}")
+        # else:
+        #     print(f"Trade failed: {result.error}")
+
+        ```
+
+    *   **Tratamento de Erros:**
+        *   Usa `try-except` para capturar exceções.
+        *   Retorna um objeto `ExecuteSwapOutput` com `success=False` e uma mensagem de erro em caso de falha.
+        *   *Importante*: O tratamento de erros deve ser *abrangente*, capturando diferentes tipos de erros (ex: erros de conexão, erros de transação, erros de contrato, erros de slippage).
+
+    *   **Documentação:**
+        *   `web3.py`: [https://web3py.readthedocs.io/en/stable/](https://web3py.readthedocs.io/en/stable/)
+        *   Uniswap V2 Docs: [https://docs.uniswap.org/contracts/v2/](https://docs.uniswap.org/contracts/v2/)
+        *   PancakeSwap Docs: [https://docs.pancakeswap.finance/](https://docs.pancakeswap.finance/)
+        *   SushiSwap Docs: [https://docs.sushiswap.fi/](https://docs.sushiswap.fi/)
+
+*   **`GetPortfolio` (SQLite)**
+
+    *   **Descrição:** (Conforme definido anteriormente)
+    *   **Código:** (Já esboçado anteriormente, mas *refinar* com Pydantic para a saída).
+
+        ```python
+        # ... (código da classe Database, se necessário) ...
+        from pydantic import BaseModel, Field
+        from typing import List, Optional
+
+        class PortfolioItem(BaseModel):
+            token_address: str = Field(..., description="Token contract address")
+            symbol: str = Field(..., description="Token symbol")
+            amount: float = Field(..., description="Amount of tokens held")
+            entry_price: Optional[float] = Field(None, description="Average entry price")
+
+        class GetPortfolioOutput(BaseModel):
+            items: List[PortfolioItem]
+            total_value_usd: Optional[float] = Field(None, description="Total portfolio value (USD)")
+
+
+        # Dentro da classe Database (ou em uma classe separada PortfolioDB):
+        def get_portfolio(self) -> GetPortfolioOutput:
+            """Retrieves the current portfolio from the database."""
+            try:
+                cursor = self.conn.execute("SELECT token_address, symbol, amount, entry_price FROM portfolio")
+                rows = cursor.fetchall()
+                items = []
+                for row in rows:
+                    token_address, symbol, amount, entry_price = row
+                    items.append(PortfolioItem(token_address=token_address, symbol=symbol, amount=amount, entry_price=entry_price))
+
+                # Calcular o valor total (usando preços atuais - você precisará da FetchMarketData aqui)
+                total_value_usd = 0  # Implemente o cálculo do valor total
+                # Exemplo (simplificado):
+                # for item in items:
+                #     price_data = fetch_market_data_tool.run(coins=[item.symbol], vs_currency='usd') # Chamada síncrona como exemplo. Idealmente, seria assíncrona.
+                #     if not 'error' in price_data.market_data:
+                #          current_price = price_data.market_data[item.symbol.lower()]['current_price'] #Cuidado com upper/lower case
+                #          total_value_usd += item.amount * current_price
+
+                return GetPortfolioOutput(items=items, total_value_usd=total_value_usd)
+
+            except Exception as e:
+                print(f"Error retrieving portfolio: {e}")
+                return GetPortfolioOutput(items=[], total_value_usd=None)
+
+        # Exemplo de uso (dentro de um agente):
+        # portfolio_tool = GetPortfolio() # Ou injetar a dependência
+        # result = await portfolio_tool.run() # Se for assíncrono.
+        # print(result.items)
+        # print(result.total_value_usd)
+        ```
+
+    *   **Observações:**
+        *   Usa Pydantic para o formato de saída (`GetPortfolioOutput`).

@@ -1,0 +1,431 @@
+*   **Compatibilidade de Versão (Assistants V2/Streaming):** A documentação do Agency Swarm (`aswarmdoc.txt`, seção "Open Source Models -> General Instructions") alerta que backends que *mimetizam* a API Assistants podem exigir uma versão mais antiga do Agency Swarm (ex: `0.1.7`) se não forem totalmente compatíveis com a API V2, especialmente com funcionalidades de streaming. **É por isso que a versão `0.1.7` é frequentemente recomendada neste cenário.** É crucial verificar se a combinação `optillm` + LiteLLM + Gemini suporta totalmente as funcionalidades V2 que sua implementação do Agency Swarm utiliza. Caso contrário, pode ser necessário fixar a versão do `agency-swarm`.
+*   **Function Calling:** A tradução via LiteLLM deve mitigar problemas de compatibilidade, mas testes são cruciais para confirmar a robustez da tradução para suas ferramentas específicas, dado que a documentação do Agency Swarm (`aswarmdoc.txt`, seção "Open Source Models -> Limitations") menciona limitações gerais em backends não-OpenAI.
+*   **Ferramentas Nativas (Retrieval/File Search, Code Interpreter):** Estas provavelmente **não funcionarão**. A documentação do Agency Swarm (`aswarmdoc.txt`) explicitamente menciona que `File Search` (Retrieval) **não é suportado no Azure** (seção "Azure OpenAI") e reitera a limitação geral para modelos open-source/backends mimic (seção "Open Source Models -> Limitations"). `Code Interpreter` também é tipicamente indisponível nesses cenários.
+    *   **Solução:** Use ferramentas customizadas (`BaseTool`) para RAG ou execução de código, conforme recomendado na documentação do Agency Swarm.
+*   **Streaming:** Verifique se o streaming (`get_completion_stream`) funciona corretamente através de todas as camadas (Agency Swarm -> `optillm` -> LiteLLM -> Gemini). A compatibilidade de versão mencionada acima é particularmente relevante aqui.
+*   **Modelo no Agente:** A correspondência exata do nome do modelo (`model=...`) definido no `Agent` do Agency Swarm com a configuração do `optillm` é essencial.
+
+## Integrando MCP (Model Context Protocol) com Agency Swarm
+
+O Model Context Protocol (MCP) é um protocolo aberto para padronizar como LLMs acessam contexto externo (dados, ferramentas, etc.) através de uma arquitetura cliente-servidor ([MCP Introduction](https://modelcontextprotocol.io/introduction)). Integrar um MCP Server existente ou construir um novo para uso no Agency Swarm requer uma abordagem específica.
+
+**1. Como Integrar um MCP Server Existente (Ex: `multi-service-mcp-server`) no Agency Swarm?**
+
+Você **não** integra o MCP Server diretamente como uma ferramenta no Agency Swarm. Em vez disso, você cria uma `BaseTool` customizada no Agency Swarm que atua como um **cliente MCP** para interagir com o servidor MCP desejado.
+
+*   **Crie uma `BaseTool` Wrapper:**
+    *   Esta ferramenta (`BaseTool`) será o ponto de contato para seus agentes no Agency Swarm.
+    *   Os campos (`pydantic.Field`) desta ferramenta devem definir os parâmetros necessários para interagir com o MCP Server (ex: qual capacidade do servidor usar, quais argumentos passar).
+    *   A descrição da ferramenta deve explicar as capacidades oferecidas pelo MCP Server subjacente.
+*   **Implemente o Método `run`:**
+    *   Dentro do método `run` da sua `BaseTool`, use o SDK Python do MCP (`pip install modelcontextprotocol`) ([MCP Python SDK](https://github.com/modelcontextprotocol/python-sdk)) para:
+        1.  Conectar-se ao MCP Server em execução (ex: `multi-service-mcp-server` rodando em `localhost:8080`).
+        2.  Chamar a funcionalidade desejada no MCP Server (ex: executar uma ferramenta específica exposta pelo servidor, obter um recurso).
+        3.  Receber a resposta do MCP Server.
+        4.  Retornar a resposta formatada para o agente do Agency Swarm.
+
+*   **Exemplo Conceitual (Wrapper para `multi-service-mcp-server`):**
+
+    ```python
+    from agency_swarm.tools import BaseTool
+    from pydantic import Field
+    from typing import Literal
+    # Assume que 'mcp_client' é uma biblioteca/módulo para interagir com o MCP Server
+    # Você precisaria instalar e usar o SDK oficial: pip install modelcontextprotocol
+    from modelcontextprotocol.client import MCPClient # Exemplo de importação
+
+    MCP_SERVER_URL = "http://localhost:8080" # URL onde o multi-service-mcp-server está rodando
+
+    class MultiServiceMCPTool(BaseTool):
+        """
+        Interage com o Multi-Service MCP Server para acessar serviços como Google Search, Wikipedia, etc.
+        Use esta ferramenta para buscar informações na web ou em fontes específicas.
+        """
+        service: Literal["google_search", "wikipedia", "arxiv"] = Field(
+            ..., description="O serviço específico a ser usado no MCP Server."
+        )
+        query: str = Field(
+            ..., description="A consulta ou termo de busca a ser enviado para o serviço."
+        )
+
+        async def run(self):
+            """Conecta-se ao MCP Server e executa a consulta no serviço especificado."""
+            try:
+                # Nota: A implementação real dependerá da API do SDK MCP
+                async with MCPClient(MCP_SERVER_URL) as client:
+                    # Exemplo hipotético de como chamar uma ferramenta no MCP Server
+                    # A API real do SDK pode ser diferente. Consulte a doc do MCP SDK.
+                    # Pode ser necessário listar ferramentas/recursos primeiro.
+                    # Ex: tools = await client.list_tools()
+                    # Ex: result = await client.execute_tool(tool_name=self.service, params={'query': self.query})
+
+                    # Simulação - Substitua pela lógica real do SDK MCP
+                    if self.service == "google_search":
+                        # result = await client.execute_tool(...)
+                        result = f"Resultado da busca no Google para '{self.query}' via MCP."
+                    elif self.service == "wikipedia":
+                        # result = await client.execute_tool(...)
+                        result = f"Resultado da Wikipedia para '{self.query}' via MCP."
+                    else:
+                        result = f"Serviço '{self.service}' não implementado neste exemplo."
+
+                    return result
+            except Exception as e:
+                return f"Erro ao conectar ou usar o MCP Server: {e}"
+
+    ```
+*   **Adicione a Ferramenta ao Agente:** Inclua `MultiServiceMCPTool` na lista `tools` do seu agente no Agency Swarm. O agente poderá então usá-la como qualquer outra ferramenta.
+
+**2. Como Construir um MCP Server?**
+
+Construir seu próprio MCP Server permite expor dados ou funcionalidades customizadas para LLMs através do protocolo MCP.
+
+*   **Use o SDK Oficial:** A maneira recomendada é usar um dos SDKs oficiais, como o [Python SDK](https://github.com/modelcontextprotocol/python-sdk).
+*   **Siga o Quickstart:** O [Server Quickstart](https://modelcontextprotocol.io/quickstart/server) fornece um guia passo a passo.
+*   **Principais Passos (usando Python SDK):**
+    1.  **Instale o SDK:** `pip install modelcontextprotocol`
+    2.  **Defina Provedores:** Crie classes que herdam dos provedores base do SDK:
+        *   `ResourceProvider`: Para expor dados/contexto (implemente `list_resources`, `get_resource_content`).
+        *   `ToolProvider`: Para expor ações/ferramentas (defina o schema da ferramenta e implemente a lógica de execução).
+        *   `PromptProvider`: Para expor templates de prompt reutilizáveis.
+    3.  **Crie a Aplicação MCP:** Instancie `MCPApplication` e registre seus provedores.
+        ```python
+        from modelcontextprotocol.server import MCPApplication
+        # Importe seus provedores customizados
+        # from .providers import MyResourceProvider, MyToolProvider
+
+        app = MCPApplication(
+            resource_providers=[MyResourceProvider()],
+            tool_providers=[MyToolProvider()],
+            # prompt_providers=[MyPromptProvider()]
+        )
+        ```
+    4.  **Execute o Servidor:** Use um servidor ASGI como `uvicorn` para rodar a aplicação.
+        ```bash
+        uvicorn your_server_module:app --host 0.0.0.0 --port 8080
+        ```
+*   **Consulte os Conceitos:** Entenda os [Conceitos Principais do MCP](https://modelcontextprotocol.io/docs/concepts/architecture) (Recursos, Ferramentas, Prompts) para modelar as capacidades do seu servidor.
+*   **Veja Exemplos:** Explore [Servidores de Exemplo](https://modelcontextprotocol.io/examples) e repositórios como [mcp-server-gemini](https://github.com/aliargun/mcp-server-gemini) (que mostra como um MCP server pode *usar* Gemini internamente).
+
+**Em Resumo:**
+
+*   Para **usar** um MCP Server no Agency Swarm: Crie uma `BaseTool` que funcione como um **cliente** MCP.
+*   Para **construir** um MCP Server: Use o **SDK** do MCP e implemente os provedores necessários.
+
+## Conclusão Geral
+
+A combinação de `optillm` e LiteLLM oferece uma solução poderosa para integrar modelos Gemini (e outros) em fluxos de trabalho existentes baseados na API OpenAI, incluindo frameworks como Agency Swarm. O `optillm` adiciona uma camada de otimização de inferência, enquanto o LiteLLM lida com a complexidade da comunicação e tradução entre diferentes APIs, incluindo a tradução automática e bidirecional de function calling para Gemini. Isso elimina a necessidade de wrappers manuais para compatibilidade de schema de `tools`.
+
+## Arquitetura da Solução
+
+### Visão Geral dos Componentes
+
+```mermaid
+graph TD
+    AS[Agency Swarm] --> |1. Chamadas API OpenAI| OL[optillm]
+    OL --> |2. Tradução via LiteLLM| GM[Gemini API]
+    OL --> |3. Otimização de Inferência| OPT[Técnicas de Otimização]
+    AS --> |4. Tools| TL[Tools Layer]
+    AS --> |5. MCPs| MCP[MCP Servers]
+
+    subgraph "Camada de Otimização"
+        OPT --> MOA[MoA - Method of Agents]
+        OPT --> MCTS[Monte Carlo Tree Search]
+        OPT --> CEPO[CEPO]
+    end
+
+    subgraph "Camada de Tools"
+        TL --> BT[BaseTool]
+        TL --> CT[Custom Tools]
+    end
+
+    subgraph "Camada MCP"
+        MCP --> MS[MCP Server]
+        MCP --> MC[MCP Client]
+    end
+```
+
+### Fluxo de Dados
+
+1. **Agency Swarm → optillm**
+   - Agency Swarm faz chamadas no formato da API OpenAI
+   - Inclui definições de função no formato OpenAI
+   - Configurado para apontar para o endpoint do optillm
+
+2. **optillm → Gemini (via LiteLLM)**
+   - optillm recebe as chamadas no formato OpenAI
+   - LiteLLM traduz as chamadas para o formato Gemini
+   - Gerencia a comunicação com a API do Gemini
+
+3. **Otimização de Inferência**
+   - optillm aplica técnicas de otimização selecionadas:
+     - **MoA (Method of Agents):** Decompõe tarefas complexas em subtarefas menores, distribuindo-as entre "sub-agentes" virtuais para melhorar a qualidade da resposta final através da colaboração e agregação.
+     - **MCTS (Monte Carlo Tree Search):** Explora diferentes sequências de pensamento ou "continuações" de prompt para encontrar a resposta mais promissora, útil para problemas que exigem exploração de possibilidades.
+     - **CePO (Context-Enhanced Prompt Optimization):** Otimiza o prompt original adicionando contexto relevante ou reestruturando-o para melhorar a compreensão e a resposta do LLM.
+   - MoA (Method of Agents) para decomposição de tarefas
+   - MCTS para exploração de soluções
+   - CEPO para otimização de prompts
+
+4. **Camada de Tools**
+   - Ferramentas herdam de BaseTool
+   - Definidas usando JSON Schema da OpenAI
+   - Traduzidas automaticamente para Gemini via LiteLLM
+
+5. **Camada MCP**
+   - Servidores MCP fornecem contexto externo
+   - Clientes MCP integrados como Tools no Agency Swarm
+   - Comunicação padronizada via protocolo MCP
+
+### Papéis dos Componentes
+
+#### Agency Swarm
+- Framework principal para orquestração de agentes
+- Gerencia comunicação entre agentes
+- Define estrutura hierárquica via agency_chart
+- Integra tools e MCPs
+
+#### optillm
+- Proxy de otimização para LLMs
+- Interface compatível com OpenAI
+- Aplica técnicas de otimização
+- Integra com LiteLLM para tradução
+
+#### LiteLLM
+- Tradução entre formatos de API
+- Converte schemas OpenAI → Gemini
+- Gerencia autenticação e endpoints
+- Padroniza respostas
+
+#### Gemini
+- Modelo de linguagem principal
+- Processa prompts e gera respostas
+- Executa function calling (via tradução)
+- Fornece capacidades de raciocínio
+
+#### Tools
+- Extensões de funcionalidade via BaseTool
+- Interface padronizada com JSON Schema
+- Executam ações específicas
+- Integram sistemas externos
+
+#### MCPs
+- Fornecem contexto estruturado
+- Seguem protocolo padronizado
+- Integram via wrappers de Tool
+- Expandem capacidades dos agentes
+
+## Guia de Implementação
+
+### 1. Configuração Inicial
+
+#### 1.1 Setup do optillm
+```bash
+# Clone o repositório optillm
+git clone https://github.com/soulteary/optillm.git
+cd optillm
+
+# Instale as dependências
+pip install -r requirements.txt
+
+# Inicie o servidor optillm
+python -m optillm --host 0.0.0.0 --port 8000 --model gemini/gemini-pro
+```
+
+#### 1.2 Configuração do Agency Swarm
+```python
+import os
+import openai
+from agency_swarm import set_openai_client
+from dotenv import load_dotenv
+
+load_dotenv()
+
+# Configurar cliente OpenAI para usar optillm
+client = openai.OpenAI(
+    base_url="http://localhost:8000/v1",
+    api_key=os.getenv("OPTILLM_API_KEY", "dummy-key")
+)
+
+# Configurar Agency Swarm para usar este cliente
+set_openai_client(client)
+```
+
+### 2. Criação de Agentes
+
+#### 2.1 Definição de Tools Básicas
+```python
+from agency_swarm.tools import BaseTool
+from pydantic import Field
+
+class SearchTool(BaseTool):
+    """Ferramenta para realizar buscas na web."""
+
+    query: str = Field(..., description="Termo de busca")
+
+    def run(self):
+        # Implementação da busca
+        return f"Resultados da busca para: {self.query}"
+
+class CalculatorTool(BaseTool):
+    """Ferramenta para cálculos matemáticos."""
+
+    expression: str = Field(..., description="Expressão matemática para calcular")
+
+    def run(self):
+        try:
+            return str(eval(self.expression))
+        except Exception as e:
+            return f"Erro no cálculo: {e}"
+```
+
+#### 2.2 Criação dos Agentes
+```python
+from agency_swarm import Agent
+
+# Agente CEO - Coordenador
+ceo = Agent(
+    name="CEO",
+    description="Agente coordenador que gerencia outros agentes",
+    instructions="""
+    Você é o CEO desta agência. Suas responsabilidades incluem:
+    1. Coordenar outros agentes
+    2. Tomar decisões estratégicas
+    3. Delegar tarefas apropriadamente
+    """,
+    model='gemini/gemini-pro',
+    tools=[SearchTool]
+)
+
+# Agente Pesquisador
+researcher = Agent(
+    name="Researcher",
+    description="Agente especializado em pesquisa e análise",
+    instructions="""
+    Você é o pesquisador da agência. Suas responsabilidades incluem:
+    1. Realizar pesquisas detalhadas
+    2. Analisar dados e informações
+    3. Preparar relatórios
+    """,
+    model='gemini/gemini-pro',
+    tools=[SearchTool, CalculatorTool]
+)
+```
+
+#### 2.3 Configuração da Agência
+```python
+from agency_swarm import Agency
+
+# Definir hierarquia da agência
+agency = Agency(
+    agency_chart=[
+        ceo,
+        [ceo, researcher]  # CEO pode se comunicar com Researcher
+    ],
+    shared_instructions="""
+    Instruções gerais para todos os agentes:
+    1. Mantenha comunicação clara e profissional
+    2. Documente decisões importantes
+    3. Peça ajuda quando necessário
+    """
+)
+```
+
+### 3. Integração de MCPs
+
+#### 3.1 Criação de MCP Tool
+```python
+from agency_swarm.tools import BaseTool
+from pydantic import Field
+from modelcontextprotocol.client import MCPClient
+
+class MCPSearchTool(BaseTool):
+    """
+    Ferramenta que utiliza MCP para realizar buscas avançadas.
+    """
+
+    query: str = Field(..., description="Termo de busca")
+    service: str = Field(
+        default="google",
+        description="Serviço de busca a ser usado (google, wikipedia, etc)"
+    )
+
+    async def run(self):
+        async with MCPClient("http://localhost:8080") as client:
+            try:
+                result = await client.execute_tool(
+                    tool_name=f"{self.service}_search",
+                    params={"query": self.query}
+                )
+                return result
+            except Exception as e:
+                return f"Erro na busca MCP: {e}"
+```
+
+#### 3.2 Adição da MCP Tool aos Agentes
+```python
+# Atualizar agente researcher com a nova ferramenta
+researcher = Agent(
+    name="Researcher",
+    description="Agente especializado em pesquisa e análise",
+    instructions="""
+    Você é o pesquisador da agência. Suas responsabilidades incluem:
+    1. Realizar pesquisas detalhadas usando MCP
+    2. Analisar dados e informações
+    3. Preparar relatórios
+    """,
+    model="gemini/gemini-pro",
+    tools=[SearchTool, CalculatorTool, MCPSearchTool]
+)
+```
+
+### 4. Execução e Testes
+
+#### 4.1 Teste Básico
+```python
+# Teste simples com uma query
+response = agency.get_completion(
+    "Pesquise sobre inteligência artificial e faça um resumo dos principais pontos",
+    yield_messages=True  # Para ver mensagens em tempo real
+)
+
+for message in response:
+    print(message)
+```
+
+#### 4.2 Teste com Streaming
+```python
+# Teste com streaming e múltiplos agentes
+async def run_complex_task():
+    async for message in agency.get_completion_stream(
+        "Analise o mercado de IA em 2024 e prepare um relatório com dados estatísticos"
+    ):
+        print(f"{message.agent_name}: {message.content}")
+
+import asyncio
+asyncio.run(run_complex_task())
+```
+
+#### 4.3 Interface Gradio
+```python
+# Criar interface web com Gradio
+agency.demo_gradio(
+    title="Agency Swarm Demo",
+    description="Demonstração de agentes usando Gemini via optillm"
+)
+```
+
+### 5. Monitoramento e Debug
+
+#### 5.1 Logging
+```python
+import logging
+
+# Configurar logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('agency.log'),
+        logging.StreamHandler()
+    ]
+)
