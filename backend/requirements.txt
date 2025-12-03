@@ -18,3 +18,5 @@ chromadb
 langchain
 web3
 nltk
+surrealdb
+-e ../packages/khala-agentmemory
