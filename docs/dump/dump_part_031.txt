@@ -1,0 +1,485 @@
+4.  **Potentially Unreliable Tool Execution Flow:** Agency Swarm's orchestration of tool calls might be unreliable if it depends on the state transitions and managed execution features of the Assistants API (e.g., `status == 'requires_action'`). Thorough testing of the tool loop with the proxied Completions API is essential.
+5.  **Framework Feature Limitations:** Any Agency Swarm features deeply integrated with the concept of OpenAI Assistants or Threads may be partially or fully non-functional.
+
+**In essence, using Gemini via a simple proxy forces Agency Swarm to operate in a mode it wasn't primarily designed for, bypassing its core state and agent management architecture.**
+
+---
+
+## **7. Troubleshooting Common Issues**
+
+When attempting Gemini integration via LiteLLM/OptiLLM proxy:
+
+*   **Error: `openai.NotFoundError: 404 Not Found` during Agent/Agency Initialization:**
+    *   **Cause:** Agency Swarm is calling an Assistants API endpoint (like `/assistants`) that the LiteLLM/OptiLLM proxy does not implement.
+    *   **Solution:** This is the core incompatibility. Workarounds are complex (see Section 2.4) and may involve modifying Agency Swarm or accepting limited functionality. The MCP approach (Section 4) avoids this specific error by using Agency Swarm tools as MCP clients.
+*   **Error: Tool Not Called or Tool Loop Fails:**
+    *   **Cause:** Could be schema translation issues (LiteLLM), Gemini not understanding the function call prompt, or Agency Swarm's control flow failing with the Completions API response.
+    *   **Solution:**
+        *   Simplify tool schemas (`BaseTool` definition).
+        *   Verify LiteLLM's translation capabilities for your schema types ([LiteLLM Function Calling Docs](https://docs.litellm.ai/docs/completion/function_call)).
+        *   Enable verbose logging in LiteLLM (`--set_verbose True`) to inspect requests/responses.
+        *   Test Agency Swarm's tool loop with a standard OpenAI *Completions* endpoint (if possible) to isolate the issue.
+*   **Error: Connection Errors (Timeout, Refused):**
+    *   **Cause:** LiteLLM/OptiLLM proxy server is not running, `OPENAI_API_BASE` URL is incorrect (wrong port, missing `/v1`?), or a firewall is blocking the connection.
+    *   **Solution:** Ensure the proxy server is active and accessible. Double-check the URL configured in `set_openai_client` or the environment variable. Check firewall settings. Use `curl` to test basic connectivity to the proxy's `/chat/completions` endpoint.
+*   **Error: Authentication Error (401 Unauthorized):**
+    *   **Cause:** If the proxy *itself* requires authentication (not common for local LiteLLM but possible), the `api_key` passed via `set_openai_client` might be wrong. More likely, LiteLLM cannot authenticate with the backend Gemini API.
+    *   **Solution:** Ensure the `GOOGLE_API_KEY` environment variable is correctly set and accessible *in the environment where the LiteLLM/OptiLLM proxy is running*. Check proxy logs for backend authentication errors.
+*   **Unexpected/Poor Gemini Responses:**
+    *   **Cause:** Prompting issues, incorrect context (due to faulty manual history management), LiteLLM/OptiLLM modifying prompts, Gemini model limitations.
+    *   **Solution:** Simplify prompts. Debug the exact `messages` list being sent to the proxy. Check proxy logs. Experiment with different Gemini models (`gemini-1.5-pro` vs. `flash`). Consider using OptiLLM's specific optimization features if applicable.
+
+---
+
+
+
+can i run the genesis agency with a specific openai model?
+ChatGPT said:
+Yes, you can run the Genesis Agency with a specific OpenAI model. When defining an agent, you can specify the model parameter to set which OpenAI model it should use. By default, agents in Agency Swarm use "gpt-4o", but you can change this to any other available OpenAI model.
+
+For example, if you want to use a specific model like "gpt-3.5-turbo" or an Azure OpenAI deployment, you can set it like this:
+
+python
+Copy
+Edit
+from agency_swarm import Agent
+
+genesis_agent = Agent(
+    name="Genesis",
+    description="Creates new agents",
+    model="gpt-4-turbo"  # Change this to your desired model
+)
+If you're using Azure OpenAI, you must also switch the OpenAI client to AzureOpenAI and use your model deployment name:
+
+python
+Copy
+Edit
+from openai import AzureOpenAI
+from agency_swarm import set_openai_client
+
+client = AzureOpenAI(
+    api_key="YOUR_AZURE_API_KEY",
+    api_version="2024-02-15-preview",
+    azure_endpoint="YOUR_AZURE_ENDPOINT",
+    timeout=5,
+    max_retries=5,
+)
+
+set_openai_client(client)
+
+genesis_agent = Agent(
+    name="Genesis",
+    description="Creates new agents",
+    model="azure-model-deployment-name"  # Replace with your Azure deployment name
+)
+After setting up the agent, you can run the Genesis Agency as usual​​​​.
+
+
+2/2
+
+
+
+
+
+
+You said:
+i'm sorry, i didnt understand. we usually run 'genesis' as a helper to create other agency, running  "agency-swarm genesis --openai_key xxx" or something like that. i was wondering if i could run with an argument to specify a model
+ChatGPT said:
+No worries! Yes, you can specify a model when running the genesis agency using the CLI. While the typical command is:
+
+bash
+Copy
+Edit
+agency-swarm genesis --openai_key YOUR_KEY
+You can include the --model argument to specify which OpenAI model to use. For example:
+
+bash
+Copy
+Edit
+agency-swarm genesis --openai_key YOUR_KEY --model gpt-4-turbo
+If you're using Azure OpenAI, you can set the model to your Azure deployment name:
+
+bash
+Copy
+Edit
+agency-swarm genesis --openai_key YOUR_KEY --model azure-model-deployment-name
+This ensures that all agents created by Genesis will use the specified model. Let me know if you need more details! 🚀
+
+
+
+
+
+
+You said:
+it didnt work,
+
+usage: agency-swarm [-h] {create-agent-template,genesis,import-agent} ...
+agency-swarm: error: unrecognized arguments: --model o3-mini
+(aswarm) sephiroth@ELENION:/mnt/f/AI/deeptrade$
+ChatGPT said:
+Got it! It looks like the agency-swarm genesis CLI command doesn't natively support a --model argument. But you can still specify the model by modifying the environment or using the Python API.
+
+Workarounds to Run Genesis with a Specific Model
+✅ Option 1: Set the Model in the Environment Variable
+Try running the command with the OPENAI_MODEL environment variable:
+
+bash
+Copy
+Edit
+OPENAI_MODEL=o3-mini agency-swarm genesis --openai_key YOUR_KEY
+This should override the default model.
+
+✅ Option 2: Modify the Genesis Code Manually
+If that doesn’t work, you may need to modify the model inside the Genesis agent’s source code. You can do this by installing agency-swarm locally and changing the default model in the genesis.py script.
+
+Find where agency-swarm is installed:
+
+bash
+Copy
+Edit
+pip show agency-swarm
+Look for the Location: field in the output.
+
+Navigate to the genesis.py script (it should be inside the agency_swarm package).
+
+Open it and look for the line where the Agent is instantiated. It might look like this:
+
+python
+Copy
+Edit
+genesis_agent = Agent(name="Genesis", description="Creates new agents", model="gpt-4o")
+Change the "gpt-4o" to your desired model, e.g.:
+
+python
+Copy
+Edit
+genesis_agent = Agent(name="Genesis", description="Creates new agents", model="o3-mini")
+Save the file and rerun:
+
+bash
+Copy
+Edit
+agency-swarm genesis --openai_key YOUR_KEY
+✅ Option 3: Use the Python API Instead
+Instead of using the CLI, you can manually create a Genesis agent with the specified model in a Python script:
+
+python
+Copy
+Edit
+from agency_swarm import Agent, Agency, set_openai_key
+
+set_openai_key("YOUR_KEY")
+
+genesis_agent = Agent(name="Genesis", description="Creates new agents", model="o3-mini")
+
+agency = Agency([genesis_agent])
+agency.run_demo()  # Or agency.get_completion("Create an agency for me.")
+Final Thoughts
+Since the CLI doesn't support --model directly, one of these options should work for you. I recommend trying the environment variable approach first, as it's the easiest. If that doesn’t work, modifying the source or using Python is your best bet.
+
+Let me know if you need help with any of these! 🚀
+
+
+
+
+
+
+You said:
+ok, perfect. now lets say i want to build an agency that
+1 - reads all pdf's in a folder
+2 - extracts knowledge present in it (unstructured data)
+3 - process into a structured and synthetic format
+4 - stores structured data in a local database
+
+how would you build this and what do you think it would be the best type of database (must be opensource and run local)?
+ChatGPT said:
+That sounds like an awesome automation use case! Here’s how I’d build this using Agency Swarm, breaking it down into agents and tools.
+
+🛠 Architecture Breakdown
+We’ll create an Agency with 4 Agents, each with a specific role:
+
+FileReaderAgent: Reads PDFs from a folder.
+ExtractorAgent: Extracts knowledge from unstructured text.
+ProcessorAgent: Converts extracted data into structured format.
+DatabaseAgent: Stores the structured data in a local database.
+Each agent will use custom tools to complete its task.
+
+📌 Step-by-Step Implementation
+1️⃣ Define the Agents and Tools
+Each agent needs specialized tools. Let’s define them.
+
+File Reader Tool (Reads PDFs)
+python
+Copy
+Edit
+from agency_swarm.tools import BaseTool
+from pydantic import Field
+import PyPDF2
+import os
+
+class PDFReaderTool(BaseTool):
+    """Reads all PDF files in a given folder and extracts raw text."""
+
+    folder_path: str = Field(..., description="Path to the folder containing PDFs")
+
+    def run(self):
+        extracted_texts = {}
+        for file_name in os.listdir(self.folder_path):
+            if file_name.endswith(".pdf"):
+                file_path = os.path.join(self.folder_path, file_name)
+                with open(file_path, "rb") as file:
+                    reader = PyPDF2.PdfReader(file)
+                    text = "\n".join([page.extract_text() for page in reader.pages if page.extract_text()])
+                    extracted_texts[file_name] = text
+        return extracted_texts  # Dictionary {filename: text}
+Extractor Tool (Extracts Knowledge from Raw Text)
+python
+Copy
+Edit
+class KnowledgeExtractorTool(BaseTool):
+    """Extracts useful knowledge from unstructured PDF text."""
+
+    pdf_texts: dict = Field(..., description="Raw extracted text from PDFs")
+
+    def run(self):
+        # Simulate knowledge extraction (LLM could summarize key topics)
+        structured_knowledge = {file: f"Extracted insights from {text[:100]}..."
+                                for file, text in self.pdf_texts.items()}
+        return structured_knowledge
+Processor Tool (Formats Knowledge into Structured Data)
+python
+Copy
+Edit
+class DataProcessorTool(BaseTool):
+    """Processes extracted knowledge into a structured format."""
+
+    extracted_data: dict = Field(..., description="Extracted insights from PDFs")
+
+    def run(self):
+        structured_data = [{"file": file, "summary": summary} for file, summary in self.extracted_data.items()]
+        return structured_data  # A list of structured summaries
+Database Tool (Stores Data Locally)
+For the database, I’d use SQLite because:
+
+It’s open-source ✅
+Runs locally without setup ✅
+Works well for structured text storage ✅
+python
+Copy
+Edit
+import sqlite3
+
+class LocalDatabaseTool(BaseTool):
+    """Stores structured data into a local SQLite database."""
+
+    structured_data: list = Field(..., description="Processed structured data to be stored")
+
+    def run(self):
+        conn = sqlite3.connect("local_knowledge.db")
+        cursor = conn.cursor()
+
+        # Create table if it doesn't exist
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS knowledge (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                file TEXT,
+                summary TEXT
+            )
+        """)
+
+        # Insert structured data
+        for item in self.structured_data:
+            cursor.execute("INSERT INTO knowledge (file, summary) VALUES (?, ?)",
+                           (item["file"], item["summary"]))
+
+        conn.commit()
+        conn.close()
+
+        return "Data stored successfully!"
+2️⃣ Create the Agents
+Now, let’s define our agents and assign them these tools.
+
+python
+Copy
+Edit
+from agency_swarm import Agent
+
+file_reader = Agent(
+    name="FileReader",
+    description="Reads PDFs from a folder.",
+    tools=[PDFReaderTool]
+)
+
+extractor = Agent(
+    name="Extractor",
+    description="Extracts knowledge from raw text.",
+    tools=[KnowledgeExtractorTool]
+)
+
+processor = Agent(
+    name="Processor",
+    description="Converts knowledge into structured format.",
+    tools=[DataProcessorTool]
+)
+
+database_agent = Agent(
+    name="DatabaseAgent",
+    description="Stores structured data in a local database.",
+    tools=[LocalDatabaseTool]
+)
+3️⃣ Define the Agency & Communication Flow
+The workflow should follow this order:
+
+FileReaderAgent reads PDFs.
+ExtractorAgent extracts insights.
+ProcessorAgent structures the data.
+DatabaseAgent stores it in SQLite.
+python
+Copy
+Edit
+from agency_swarm import Agency
+
+agency = Agency([
+    file_reader,
+    [file_reader, extractor],  # FileReader -> Extractor
+    [extractor, processor],    # Extractor -> Processor
+    [processor, database_agent]  # Processor -> DatabaseAgent
+])
+
+agency.run_demo()  # Runs the workflow interactively
+4️⃣ Run the Agency
+Interactive Mode
+python
+Copy
+Edit
+agency.run_demo()
+This lets you interact with the agency via terminal or UI.
+
+Automated Execution
+python
+Copy
+Edit
+agency.get_completion("Read all PDFs in ./data and store structured insights.")
+💾 Best Open-Source Database for This
+Database	Pros	Cons
+SQLite ✅ (Recommended)	Simple, local, no setup, great for structured data	Not great for large-scale or distributed systems
+PostgreSQL	More powerful, supports JSON storage	Heavier setup for local-only use
+DuckDB	Fast and optimized for analytics	Less common for structured knowledge storage
+ChromaDB	Great for vector storage (AI retrieval)	Not ideal for structured tabular data
+Why SQLite?
+For structured insights from PDFs, SQLite is the best choice because:
+
+It’s built into Python (no extra installs).
+Can store structured summaries easily.
+Runs fully local.
+🚀 Final Thoughts
+This agency can automate document processing for research, legal, medical, or business intelligence. 🚀
+
+Would you need extra features like:
+
+LLM-powered query of stored knowledge?
+Multiple file format support (CSV, TXT, JSON)?
+AI-assisted validation of extracted knowledge?
+Let me know, and I’ll help expand this! 🚀🐝
+
+
+
+
+
+
+You said:
+can i run genesis agency creation helper with google gemini models? i know it's not ideal but openai is being ridiculous about rates, and i have a bunch of extra credit on their platform. if i could run with gemini-2.0-flash via cli would be perfect
+
+2/2
+
+ChatGPT said:
+I totally get it—OpenAI's pricing can be a pain. Yes, you can run the Genesis agency creation helper with Google Gemini models, but not directly via CLI. Instead, you'll need to do some manual setup.
+
+💡 How to Use Google Gemini Models in Agency Swarm
+Since Agency Swarm is built around the OpenAI Assistants API, it doesn’t natively support Google Gemini. However, you can swap out the OpenAI client with Google’s API and manually modify the Genesis agent to use gemini-2.0-flash.
+
+✅ Solution: Modify the Python Setup to Use Gemini
+Instead of using:
+
+bash
+Copy
+Edit
+agency-swarm genesis --openai_key xxx
+You'll need to manually create a Genesis Agency using the Python API and configure Gemini.
+
+1️⃣ Install Required Libraries
+First, make sure you have the Google Generative AI SDK:
+
+bash
+Copy
+Edit
+pip install google-generativeai
+2️⃣ Set Up Google Gemini API in Agency Swarm
+Modify the Genesis agency to use Gemini 2.0 Flash.
+
+python
+Copy
+Edit
+import google.generativeai as genai
+from agency_swarm import Agent, Agency
+
+# Set Google API Key
+genai.configure(api_key="YOUR_GOOGLE_API_KEY")
+
+class GeminiClient:
+    """Custom LLM wrapper for Gemini-2.0-Flash to mimic OpenAI client behavior."""
+
+    def chat(self, messages):
+        model = genai.GenerativeModel("gemini-2.0-flash")
+        response = model.generate_content(messages)
+        return response.text
+
+# Replace OpenAI client with Gemini client
+gemini_client = GeminiClient()
+
+# Define Genesis agent using Gemini
+genesis_agent = Agent(
+    name="Genesis",
+    description="Creates new agencies",
+    model="gemini-2.0-flash",  # Not really needed, just for tracking
+    api_headers={"Authorization": f"Bearer YOUR_GOOGLE_API_KEY"},
+    api_params={"base_url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash"}
+)
+
+# Create agency with Genesis agent
+agency = Agency([genesis_agent])
+
+# Run Genesis Agency
+agency.run_demo()
+3️⃣ Why This Works
+We replace OpenAI’s API with Google’s Gemini API.
+The GeminiClient acts as a wrapper to process chats.
+We pass the Google API key via api_headers.
+4️⃣ Automate Execution
+To create an agency automatically, use:
+
+python
+Copy
+Edit
+agency.get_completion("Create an agency that extracts financial insights from documents.")
+🔥 Key Limitations
+No OpenAI Assistants API features (tool calling, memory, retrieval).
+Google’s API is structured differently, so complex multi-agent interactions might need workarounds.
+CLI support isn’t built-in—you must run it via Python.
+🚀 Final Thoughts
+If OpenAI pricing is an issue and you have Google Cloud credits, this is a solid workaround. It won’t be perfectly seamless, but it works for running Genesis agency creation!
+
+Would you like a more advanced workaround with streaming responses or Gemini function calling? Let me know! 🚀
+
+
+
+
+
+
+You said:
+oh that's awesome. can i use other custom wrappers such as optillm (https://github.com/codelion/optillm) with agency swarm too?
+
+
+OptiLLM é uma extensão do LiteLLM que adiciona camadas de raciocínio estruturado via código (programmatic reasoning) para otimizar chamadas a LLMs. Como Funciona:
+
+1. Programmatic Reasoning: Quebra tarefas complexas em subtarefas executadas sequencialmente.

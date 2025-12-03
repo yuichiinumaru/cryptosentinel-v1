@@ -1,0 +1,332 @@
+    *   **Regras de Risco (MVP):**
+        *   *Risco Máximo por Trade:* Nenhum trade pode arriscar mais de *2%* do capital total do portfólio.
+        *   *Limite de Perda Diária:* Se o portfólio sofrer uma perda de *5%* em um único dia, *suspenda* todas as operações de trading e *avalie* a situação.
+        *   *Bloqueio de Tokens Inseguros:* *NUNCA* aprove trades de tokens que *falharem* na verificação de segurança do `MarketAnalyst` (`CheckTokenSecurity`).
+        *   *Diversificação:* Incentive a diversificação do portfólio, evitando concentração excessiva em um único token ou setor.
+    *   *Monitore continuamente* o risco do portfólio, utilizando relatórios do `PortfolioManager` e *ferramentas de análise de risco* (a serem implementadas).
+    *   *Aja imediatamente* para *reduzir o risco* se as condições do mercado se tornarem adversas ou se os limites de risco forem violados.
+
+4. **Aprovação/Rejeição de Trades (Processo Rigoroso):**
+    *   *Analise CUIDADOSAMENTE* cada recomendação de trade (`TradeRecommendation`) enviada pelo `MarketAnalyst`.
+    *   *Verifique TODOS os seguintes pontos ANTES de aprovar um trade:*
+        *   **Raciocínio (CoT):** A recomendação é *logicamente sólida e bem justificada*? O `MarketAnalyst` explicou *detalhadamente* o seu raciocínio (Chain of Thought)?
+        *   **Segurança:** O token passou na verificação de segurança (`CheckTokenSecurity`)?
+        *   **Risco:** O trade proposto *viola* alguma das regras de risco?
+        *   **Saldo:** O `Trader` tem *saldo suficiente* na hot wallet para executar o trade?
+        *   **Alinhamento Estratégico:** O trade está *alinhado* com a estratégia geral de trading e as metas de longo prazo?
+    *   *APROVE* o trade SOMENTE se *TODAS* as verificações acima forem *satisfatórias*.
+    *   *REJEITE* o trade se *qualquer* verificação falhar, e *explique o motivo* na mensagem de resposta (`TradeApprovalResponse`).
+
+5. **Comunicação (Clara e Eficiente):**
+    *   Use o *protocolo de mensagens* definido (JSON + Pydantic) para se comunicar com os outros agentes.
+    *   Seja *claro, conciso e objetivo* em suas mensagens.
+    *   *Responda rapidamente* às mensagens dos outros agentes.
+
+6. **Aprendizado Contínuo (Futuro):**
+    *   No futuro, utilize o `LearningCoordinator` para analisar o desempenho do sistema, identificar padrões e *ajustar automaticamente* as estratégias e regras de risco.
+
+7. **Instruções Negativas:**
+    *   *NUNCA* aprove um trade sem uma justificativa *clara e detalhada* (CoT) do `MarketAnalyst`.
+    *   *NUNCA* aprove um trade que *viole* as regras de risco.
+    *   *NUNCA* permita que o sistema opere sem *monitoramento constante* do risco.
+    *   *NUNCA* confie cegamente nas recomendações do `MarketAnalyst`; *sempre valide* as informações e *exerça seu julgamento crítico*.
+
+Lembre-se: Você é o *CÉREBRO* e o *GUARDIÃO* do DeepTrader. Sua responsabilidade é *garantir que o sistema opere de forma lucrativa, mas, acima de tudo, SEGURA e RESPONSÁVEL*.
+Use code with caution.
+Exemplo de Mensagem (TradeApprovalRequest - recebida do MarketAnalyst): (Igual ao exemplo anterior do MarketAnalyst, mas agora visto do ponto de vista do DeepTraderManager).
+
+Exemplo de Mensagem (TradeApprovalResponse - enviada para o Trader):
+
+{
+  "header": {
+    "sender": "DeepTraderManager",
+    "recipient": "Trader",
+    "timestamp": "2024-03-12T14:45:00Z",
+    "message_id": "c5d6e7f8-9012-3456-7890-abcdef123456",
+    "priority": "high"
+  },
+  "body": {
+    "type": "trade_approval_response",
+    "content": {
+      "trade_id": "a1b2c3d4-e5f6-7890-1234-567890abcdef",  // ID da recomendação original
+      "approved": false,
+      "reason": "O risco do trade (3%) excede o limite máximo de risco por operação (2%).",
+      "tx_hash": null
+    },
+    "context": {}
+  }
+}
+Use code with caution.
+Json
+2.1.4. PortfolioManager (Gerenciador do Portfólio) - Refinado
+
+Prompt (Refinado): (O prompt anterior já está muito bom. Podemos apenas adicionar alguns detalhes.)
+
+Você é o PortfolioManager do DeepTrader. Seu objetivo é fornecer uma visão *clara, precisa e ATUALIZADA* do estado do portfólio, monitorar seu desempenho e fornecer informações *RELEVANTES e ACIONÁVEIS* para a gestão de risco.
+
+Siga estas diretrizes:
+
+1. **Rastreamento Preciso (Tempo Real):** Mantenha um registro *IMPECÁVEL* de todas as posições em aberto no portfólio.  Os dados do portfólio DEVEM ser *precisos e atualizados em tempo real*.  Isso inclui:
+    *   Tokens detidos (símbolo e endereço *completo* do contrato).
+    *   Quantidades *exatas* de cada token.
+    *   Preço médio de entrada *preciso* de cada posição.
+    *   Valor de mercado *atualizado* de cada posição (em USD).
+    *   Lucro/prejuízo (em USD e percentual) de cada posição.
+
+2. **Cálculo de Métricas (Completo e Confiável):** Calcule e monitore as seguintes métricas de desempenho:
+    *   Valor Total do Portfólio (em USD):  A soma dos valores de mercado de *todas* as posições.
+    *   Retorno sobre o Investimento (ROI) Global: O lucro/prejuízo total do portfólio (em valor absoluto e percentual) em relação ao capital inicial.
+    *   Drawdown Máximo: A maior queda percentual do valor do portfólio em relação a um pico anterior.  *Calcule o drawdown de forma CONTÍNUA*, e não apenas em intervalos fixos.
+    *   Sharpe Ratio (Opcional para o MVP): Uma medida de retorno ajustado ao risco (se for implementar, use uma taxa livre de risco apropriada para criptomoedas).
+
+3. **Análise de Risco (Proativa):**  Avalie o risco do portfólio de forma *proativa* e *contínua*.  Considere:
+    *   Volatilidade do Portfólio: Calcule a volatilidade histórica dos retornos do portfólio (desvio padrão dos retornos diários/horários).
+    *   Exposição a Diferentes Tokens:  Qual a porcentagem do portfólio alocada em cada token?  Há *concentração excessiva* em algum token específico?
+    *   Value at Risk (VaR) (Opcional para o MVP): Se for implementar, calcule o VaR do portfólio para estimar a perda máxima esperada em um determinado nível de confiança (ex: 95% de confiança).
+
+4. **Relatórios Claros e Objetivos:** Gere relatórios *claros, concisos e objetivos* para o `DeepTraderManager`, contendo:
+    *   Resumo do Estado do Portfólio: Valor total, principais posições, lucro/prejuízo.
+    *   Métricas de Desempenho: ROI, drawdown máximo, Sharpe Ratio (se aplicável).
+    *   Métricas de Risco: Volatilidade, VaR (se aplicável), exposição a tokens.
+    *   Alertas de Risco:  *Destaque* qualquer risco excessivo ou potencial ameaça ao capital (ex: drawdown se aproximando do limite, alta concentração em um token volátil).
+    * Os relatórios podem ser periódicos, como por exemplo, diários.
+
+5. **Comunicação com o Trader (Imediata):**
+    *   Receba mensagens de `PortfolioUpdate` do `Trader` *IMEDIATAMENTE* após cada trade executado.
+    *   *Use essas informações para ATUALIZAR o estado do portfólio e RECALCULAR as métricas de desempenho e risco*.
+    *   Se a atualização do portfólio revelar um *risco excessivo* (ex: violação de um limite de risco), *alerte IMEDIATAMENTE* o `DeepTraderManager`.
+
+6. **Precisão Absoluta:**
+    *   A *PRECISÃO* dos dados do portfólio é *ABSOLUTAMENTE CRUCIAL*.  Qualquer erro nos cálculos ou no rastreamento das posições pode levar a decisões de trading *incorretas* e *perdas financeiras*.
+    *   *Verifique e valide* seus cálculos *constantemente*.
+    *   Use *fontes de dados confiáveis* para preços e outras informações.
+
+Lembre-se: Você é o *GUARDIÃO* da INTEGRIDADE do portfólio.  Seu trabalho é fornecer uma *VISÃO CLARA, PRECISA e ATUALIZADA* do estado do portfólio, do desempenho e do risco, permitindo que o `DeepTraderManager` tome decisões informadas e proteja o capital do sistema.
+Use code with caution.
+Exemplo de Mensagem (PortfolioUpdate - recebida do Trader):
+
+{
+  "header": {
+    "sender": "Trader",
+    "recipient": "PortfolioManager",
+    "timestamp": "2024-03-12T15:15:30Z",
+    "message_id": "uuid-trader-update-123",
+    "priority": "high"
+  },
+  "body": {
+    "type": "portfolio_update",
+    "content": {
+      "trade_id": "trade-uuid-456",
+      "token_address": "0xTokenAddress",
+      "chain": "ethereum",
+      "action": "buy",
+      "amount": 100.0,
+      "price_per_unit": 1.2345,
+      "tx_hash": "0xTransactionHash"
+    },
+    "context": {}
+  }
+}
+Use code with caution.
+Json
+continue
+
+2.2. Ferramentas (Tools) - Detalhes de Implementação, Exemplos e Documentação
+
+Esta seção detalha a implementação de cada Tool, incluindo exemplos de uso, tratamento de erros, e links para documentação relevante.
+
+FetchMarketData (CoinGecko API)
+
+Descrição: (Conforme definido anteriormente)
+
+Código (Refinado - Exemplo Completo):
+
+from pycoingecko import CoinGeckoAPI
+from pydantic import BaseModel, Field, ValidationError, validator
+from typing import List, Dict, Optional
+from agency_swarm.tools import BaseTool
+import time
+import os
+
+class FetchMarketDataInput(BaseModel):
+    coins: List[str] = Field(..., description="List of coin IDs (e.g., ['bitcoin', 'ethereum'])")
+    vs_currency: str = Field("usd", description="Currency to compare against (e.g., 'usd', 'eur')")
+    include_history: bool = Field(False, description="Whether to include historical data")
+    days: int = Field(1, description="Number of days of historical data (if include_history is True, max 90 days for free API)")
+
+    @validator('days')
+    def days_must_be_within_limit(cls, v, values):
+        if values['include_history'] and v > 90:
+            raise ValueError('days must be <= 90 for free CoinGecko API')
+        return v
+
+class FetchMarketDataOutput(BaseModel):
+    market_data: Dict[str, Dict] = Field(..., description="Market data for each coin.  Structure: {coin_id: {price:..., volume: ..., ...}}")
+
+class FetchMarketData(BaseTool):
+    """Fetches market data (price, volume, etc.) for specified cryptocurrencies from CoinGecko."""
+    input_type: type[BaseModel] = FetchMarketDataInput
+    output_type: type[BaseModel] = FetchMarketDataOutput
+
+    def __init__(self):
+        super().__init__()
+        self.cg = CoinGeckoAPI()
+        self.api_key = os.getenv("COINGECKO_API_KEY") # Para o plano Pro
+        if self.api_key:
+            self.cg = CoinGeckoAPI(api_key=self.api_key)
+
+    def run(self, coins: List[str], vs_currency: str = "usd", include_history: bool = False, days: int = 1) -> Dict:
+        try:
+            data = {}
+            if include_history:
+                for coin in coins:
+                    # Get historical data.  Rate limit: 50 calls/minute (free plan)
+                    try:
+                        history = self.cg.get_coin_market_chart_by_id(id=coin, vs_currency=vs_currency, days=days)
+                        data[coin] = {
+                            'current_price': self.cg.get_price(ids=coin, vs_currencies=vs_currency)[coin][vs_currency], # price is always needed
+                            'volume_24h': self.cg.get_coin_info(id=coin)['market_data']['total_volume'][vs_currency], # volume is also important
+                            'historical_prices': history['prices'], # structure: [[timestamp, price], ...]
+                            'historical_volumes': history['total_volumes'],
+                            'market_caps': history['market_caps']
+                        }
+                    except Exception as e:
+                        print(f"Error fetching historical data for {coin}: {e}")
+                        # Fail gracefully. Don't stop the whole process. Return what you have.
+                        data[coin] = {'error': str(e)}
+                    time.sleep(1.3)  #  Slightly above the theoretical limit to avoid errors.
+
+            else:  #current data
+                for coin in coins:
+                    try:
+                        coin_data = self.cg.get_coin_by_id(coin)
+                        data[coin] = {
+                              'current_price': coin_data['market_data']['current_price'][vs_currency],
+                              'volume_24h': coin_data['market_data']['total_volume'][vs_currency],
+                              'market_cap': coin_data['market_data']['market_cap'][vs_currency],
+                              'circulating_supply': coin_data['market_data']['circulating_supply'],
+                              'total_supply': coin_data['market_data']['total_supply'],
+                        }
+                    except Exception as e:
+                        print(f"Error fetching current data for {coin}: {e}")
+                        data[coin] = {'error': str(e)}
+                    time.sleep(1.3) # Rate Limiting
+            return FetchMarketDataOutput(market_data=data)
+
+        except Exception as e:
+            return FetchMarketDataOutput(market_data={"error": f"Error fetching data from CoinGecko: {e}"})
+
+# Exemplo de uso (dentro de um agente):
+# market_data_tool = FetchMarketData()
+# input_data = FetchMarketDataInput(coins=['bitcoin', 'ethereum'], include_history=True, days=7)
+# result = await market_data_tool.run(**input_data.model_dump())
+# print(result)
+Use code with caution.
+Python
+Tratamento de Erros:
+
+Usa try-except para capturar exceções durante as chamadas à API.
+
+Retorna um dicionário com uma chave "error" se ocorrer um erro.
+
+Implementa rate limiting básico com time.sleep(). Melhorar usando tenacity para retentativas com backoff exponencial.
+
+Inclui validação de input com pydantic.
+
+Documentação: https://www.coingecko.com/en/api/documentation
+
+CheckTokenSecurity (web3.py + GoPlus/Rugcheck API)
+
+Descrição: (Conforme definido anteriormente)
+
+Código (Refinado - Exemplo Completo):
+
+from web3 import Web3
+from pydantic import BaseModel, Field
+from typing import Optional, List
+from agency_swarm.tools import BaseTool
+import requests
+import os
+
+# Definição do ABI de um token ERC-20 padrão (simplificado para o exemplo)
+ERC20_ABI = [
+    {
+        "constant": True,
+        "inputs": [],
+        "name": "totalSupply",
+        "outputs": [{"name": "", "type": "uint256"}],
+        "payable": False,
+        "stateMutability": "view",
+        "type": "function",
+    },
+    # Adicione outras funções do ABI que você precisar (balanceOf, decimals, etc.)
+]
+
+class CheckTokenSecurityInput(BaseModel):
+    token_address: str = Field(..., description="Address of the token contract")
+    chain: str = Field(..., description="Blockchain where the token is deployed (e.g., 'ethereum', 'bsc')")
+
+class CheckTokenSecurityOutput(BaseModel):
+    is_safe: bool = Field(..., description="Overall safety assessment (True if safe, False if potentially unsafe)")
+    total_supply: Optional[int] = Field(None, description="Total supply of the token")
+    num_holders: Optional[int] = Field(None, description="Number of token holders.  Might be None if unavailable.")
+    is_contract_verified: Optional[bool] = Field(None, description="Whether the contract source code is verified. Might be None if unavailable.")
+    goplus_security_data: Optional[dict] = Field(None, description="Security data from GoPlus API (if available)")
+    rugcheck_data: Optional[dict] = Field(None, description="Data from Rugcheck.xyz API, if available.")
+    reasons: List[str] = Field([], description="List of reasons if token is not safe")
+
+
+class CheckTokenSecurity(BaseTool):
+    """Checks the security of a token contract on a given blockchain."""
+    input_type: type[BaseModel] = CheckTokenSecurityInput
+    output_type: type[BaseModel] = CheckTokenSecurityOutput
+
+    def __init__(self):
+        super().__init__()
+        self.goplus_api_key = os.getenv("GOPLUS_API_KEY") # Opcional, para GoPlus
+        self.rugcheck_api_key = os.getenv("RUGCHECK_API_KEY") #Opcional, para Rugcheck.xyz
+
+
+    def run(self, token_address: str, chain: str) -> CheckTokenSecurityOutput:
+        # 1. Conectar ao nó da blockchain (web3.py).  Configuração da URL do nó deve estar em um .env ou config.
+        w3 = Web3(Web3.HTTPProvider(os.getenv(f"{chain.upper()}_RPC_URL")))  # Ex: ETHEREUM_RPC_URL, BSC_RPC_URL
+
+        # 2. Funções auxiliares para checar informações básicas (usando web3.py)
+        def get_total_supply(address):
+            try:
+              # Assumindo que o contrato tem uma função totalSupply() (padrão ERC-20).
+              contract = w3.eth.contract(address=w3.to_checksum_address(address), abi=ERC20_ABI)
+              return contract.functions.totalSupply().call()
+            except Exception as e:
+              print(f"Error getting total supply: {e}")
+              return None
+
+        def get_num_holders(address):
+Use code with caution.
+Python
+142.2s
+continue
+
+def get_num_holders(address):
+                    # Não há uma forma *direta* e *confiável* de obter o número de holders via web3.py.
+                    # Isso normalmente requer *indexadores* (como The Graph) ou APIs de exploradores de blocos (Etherscan, BscScan).
+                    # Para o MVP, podemos *omitir* essa funcionalidade ou usar um placeholder (ex: None).
+                    return None
+
+                def is_verified(address, chain):
+                    # Depende de APIs de exploradores de blocos (Etherscan, BscScan).  Não há como fazer *diretamente* com web3.py.
+                    # Cada explorador tem sua própria API.
+                    # Para o MVP, vamos *omitir* essa funcionalidade, mas deixar o placeholder.  Em produção, você precisaria
+                    # implementar a integração com o explorador relevante.
+                    return None  # Placeholder
+
+                # 3. Chamar as funções auxiliares e coletar dados.
+                total_supply = get_total_supply(token_address)
+                num_holders = get_num_holders(token_address)
+                is_contract_verified = is_verified(token_address, chain)  # Sempre None no MVP
+                reasons = []
+
+                # 4. Avaliação básica de segurança (exemplo - pode ser expandido).
+                is_safe = True
+                if total_supply is None:
+                    is_safe = False

@@ -1,0 +1,628 @@
+# Usar logging nos tools
+class LoggedSearchTool(BaseTool):
+    """Ferramenta de busca com logging."""
+
+    query: str = Field(..., description="Termo de busca")
+
+    def run(self):
+        logging.info(f"Executando busca para: {self.query}")
+        try:
+            result = f"Resultados da busca para: {self.query}"
+            logging.info(f"Busca concluída com sucesso")
+            return result
+        except Exception as e:
+            logging.error(f"Erro na busca: {e}")
+            raise
+```
+
+#### 5.2 Métricas e Telemetria
+```python
+from datetime import datetime
+from typing import Dict, List
+import json
+
+class AgencyMetrics:
+    def __init__(self):
+        self.metrics: Dict[str, List[Dict]] = {
+            "requests": [],
+            "completions": [],
+            "errors": []
+        }
+
+    def log_request(self, agent_name: str, prompt: str):
+        self.metrics["requests"].append({
+            "timestamp": datetime.now().isoformat(),
+            "agent": agent_name,
+            "prompt": prompt
+        })
+
+    def log_completion(self, agent_name: str, duration_ms: float):
+        self.metrics["completions"].append({
+            "timestamp": datetime.now().isoformat(),
+            "agent": agent_name,
+            "duration_ms": duration_ms
+        })
+
+    def save_metrics(self, filename: str = "agency_metrics.json"):
+        with open(filename, "w") as f:
+            json.dump(self.metrics, f, indent=2)
+
+# Uso
+metrics = AgencyMetrics()
+
+# Modificar agentes para usar métricas
+class MetricAgent(Agent):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.metrics = metrics
+
+    async def get_completion(self, *args, **kwargs):
+        start_time = datetime.now()
+        try:
+            result = await super().get_completion(*args, **kwargs)
+            duration = (datetime.now() - start_time).total_seconds() * 1000
+            self.metrics.log_completion(self.name, duration)
+            return result
+        except Exception as e:
+            self.metrics.metrics["errors"].append({
+                "timestamp": datetime.now().isoformat(),
+                "agent": self.name,
+                "error": str(e)
+            })
+            raise
+
+## Tools e MCPs
+
+### 1. Desenvolvimento de Tools Avançadas
+
+#### 1.1 Estrutura Base de Tools
+```python
+from agency_swarm.tools import BaseTool
+from pydantic import Field, BaseModel
+from typing import Optional, List, Dict, Any
+
+class ToolResponse(BaseModel):
+    """Modelo de resposta padronizado para tools."""
+    success: bool
+    data: Any
+    message: str = ""
+    metadata: Dict[str, Any] = {}
+
+class AdvancedBaseTool(BaseTool):
+    """Base class para tools avançadas com validação e logging."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.logger = logging.getLogger(self.__class__.__name__)
+
+    def validate_input(self) -> bool:
+        """Validação customizada de input."""
+        return True
+
+    def format_response(self, data: Any, success: bool = True, message: str = "") -> ToolResponse:
+        """Formata resposta no padrão ToolResponse."""
+        return ToolResponse(
+            success=success,
+            data=data,
+            message=message,
+            metadata={"tool": self.__class__.__name__}
+        )
+
+    def run(self) -> str:
+        """Template method para execução da tool."""
+        try:
+            if not self.validate_input():
+                return self.format_response(
+                    None,
+                    success=False,
+                    message="Validação de input falhou"
+                ).json()
+
+            result = self.execute()
+            return self.format_response(result).json()
+
+        except Exception as e:
+            self.logger.error(f"Erro na execução: {e}")
+            return self.format_response(
+                None,
+                success=False,
+                message=str(e)
+            ).json()
+
+    def execute(self) -> Any:
+        """Método abstrato para implementação específica."""
+        raise NotImplementedError
+```
+
+#### 1.2 Exemplos de Tools Especializadas
+
+##### 1.2.1 Tool de Análise de Dados
+```python
+import pandas as pd
+import numpy as np
+from typing import Literal
+
+class DataAnalysisTool(AdvancedBaseTool):
+    """Tool para análise de dados com pandas."""
+
+    data_path: str = Field(..., description="Caminho para o arquivo de dados")
+    operation: Literal["describe", "correlation", "missing"] = Field(
+        ...,
+        description="Operação de análise a realizar"
+    )
+    columns: Optional[List[str]] = Field(
+        None,
+        description="Colunas específicas para análise"
+    )
+
+    def validate_input(self) -> bool:
+        if not os.path.exists(self.data_path):
+            self.logger.error(f"Arquivo não encontrado: {self.data_path}")
+            return False
+        return True
+
+    def execute(self) -> Any:
+        df = pd.read_csv(self.data_path)
+
+        if self.columns:
+            df = df[self.columns]
+
+        if self.operation == "describe":
+            return df.describe().to_dict()
+        elif self.operation == "correlation":
+            return df.corr().to_dict()
+        elif self.operation == "missing":
+            return df.isnull().sum().to_dict()
+```
+
+##### 1.2.2 Tool de Integração com API Externa
+```python
+import aiohttp
+from typing import Optional, Dict
+
+class APIIntegrationTool(AdvancedBaseTool):
+    """Tool para integração com APIs externas."""
+
+    endpoint: str = Field(..., description="URL do endpoint da API")
+    method: Literal["GET", "POST", "PUT", "DELETE"] = Field(
+        "GET",
+        description="Método HTTP"
+    )
+    headers: Optional[Dict[str, str]] = Field(
+        None,
+        description="Headers da requisição"
+    )
+    body: Optional[Dict[str, Any]] = Field(
+        None,
+        description="Corpo da requisição"
+    )
+
+    async def execute(self) -> Any:
+        async with aiohttp.ClientSession() as session:
+            async with session.request(
+                method=self.method,
+                url=self.endpoint,
+                headers=self.headers,
+                json=self.body
+            ) as response:
+                return {
+                    "status": response.status,
+                    "data": await response.json()
+                }
+```
+
+### 2. Integração Avançada com MCPs
+
+#### 2.1 Cliente MCP Reutilizável
+```python
+from modelcontextprotocol.client import MCPClient
+from typing import Optional, Dict, Any
+import asyncio
+from functools import lru_cache
+
+class MCPClientManager:
+    """Gerenciador de conexões MCP com cache."""
+
+    def __init__(self, server_url: str):
+        self.server_url = server_url
+        self._client: Optional[MCPClient] = None
+        self._lock = asyncio.Lock()
+
+    async def get_client(self) -> MCPClient:
+        """Obtém cliente MCP com cache."""
+        if not self._client:
+            async with self._lock:
+                if not self._client:
+                    self._client = MCPClient(self.server_url)
+                    await self._client.connect()
+        return self._client
+
+    @lru_cache(maxsize=100)
+    async def list_tools(self) -> List[Dict[str, Any]]:
+        """Lista tools disponíveis com cache."""
+        client = await self.get_client()
+        return await client.list_tools()
+
+    async def close(self):
+        """Fecha conexão com MCP server."""
+        if self._client:
+            await self._client.close()
+            self._client = None
+
+# Singleton para reuso
+mcp_manager = MCPClientManager("http://localhost:8080")
+```
+
+#### 2.2 Tools MCP Avançadas
+
+##### 2.2.1 Tool MCP com Cache
+```python
+class CachedMCPTool(AdvancedBaseTool):
+    """Tool MCP com cache de resultados."""
+
+    query: str = Field(..., description="Query para o MCP")
+    service: str = Field(..., description="Serviço MCP a utilizar")
+    use_cache: bool = Field(
+        True,
+        description="Se deve usar cache de resultados"
+    )
+
+    _cache: Dict[str, Any] = {}
+
+    def get_cache_key(self) -> str:
+        """Gera chave única para cache."""
+        return f"{self.service}:{self.query}"
+
+    async def execute(self) -> Any:
+        cache_key = self.get_cache_key()
+
+        if self.use_cache and cache_key in self._cache:
+            return {
+                "data": self._cache[cache_key],
+                "cached": True
+            }
+
+        client = await mcp_manager.get_client()
+        result = await client.execute_tool(
+            tool_name=self.service,
+            params={"query": self.query}
+        )
+
+        if self.use_cache:
+            self._cache[cache_key] = result
+
+        return {
+            "data": result,
+            "cached": False
+        }
+```
+
+##### 2.2.2 Tool MCP com Retry
+```python
+from tenacity import retry, stop_after_attempt, wait_exponential
+
+class RetryMCPTool(AdvancedBaseTool):
+    """Tool MCP com retry automático."""
+
+    query: str = Field(..., description="Query para o MCP")
+    service: str = Field(..., description="Serviço MCP a utilizar")
+    max_retries: int = Field(
+        3,
+        description="Número máximo de tentativas"
+    )
+
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=4, max=10)
+    )
+    async def execute(self) -> Any:
+        client = await mcp_manager.get_client()
+        try:
+            return await client.execute_tool(
+                tool_name=self.service,
+                params={"query": self.query}
+            )
+        except Exception as e:
+            self.logger.error(f"Tentativa falhou: {e}")
+            raise
+```
+
+### 3. Construção de MCP Servers
+
+#### 3.1 Server MCP Básico
+```python
+from modelcontextprotocol.server import MCPApplication
+from modelcontextprotocol.providers import (
+    ResourceProvider,
+    ToolProvider,
+    PromptProvider
+)
+
+class CustomResourceProvider(ResourceProvider):
+    """Provider de recursos customizado."""
+
+    async def list_resources(self) -> List[Dict[str, Any]]:
+        return [
+            {
+                "id": "docs",
+                "type": "documentation",
+                "description": "Documentação do projeto"
+            }
+        ]
+
+    async def get_resource_content(self, resource_id: str) -> str:
+        if resource_id == "docs":
+            return "Documentação do projeto..."
+        raise ValueError(f"Recurso não encontrado: {resource_id}")
+
+class CustomToolProvider(ToolProvider):
+    """Provider de tools customizado."""
+
+    async def list_tools(self) -> List[Dict[str, Any]]:
+        return [
+            {
+                "name": "calculator",
+                "description": "Calculadora básica",
+                "parameters": {
+                    "expression": {
+                        "type": "string",
+                        "description": "Expressão matemática"
+                    }
+                }
+            }
+        ]
+
+    async def execute_tool(
+        self,
+        tool_name: str,
+        parameters: Dict[str, Any]
+    ) -> Any:
+        if tool_name == "calculator":
+            return eval(parameters["expression"])
+        raise ValueError(f"Tool não encontrada: {tool_name}")
+
+# Criar e configurar aplicação MCP
+app = MCPApplication(
+    resource_providers=[CustomResourceProvider()],
+    tool_providers=[CustomToolProvider()]
+)
+```
+
+#### 3.2 Server MCP com Autenticação
+```python
+from fastapi import Depends, HTTPException, status
+from fastapi.security import APIKeyHeader
+
+class AuthenticatedMCPApplication(MCPApplication):
+    """Aplicação MCP com autenticação via API key."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.api_key_header = APIKeyHeader(name="X-API-Key")
+
+    async def verify_api_key(self, api_key: str = Depends(api_key_header)):
+        """Verifica API key."""
+        if api_key != os.getenv("MCP_API_KEY"):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="API key inválida"
+            )
+        return api_key
+
+    def get_routes(self):
+        """Adiciona middleware de autenticação."""
+        routes = super().get_routes()
+        for route in routes:
+            route.dependencies.append(Depends(self.verify_api_key))
+        return routes
+
+# Criar aplicação autenticada
+app = AuthenticatedMCPApplication(
+    resource_providers=[CustomResourceProvider()],
+    tool_providers=[CustomToolProvider()]
+)
+```
+
+### 4. Boas Práticas e Padrões
+
+#### 4.1 Padrões para Tools
+- Use herança de `AdvancedBaseTool` para funcionalidades comuns
+- Implemente validação robusta de inputs
+- Adicione logging detalhado
+- Use tipos estáticos e docstrings descritivas
+- Implemente tratamento de erros adequado
+- Considere cache para operações custosas
+- Documente claramente os parâmetros
+
+#### 4.2 Padrões para MCPs
+- Mantenha uma única instância do cliente MCP
+- Implemente retry para resiliência
+- Use cache quando apropriado
+- Valide respostas do servidor
+- Monitore performance e erros
+- Documente APIs e schemas
+- Considere rate limiting
+
+#### 4.3 Segurança
+- Valide inputs rigorosamente
+- Use HTTPS para comunicação
+- Implemente autenticação
+- Limite acesso a recursos
+- Monitore uso e abusos
+- Mantenha logs de segurança
+- Atualize dependências
+
+## Integração com Cursor AI
+
+### 1. Configuração do Ambiente Cursor
+
+#### 1.1 Setup Inicial
+- Instale o Cursor AI em seu ambiente de desenvolvimento
+- Configure o WSL se estiver usando Windows
+- Certifique-se de ter o Git instalado e configurado
+
+#### 1.2 Configuração do Projeto
+```bash
+# No terminal do Cursor
+# Criar diretório do projeto
+mkdir meu_projeto_agency_swarm
+cd meu_projeto_agency_swarm
+
+# Inicializar Git
+git init
+
+# Criar ambiente virtual
+python -m venv venv
+source venv/bin/activate  # Linux/WSL
+# ou
+.\venv\Scripts\activate  # Windows
+
+# Instalar dependências
+pip install agency-swarm==0.1.7 litellm optillm google-generativeai
+```
+
+### 2. Desenvolvimento com Cursor AI
+
+#### 2.1 Estrutura de Arquivos Recomendada
+```
+meu_projeto_agency_swarm/
+├── .env                    # Variáveis de ambiente
+├── requirements.txt        # Dependências do projeto
+├── src/
+│   ├── __init__.py
+│   ├── agents/            # Definições dos agentes
+│   │   ├── __init__.py
+│   │   ├── ceo.py
+│   │   ├── analyst.py
+│   │   └── reporter.py
+│   ├── tools/             # Tools customizadas
+│   │   ├── __init__.py
+│   │   ├── data_loader.py
+│   │   ├── analysis.py
+│   │   └── visualization.py
+│   └── mcp/              # Integrações MCP
+│       ├── __init__.py
+│       ├── client.py
+│       └── server.py
+├── tests/                # Testes automatizados
+└── README.md            # Documentação
+```
+
+#### 2.2 Snippets Úteis para Cursor
+```python
+# Snippet: Criar novo agente
+"""
+from agency_swarm import Agent
+from .tools import CustomTool
+
+agent = Agent(
+    name="AgentName",
+    description="Agent description",
+    instructions='''
+    Detailed instructions...
+    ''',
+    model="gemini/gemini-pro",
+    tools=[CustomTool]
+)
+"""
+
+# Snippet: Criar nova tool
+"""
+from agency_swarm.tools import BaseTool
+from pydantic import Field
+
+class CustomTool(BaseTool):
+    """Tool description"""
+
+    param: str = Field(..., description="Parameter description")
+
+    def run(self):
+        # Implementation
+        return "Result"
+"""
+
+# Snippet: Setup básico da agência
+"""
+from agency_swarm import Agency, Agent
+from .agents import ceo, researcher
+
+agency = Agency(
+    agency_chart=[
+        ceo,
+        [ceo, researcher]
+    ],
+    shared_instructions='''
+    Shared instructions...
+    '''
+)
+"""
+```
+
+### 3. Dicas de Produtividade no Cursor
+
+#### 3.1 Atalhos Úteis
+- `Ctrl+Space`: Autocomplete inteligente
+- `Ctrl+Shift+P`: Paleta de comandos
+- `Alt+Click`: Multi-cursor
+- `Ctrl+/`: Comentar/descomentar
+
+#### 3.2 Extensões Recomendadas
+- Python
+- Git
+- Docker
+- YAML
+- ENV
+
+#### 3.3 Usando este Guia com `.cursorrules`
+- Você pode usar seções deste documento (`gemini_integration.md`) como contexto ou instruções diretas para o Cursor AI.
+- Combine as informações e exemplos deste guia com as diretrizes específicas do seu arquivo `.cursorrules` (ex: `@agencyswarm.cursorrules`) para direcionar o Cursor na implementação da sua agência. Por exemplo, peça ao Cursor para seguir os passos da seção "Guia de Implementação" deste documento, respeitando as regras de codificação definidas no seu `.cursorrules`.
+
+## Troubleshooting e FAQ
+
+### 1. Problemas Comuns e Soluções
+
+#### 1.1 Erros de Instalação
+**P: Erro ao instalar agency-swarm com conflitos de dependência**
+R: Tente criar um ambiente virtual limpo e instalar as dependências na ordem correta:
+```bash
+python -m venv venv
+source venv/bin/activate
+pip install --upgrade pip
+pip install agency-swarm==0.1.7
+pip install litellm optillm google-generativeai
+```
+
+**P: Erro de DLL no Windows ao usar optillm**
+R: Certifique-se de ter o Visual C++ Redistributable instalado e use WSL para melhor compatibilidade.
+
+#### 1.2 Erros de Configuração
+**P: O optillm não conecta ao Gemini**
+R: Verifique:
+1. Se a API key do Gemini está configurada corretamente
+2. Se o modelo está especificado corretamente (ex: "gemini/gemini-pro")
+3. Se o servidor optillm está rodando
+```bash
+# Teste de conexão
+curl http://localhost:8000/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "gemini/gemini-pro",
+    "messages": [{"role": "user", "content": "Hello"}]
+  }'
+```
+
+**P: Erro de autenticação no Agency Swarm**
+R: Verifique se o cliente OpenAI está configurado corretamente:
+```python
+import os
+import openai
+from agency_swarm import set_openai_client
+
+client = openai.OpenAI(
+    base_url="http://localhost:8000/v1",
+    api_key=os.getenv("OPTILLM_API_KEY", "dummy-key")
+)
+set_openai_client(client)
+```
+
+#### 1.3 Erros de Runtime

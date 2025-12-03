@@ -1,0 +1,218 @@
+* Bloqueio de Tokens Inseguros: Bloqueie e impeça trades de tokens que não passarem na verificação de segurança do MarketAnalyst (ferramenta CheckTokenSecurity).
+* Limite de Perda Diária (a ser definido): Defina um limite máximo de perda aceitável em um único dia de trading.
+
+3. Aprovação/Rejeição de Trades: Analise CUIDADOSAMENTE as recomendações de trading enviadas pelo MarketAnalyst.Antes de aprovar qualquer trade, verifique se:
+* A recomendação é LOGICAMENTE SÓLIDA e bem justificada (raciocínio Chain-of-Thought claro).
+* O token foi devidamente verificado quanto à SEGURANÇA (ferramenta CheckTokenSecurity).
+* O trade está ALINHADO com a estratégia geral e os limites de risco estabelecidos.
+* O Trader tem CAPITAL SUFICIENTE na hot wallet para executar o trade (ferramenta GetAccountBalance).
+
+4. Comunicação e Coordenação: Garanta a comunicação fluida e eficiente entre os agentes. Forneça feedback e instruções claras para o MarketAnalyst e o Trader, e utilize os relatórios do PortfolioManager para monitorar o desempenho geral da equipe.
+
+5. Adaptação e Melhoria Contínua: Analise periodicamente o desempenho do DeepTrader, identifique áreas de melhoria e ajuste as estratégias e regras de risco conforme necessário. No futuro, utilize os insights do LearningCoordinator para otimizar continuamente o sistema.
+
+6. Priorização da Preservação de Capital: Lembre-se SEMPRE: sua prioridade número um é a PRESERVAÇÃO DO CAPITAL. Evite trades arriscados ou especulativos que possam comprometer a segurança do portfólio. Em caso de dúvida, SEMPRE priorize a segurança e a cautela sobre o potencial de lucro imediato.
+
+Lembre-se: Você é o GUARDIÃO do capital e o LÍDER da equipe DeepTrader. Suas decisões e sua supervisão são fundamentais para garantir que o sistema opere de forma lucrativa, segura e sustentável a longo prazo.
+```
+* Ferramentas (Tools):
+* `GetRiskReport`
+* Descrição: Obtém um relatório de risco consolidado do `PortfolioManager`, contendo métricas de risco do portfólio (volatilidade, Value at Risk, etc.) e alertas de risco (drawdown excessivo, exposição a tokens voláteis, etc.).
+* Tipo de Entrada: A ser definida (Pydantic Model) - Período do relatório (diário, semanal, mensal, etc.).
+* Tipo de Saída: A ser definida (Pydantic Model) - Relatório de risco (métricas, alertas, etc.).
+* Implementação: Consultar o `PortfolioManager` (que calcula e armazena as métricas de risco) e formatar um relatório conciso e informativo.
+* Status: MVP - Opcional (Implementar no MVP se o tempo permitir; caso contrário, adiar para versões futuras).
+* `AdjustTradingStrategy`
+* Descrição: Permite que o `DeepTraderManager` ajuste dinamicamente a estratégia de trading do `MarketAnalyst` (ex: alterar os parâmetros do RSI, mudar o foco para tokens de menor volatilidade, etc.).
+* Tipo de Entrada: A ser definida (Pydantic Model) - Novas instruções ou parâmetros de estratégia (em formato livre ou estruturado).
+* Tipo de Saída: A ser definida (Pydantic Model) - Confirmação da atualização da estratégia.
+* Implementação: Modificar as `instructions` (prompt) do `MarketAnalyst` em tempo real.
+* Status: MVP - Opcional (Implementar no MVP se o tempo permitir; caso contrário, adiar para versões futuras).
+* `BlockTrade`
+* Descrição: Permite que o `DeepTraderManager` bloqueie ou cancele um trade específico *antes* que ele seja executado pelo `Trader`, com base em critérios de risco ou outras razões.
+* Tipo de Entrada: A ser definida (Pydantic Model) - Detalhes do trade a ser bloqueado (token, ação, etc.) e motivo do bloqueio.
+* Tipo de Saída: A ser definida (Pydantic Model) - Confirmação do bloqueio do trade.
+* Implementação: Interromper o fluxo de execução do trade no `Trader` e enviar uma notificação/alerta (via Telegram, logs, etc.) indicando o bloqueio e o motivo.
+* Status: MVP - Core
+* `AllocateCapital`
+* Descrição: Permite que o `DeepTraderManager` ajuste a alocação de capital entre diferentes estratégias de trading ou tipos de tokens.
+* Tipo de Entrada: A ser definida (Pydantic Model) - Nova alocação de capital (ex: percentual para cada tipo de token ou estratégia).
+* Tipo de Saída: A ser definida (Pydantic Model) - Confirmação da realocação de capital.
+* Implementação: Modificar a forma como o `Trader` calcula o tamanho das posições (baseado na nova alocação de capital).
+* Status: MVP - Opcional (Implementar no MVP se o tempo permitir; caso contrário, adiar para versões futuras).
+* `MonitorMarketConditions`
+* Descrição: Permite que o `DeepTraderManager` monitore eventos macroeconômicos, notícias relevantes ou outros fatores externos que possam impactar o mercado de criptomoedas.
+* Tipo de Entrada: A ser definida (Pydantic Model) - Nenhum ou parâmetros para especificar quais eventos/notícias monitorar.
+* Tipo de Saída: A ser definida (Pydantic Model) - Sumário dos eventos/notícias relevantes e sua possível influência no mercado.
+* Implementação: Integrar com APIs de notícias financeiras, calendários econômicos ou outras fontes de informação relevantes.Usar a LLM para *analisar* o impacto potencial desses eventos no mercado.
+* Status: MVP - Opcional (Implementar no MVP se o tempo permitir; caso contrário, adiar para versões futuras).
+
+* 2.1.4. PortfolioManager (Gerenciador do Portfólio)
+
+* Nome: `PortfolioManager`
+* Descrição: Agente responsável por gerenciar o portfólio do DeepTrader, rastrear as posições, calcular métricas de desempenho e risco, e gerar relatórios para o `DeepTraderManager`.
+* Instruções (Prompt):
+```
+Você é o PortfolioManager do DeepTrader. Seu objetivo é fornecer uma visão clara e precisa do estado atual do portfólio, monitorar seu desempenho e fornecer informações relevantes para a gestão de risco.
+
+Siga estas diretrizes:
+
+1. Rastreamento do Portfólio em Tempo Real: Mantenha um registro atualizado de todas as posições em aberto no portfólio, incluindo:
+* Tokens detidos (símbolo e endereço).
+* Quantidades de cada token.
+* Preço médio de entrada de cada posição.
+* Valor de mercado atual de cada posição (em USD).
+* Lucro/prejuízo (em USD e percentual) de cada posição.
+
+2. Cálculo de Métricas de Desempenho: Calcule e monitore métricas de desempenho chave do portfólio, incluindo:
+* Valor Total do Portfólio (em USD).
+* Retorno sobre o Investimento (ROI) global (em percentual e valor absoluto).
+* Drawdown máximo (percentual de queda máxima em relação ao pico).
+* Sharpe Ratio (opcional para o MVP, se possível implementar).
+
+3. Análise de Risco: Avalie e monitore o risco do portfólio, considerando:
+* Volatilidade do portfólio.
+* Exposição a diferentes tipos de tokens (ex: por capitalização de mercado, por setor).
+* Concentração do portfólio (nível de dependência de poucos tokens).
+* Identifique e alerte o DeepTraderManager sobre quaisquer riscos excessivos ou potenciais ameaças ao capital.
+
+4. Geração de Relatórios: Gere relatórios periódicos (diários, semanais, mensais) para o DeepTraderManager, resumindo o estado do portfólio, o desempenho recente e as métricas de risco. Destaque quaisquer alertas de risco ou áreas de preocupação.
+
+5. Comunicação com Trader: Receba mensagens de atualização do portfólio (PortfolioUpdate) do Trader SEMPRE que um trade for executado, e utilize essas informações para atualizar o estado do portfólio e recalcular as métricas de desempenho e risco.
+
+Mantenha a PRECISÃO e a CLAREZA dos dados do portfólio como suas prioridades máximas. Forneça informações CONC
+
+
+ продолжить
+
+Okay, here's the final part of the DeepTrader MVP documentation, detailing the PortfolioManager Tools, and concluding with important notes and next steps:
+
+
+
+ISA e RELEVANTES para o DeepTraderManager tomar decisões informadas e eficazes para a gestão do sistema.
+```
+* Ferramentas (Tools):
+* `GetPortfolio`
+* Descrição: (Já implementada e usada pelo `Trader`). Permite que o `PortfolioManager` acesse os dados do portfólio (para gerar relatórios, calcular métricas, etc.).
+* Tipo de Entrada: (Já definido)
+* Tipo de Saída: (Já definido)
+* Implementação: (Já implementada)
+* Status: MVP - Core (Reutilização)
+* `CalculatePortfolioRisk`
+* Descrição: Calcula métricas de risco do portfólio, como a volatilidade (desvio padrão dos retornos), Value at Risk (VaR - perda máxima esperada em um determinado nível de confiança), e drawdown máximo (maior queda em relação ao pico).
+* Tipo de Entrada: A ser definida (Pydantic Model) - Dados do portfólio (lista de `PortfolioItem` com histórico de preços, ou valor total do portfólio ao longo do tempo).
+* Tipo de Saída: A ser definida (Pydantic Model) - Relatório de risco (volatilidade, VaR, drawdown máximo, etc.).
+* Implementação: Utilizar bibliotecas Python para análise de risco financeiro (ex: `numpy`, `pandas`, `scipy`). Implementar cálculos para volatilidade, VaR e drawdown máximo.
+* Status: MVP - Opcional (Implementar no MVP se o tempo permitir; caso contrário, adiar para versões futuras).
+* Documentação:
+* `numpy`: [https://numpy.org/doc/stable/](https://numpy.org/doc/stable/)
+* `pandas`: [https://pandas.pydata.org/docs/](https://pandas.pydata.org/docs/)
+* `scipy`: [https://docs.scipy.org/doc/scipy/](https://docs.scipy.org/doc/scipy/)
+
+3. Banco de Dados (SQLite)
+
+* Tecnologia: SQLite (banco de dados relacional leve, baseado em arquivo).
+* Justificativa: Simplicidade, facilidade de configuração (não requer servidor separado), adequado para o MVP e para armazenar dados estruturados de forma persistente.
+* Tabelas:
+* `tokens`:
+* `address` (TEXT, PRIMARY KEY): Endereço do contrato do token.
+* `symbol` (TEXT): Símbolo do token (ex: ETH, BTC).
+* `chain` (TEXT): Blockchain onde o token está (ex: ethereum, bsc).
+* `dev_address` (TEXT): Endereço do desenvolvedor/deployer do contrato (opcional).
+* `price_history` (JSON): Histórico de preços do token (formato a ser definido).
+* `volume_history` (JSON): Histórico de volumes de negociação (formato a ser definido).
+* `liquidity_history` (JSON): Histórico de liquidez (formato a ser definido).
+* `created_at` (DATETIME): Timestamp de criação do registro do token no banco de dados.
+* `updated_at` (DATETIME): Timestamp da última atualização dos dados do token.
+* `risk_score` (REAL): Pontuação de risco calculada para o token (pelo `SecurityChecker`).
+* `is_blacklisted` (BOOLEAN): Flag indicando se o token está na blacklist.
+* `events`:
+* `id` (INTEGER, PRIMARY KEY AUTOINCREMENT): ID único do evento.
+* `address` (TEXT): Endereço do token associado ao evento.
+* `event_type` (TEXT): Tipo do evento (ex: "potential_pump", "liquidity_rug", "ai_rug_alert", "blacklisted_dev", "cex_listing_analysis", "new_token", "fake_volume").
+* `details` (JSON): Detalhes adicionais sobre o evento (formato JSON específico para cada tipo de evento).
+* `detected_at` (DATETIME): Timestamp de detecção do evento.
+* `transactions`:
+* `id` (INTEGER, PRIMARY KEY AUTOINCREMENT): ID único da transação.
+* `token_address` (TEXT): Endereço do token negociado.
+* `action` (TEXT): Ação da transação ("buy" ou "sell").
+* `amount` (REAL): Quantidade de tokens negociados.
+* `transaction_hash` (TEXT): Hash da transação na blockchain.
+* `timestamp` (DATETIME): Timestamp da execução da transação.
+* `portfolio`:
+* `token_address` (TEXT, PRIMARY KEY): Endereço do token no portfólio.
+* `symbol` (TEXT): Símbolo do token.
+* `amount` (REAL): Quantidade de tokens detidos.
+* `entry_price` (REAL): Preço médio de entrada (custo médio de aquisição).
+
+4. Loop Principal e Agendamento
+
+* Orquestração: `agency.run_loop()` (Agency Swarm) + `AsyncIOScheduler` (APScheduler).
+* Tarefas Agendadas (Exemplos Iniciais):
+* `check_market_conditions`: Executada a cada 5 minutos (ajustável), dispara a análise de mercado pelo `MarketAnalyst`.
+* `check_arbitrage`: Executada a cada 30 segundos (ajustável), verifica oportunidades de arbitragem pelo `ArbitrageChecker` (a ser implementado).
+* `learning_coordinator.analyze_performance`: Executada diariamente (ou semanalmente), dispara a análise de desempenho e o ajuste de estratégias pelo `LearningCoordinator` (a ser implementado posteriormente).
+
+5. Segurança (MVP)
+
+* MEV Protection: Flashbots Protect RPC (simples de integrar, bom nível de proteção para o MVP).
+* A considerar para o futuro: Flashbots Bundles (maior controle), MEV-Share (recompensa para o usuário).
+* Sandwich Attack Detection: Simulação de transações (`web3.eth.call`) antes do envio (proteção básica para o MVP).
+* A considerar para o futuro: Blocknative Mempool Explorer (detecção mais precisa).
+* Rug Pull Detection: Ferramenta `CheckTokenSecurity` com:
+* Verificações básicas via `web3.py` (total supply, etc.).
+* Integração com APIs externas (GoPlus Security API ou Rugcheck.xyz API) para análise avançada.
+* Blacklists de tokens e desenvolvedores (banco de dados SQLite).
+* Fake Volume Detection: Ferramenta `_detect_fake_volume` (classe `DexBotAdvanced`) com:
+* Pocket Universe API (opcional, se chave de API disponível).
+* Algoritmos heurísticos (baseados em volume/transações e correlação preço/volume).
+* Fund Isolation: Hot wallet (para trading) e cold wallet (para armazenamento seguro).
+* *Implementação da transferência automática de fundos entre hot e cold wallets (e a lógica de "top-up" da hot wallet) precisa ser detalhada*.
+* Approval Revocation: Revogação automática de aprovações de token após trades (implementada no `TradingModule`).
+
+6. Estratégia de Trading (MVP)
+
+* MarketAnalyst: Estratégia inicial focada em RSI (Índice de Força Relativa):
+* Sinal de Compra: RSI (14 períodos) < 30 (token sobrevendido).
+* Sinal de Venda: RSI (14 períodos) > 70 (token sobrecomprado).
+* Foco inicial em tokens de alta capitalização (Top 50 CoinMarketCap).
+* DeepTraderManager: Regras de Risco para o MVP:
+* Risco Máximo por Trade: 2% do capital total do portfólio.
+* Bloqueio de Tokens Inseguros: Bloquear trades de tokens que não passarem na verificação de segurança.
+* Limite de Perda Diária: A ser definido (ex: 5% do capital inicial).
+
+7. Próximos Passos (Pós-MVP)
+
+* Implementação do Agente `LearningCoordinator` para self-learning e adaptação contínua.
+* Integração completa do RAG (Tool `ConsultKnowledgeBase`, indexação de documentos, técnicas avançadas de busca vetorial).
+* Aprimoramento da proteção contra sandwich attacks (Blocknative Mempool Explorer).
+* Exploração de técnicas avançadas de proteção MEV (Flashbots Bundles, MEV-Share).
+* Implementação de ferramentas de análise de risco mais sofisticadas no `PortfolioManager` (`CalculatePortfolioRisk`, relatórios de risco detalhados).
+* Integração de modelos de previsão de preços (Darts, PyAF, etc.).
+* Desenvolvimento de estratégias de trading mais avançadas (além do RSI).
+* Implementação de funcionalidades de gestão de capital mais complexas (position sizing adaptativo, alocação dinâmica de capital).
+* Integração com CEXs para oportunidades de arbitragem (via `ccxt`).
+* Criação de liquidity pools em DEXs (funcionalidade avançada).
+* Desenvolvimento de interface de usuário (dashboard web ou Telegram mais completo).
+* Otimização de performance e escalabilidade para operação em produção.
+
+
+
+
+
+Suponha que eu queira fazer um um criptocoin trader completamente autonomo com backend de sistema multiagentes. A principio, eu pensei ele para Agency Swarm, mas agora estou em dúvida. Pode analisar o esboço dele a seguir e listar os frameworks analisados anteriormente por ordem de compatibilidade com o projeto?
+
+"""No paradigma atual de agentes, em vez de programarmos tudo duramente com varios "if" "then" "else", nós deixamos as ferramentas e blocos de código À disposição da IA e ela escolhe quando usar (ela pensa quando cada "if" na hora, em vez de ter que deixar tudo listado previamente). Em outras palavras, o "Deeptrader" é uma equipe de agentes autônomos baseado em LLM, onde a LLM tem controle total sobre as ferramentas de análise, a carteira e a interação com as exchanges (DEX e CEX), tomando decisões de compra e venda e movimentando fundos de forma independente, sem depender de estratégias pré-programadas com if-then-else. Em vez de regras fixas, a LLM "pensa" e decide qual ação tomar em cada situação, usando as ferramentas disponíveis. A princípio, quero rodar como experimento, deixando ela com pouquinho dinheiro disponivel, algo como US$ 50. O objetivo da equipe será executar trading à livremente, com a finalidade unica e exclusiva de maximizar o valor da carteira.
+
+
+A arquitetura seria a seguinte:
+
+1. Características Arquiteturais:
+- Paradigma Multiagente (Agency Swarm): O coração do sistema. Agentes especializados colaboram para atingir o objetivo de maximizar o valor da carteira.
+- Comunicação Assíncrona: Os agentes se comunicam de forma assíncrona, permitindo que trabalhem em paralelo e respondam a eventos em tempo real.
+- Ferramentas (Tools): A principal forma de interação dos agentes com o mundo externo (DEXs, CEXs, APIs, banco de dados).
+- RAG (Retrieval-Augmented Generation): Integrado como ferramentas, fornecendo informações contextuais para os agentes.
+- Autonomia Total da LLM: A LLM (através dos agentes) controla todas as operações, desde a análise de mercado até a execução de trades e gestão da carteira. Não há "if-then-else" programados manualmente; a LLM decide qual ação tomar em cada situação, usando as ferramentas disponíveis.
+- Modularidade: Componentes bem definidos (agentes, ferramentas, banco de dados, etc.) para facilitar a manutenção, expansão e testes.
+- Persistência: Banco de dados para armazenar histórico de transações, estado do portfólio, dados de mercado, aprendizados dos agentes para melhoria contínua, etc.
+- Arquivo de consulta: Além de buscas online, os agentes terão à disposição alguns documentos focados em análise técnica e análise fundamentalista, que pretendo deixar numa pasta para eles consultarem sempre que precisarem. Acredito que com o passar do tempo e a população do banco de dados de memória deles for aumentando, eles devem realizar cada vez menos consultas.

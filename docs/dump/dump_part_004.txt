@@ -1,0 +1,203 @@
+   - Dedicated VPS with firewall
+   - Hardware wallet integration (Ledger/Trezor)
+   - Encrypted database storage
+   - Daily automated backups
+
+This implementation provides enterprise-grade security while maintaining DeFi trading flexibility. The modular architecture allows components to be upgraded independently as new security standards emerge.
+
+
+# IMPORTANTE - ESTE DOCUMENTO É APENAS UM RASCUNHO - NÃO TOME ELE COMO REFEREÊNCIA
+## Este documento armazena dumps de conversas que tive com varios chatbots de IA ao longo do tempo, enquanto estava pesquisando e tentando desenvolver o projeto "criptosentinel-deeptrader", que evoluiu consideravelmente ao longo do tempo. Embora muitas ideias aqui possam ser interessantes, o conteudo deste documento não representa a versão atual do projeto.
+
+----
+DeepTrader: Sistema Autônomo de Trading de Criptomoedas com Multiagentes (Agency Swarm)
+
+1. Visão Geral e Objetivos:
+Objetivo Principal: Maximizar o valor do portfólio de criptomoedas de forma autônoma e contínua, operando em exchanges descentralizadas (DEXs).
+Abordagem: Sistema multiagente baseado no framework Agency Swarm, com agentes especializados que colaboram para analisar o mercado, identificar oportunidades, executar trades e gerenciar riscos.
+Autonomia: O sistema é projetado para ser completamente autônomo, com a LLM (Large Language Model) tomando decisões de trading sem intervenção humana constante, baseada em raciocínio (Chain of Thought) e utilizando ferramentas (Tools) e conhecimento contextual (RAG). Não há regras "hardcoded" do tipo "if-then-else" para as decisões de trading.
+Aprendizado Contínuo: O sistema é projetado para aprender e se adaptar continuamente com base no desempenho passado, ajustando estratégias e parâmetros para otimizar os resultados.
+Segurança: Ênfase em segurança, com mecanismos de proteção contra MEV (Miner Extractable Value), sandwich attacks, rug pulls e outras ameaças.
+MVP (Minimum Viable Product): O desenvolvimento é focado em um MVP inicial funcional, com funcionalidades básicas e segurança reforçada, para depois expandir com recursos mais avançados.
+
+2. Arquitetura e Componentes:
+Framework: Agency Swarm.
+Abordagem: Modular, com componentes separados para diferentes responsabilidades (análise de mercado, trading, gestão de risco, etc.).
+
+Agentes:
+
+MarketAnalyst:
+Descrição: Analisa dados de mercado, verifica a segurança dos tokens e fornece recomendações de trading.
+Instruções (Prompt): "Você é um analista de mercado de criptomoedas experiente. Seu objetivo é identificar oportunidades de trading (compra e venda) com base em dados de mercado, análise técnica e verificação de segurança. Use as ferramentas disponíveis para obter informações e fornecer recomendações claras e concisas, explicando seu raciocínio passo a passo (Chain of Thought)." (Adaptar este prompt com a estratégia de trading inicial do MVP).
+
+Ferramentas (Tools):
+FetchMarketData: (Código esboçado). Busca dados de mercado (preço, volume, etc.) da CoinGecko API.
+CheckTokenSecurity: (Código esboçado). Verifica a segurança de um token, consultando informações na blockchain (via web3.py) e, opcionalmente, usando APIs externas (GoPlus Security API, etc.).
+GetTokenPrice: Obtém o preço atual de um token (pode ser parte do FetchMarketData ou uma ferramenta separada, dependendo da API usada).
+CalculateTechnicalIndicator: (Ainda não implementada). Calcula indicadores técnicos (RSI, SMA, MACD, etc.). Serão criadas Tools separadas para cada indicador, ou uma Tool genérica.
+ConsultKnowledgeBase: (Código esboçado, implementação do RAG). Consulta uma base de conhecimento (vector store) para obter informações relevantes (manuais de estratégia, artigos, etc.).
+SearchNews: (RAG, opcional). Busca notícias relevantes que possam impactar o mercado. (Descartada no MVP, já que o ConsultKnowledgeBase cobre uma variedade de documentos e fontes).
+AnalyzeSentiment: (Opcional) Analisa o sentimento do mercado em textos. (Descartada no MVP)
+GetPricePrediction (Opcional): Usa um modelo de previsão de preço. (Descartada no MVP, faremos isso via prompt inicialmente)
+
+Trader:
+Descrição: Executa ordens de compra e venda em DEXs, e gerencia o portfólio.
+Instruções (Prompt): "Você é um trader de criptomoedas. Seu objetivo é executar as ordens de compra e venda da forma mais eficiente possível, respeitando os limites de risco e as instruções do DeepTraderManager. Use as ferramentas disponíveis para executar trades, gerenciar o portfólio e verificar o saldo da carteira."
+
+Ferramentas (Tools):
+ExecuteSwap: (Código esboçado - DexClient). Executa trades em DEXs (Uniswap, PancakeSwap, etc.) via web3.py.
+GetPortfolio: (Código esboçado). Obtém informações sobre o portfólio atual (posições abertas, valor total, etc.).
+GetAccountBalance: (Código esboçado). Verifica o saldo da carteira (hot wallet).
+CheckArbitrageOpportunities: (Código esboçado - classe ArbitrageChecker). Verifica oportunidades de arbitragem entre exchanges centralizadas (CEXs) usando a biblioteca ccxt.
+ExecuteArbitrageTrade: (Não implementada). Executa trades de arbitragem (depende da implementação do CheckArbitrageOpportunities).
+AddLiquidity: (Não implementada, mas há código de exemplo) Adiciona liquidez a pools em DEXs.
+RemoveLiquidity: (Não implementada, mas há código de exemplo). Remove liquidez de pools em DEXs.
+
+PortfolioManager:
+Descrição: Gerencia o portfólio, define alocação de capital, calcula o risco e monitora o desempenho.
+Instruções (Prompt): "Você é um gerente de portfólio. Seu objetivo é otimizar a alocação de capital, monitorar os riscos, rebalancear o portfólio periodicamente e acompanhar o desempenho geral."
+
+Ferramentas (Tools):
+GetPortfolio: (Já implementada, usada por outros agentes).
+CalculatePortfolioRisk: (Não implementada). Calcula métricas de risco do portfólio (ex: volatilidade, Value at Risk).
+RebalancePortfolio: (Não implementada). Executa o rebalanceamento do portfólio (ajusta as alocações de ativos).
+GetMarketData: (Já implementada, usada por outros agentes).
+GetPricePrediction: (Descartada para o MVP).
+
+DeepTraderManager:
+Descrição: Gerencia a equipe DeepTrader, define metas, monitora riscos e otimiza a alocação de capital.
+Instruções (Prompt): "Você é o gerente da equipe DeepTrader. Seu objetivo é garantir que os agentes colaborem para maximizar o valor do portfólio, dentro dos limites de risco aceitáveis. Priorize a preservação de capital. Bloqueie qualquer trade que arrisque mais de 2% do portfólio ou envolva tokens não verificados." (Este prompt deve ser adaptado com as regras de risco específicas do MVP).
+
+Ferramentas (Tools):
+GetRiskReport: (Não implementada). Obtém um relatório de risco do PortfolioManager.
+AdjustTradingStrategy: (Não implementada). Envia novas instruções ou ajusta parâmetros de estratégia para o MarketAnalyst.
+BlockTrade: (Código esboçado). Cancela ou bloqueia trades considerados arriscados antes da execução.
+AllocateCapital: (Não implementada). Redistribui fundos entre diferentes estratégias ou agentes (funcionalidade avançada).
+MonitorMarketConditions: (Não implementada, mas pode ser combinada com o FetchMarketData). Verifica eventos macroeconômicos ou notícias relevantes que possam impactar o mercado.
+
+LearningCoordinator (Opcional, para Self-Learning):
+Descrição: Analisa o desempenho do sistema e ajusta as estratégias dos outros agentes para aprendizado contínuo.
+Instruções (Prompt): "Você é o coordenador de aprendizado do DeepTrader. Seu objetivo é analisar o histórico de trades e o desempenho do sistema para identificar oportunidades de melhoria e ajustar as estratégias dos agentes."
+
+Ferramentas (Tools):
+GetTradeHistory: (Não implementada, mas o banco de dados já suporta). Obtém o histórico de trades do banco de dados.
+AnalyzePerformance: (Não implementada). Analisa o desempenho do sistema com base em métricas (ROI, Sharpe Ratio, etc.).
+AdjustAgentInstructions: (Não implementada). Modifica as instruções (prompts) dos agentes.
+AdjustToolParameters: (Não implementada). Ajusta os parâmetros das Tools (ex: limiares de risco, parâmetros de indicadores técnicos).
+
+Comunicação entre Agentes:
+Mecanismo: Mensagens diretas assíncronas usando self.send_message(recipient, message).
+Formato: JSON, com estrutura definida por classes Pydantic. (Código esboçado para MessageHeader, MessageBody e exemplos de tipos de mensagens como TradeRecommendation, TradeApprovalRequest, TradeApprovalResponse).
+Protocolo: Um arquivo protocol.py (a ser criado) definirá todos os tipos de mensagens, seus campos e semântica.
+
+Loop Principal:
+Combinação de agency.run_loop() (do Agency Swarm) com AsyncIOScheduler para tarefas periódicas. (Código esboçado).
+Tarefas agendadas incluem check_market_conditions (executada pelo MarketAnalyst) e outras a serem definidas.
+
+Inicialização: Configurações e chaves de API carregadas de um arquivo .env.
+
+3. Segurança:
+MEV Protection: Uso do Flashbots Protect RPC (alterando a URL do provedor Web3). (Código esboçado).
+Sandwich Attack Detection: Simulação de transações com w3.eth.call antes do envio, verificando o slippage. (Código esboçado).
+Rug Pull Detection: Combinação de:
+Consulta a APIs externas (GoPlus, Rugcheck.xyz - a definir qual usar).
+Verificações básicas na blockchain (via web3.py, se possível - totalSupply, mas não num_holders ou is_verified).
+Não faremos bundle purchase detection no MVP, pois depende de dados complexos.
+Fake Volume Detection: Implementada no método _detect_fake_volume da classe DexBotAdvanced, usando Pocket Universe API (opcional, se tiver chave) ou heurísticas (volume/transações).
+Blacklists: Listas de tokens e desenvolvedores maliciosos (implementadas).
+Fund Isolation: Uso de hot wallet (para trading) e cold wallet (para armazenamento seguro), mas a implementação da transferência de fundos entre as carteiras não foi detalhada. A interação com um bot de terceiros (BonkBot) foi descartada.
+Approval Revocation: Revogação automática de aprovações de token após cada trade (implementada no TradingModule).
+
+4. Dados e Persistência:
+Banco de Dados: SQLite (para o MVP).
+
+Tabelas:
+tokens: Informações sobre tokens (endereço, símbolo, cadeia, histórico de preços, etc.).
+events: Eventos detectados (ex: "potencial_pump", "blacklisted_dev").
+transactions: Histórico de transações (trades).
+portfolio: Estado atual do portfólio.
+RAG (Retrieval-Augmented Generation):
+Vector Store: ChromaDB (sugerido), FAISS, Qdrant ou Weaviate (a definir).
+Documentos: Manuais de estratégia de trading, artigos, notícias, etc.
+Tool: ConsultKnowledgeBase (código esboçado).
+Técnicas Avançadas: HyDE (Hypothetical Document Embeddings), re-ranking.
+
+5. Estratégia de Trading (MVP):
+Definição: A ser definida posteriormente, via prompts para os agentes (MarketAnalyst e DeepTraderManager).
+Exemplo Inicial (Simples):
+MarketAnalyst: Baseada em RSI (comprar quando RSI < 30, vender quando RSI > 70), focando em tokens de alta capitalização.
+DeepTraderManager: Limite de risco de 2% por operação, bloqueio de tokens fora do Top 50 ou com baixa pontuação de segurança.
+
+6. Implementação Adicional Sugerida e Pendências
+
+Implementar na totalidade:
+Implementação do RAG (ConsultKnowledgeBase)
+Detecção de Sandwich Attacks
+MEV protection
+Agente LearningCoordinator
+CalculateTechnicalIndicator
+
+Pesquisar e definir:
+Quais exchanges e apis de segurança serão usadas, incluindo alternativas.
+Quais dados buscar em cada exchange, dentro das limitações de rate limit de cada uma
+Detalhar o funcionamento das blacklists (tokens e devs)
+Estratégia de trading
+Detalhar chamadas de API pra CEX (se for ter)
+Como refatorar o código com async e await para evitar travamentos
+Como paralelizar as requisições às exchanges em diferentes threads
+Arquitetura de microsserviços (se for ter)
+Como integrar modelos de previsão de preço
+
+----
+
+ok, implement 1, 2, 3, 4, 5, 8, 10 for now, you can do it how you think it's more suitable, except regarding the '8. news feed', let me explain: i'd like the backend to use a multiagent framework (i'd prefer Agency Swarm, but can be anything you see more suitable as long as it's not langchain based), we'd have a team of agents (team Cripto-Sentinel), running forever asynchronously, here's a *draft* of who they are and what they do:
+
+1. MarketAnalyst: Analisa dados de mercado, verifica a segurança dos tokens, fornece recomendações de trading, passa notícias / informações interessantes para o news feed, monitora tokens e desenvolvedores maliciosos. Tools: Search News, Consult Knowledge Base, Fetch Market Data, CheckTokenSecurity, GetTokenPrice, Calculate Technical Indicators, Analyze Sentiment, Get Price Prediction, etc
+2. Trader: Executa ordens de compra e venda, gerencia/movimenta o portfólio. Tools: Execute Swap, Get Portfolio, Get Account Balance, Check Arbitrage Opportunities, Execute Arbitrage Trade, etc
+3. LearningManager: Analisa o desempenho do sistema e ajusta as estratégias dos outros agentes para aprendizado contínuo. Tools: Get Trade History, Analyze Performance, Adjust Agent Instructions, Adjust Tool Parameters
+4. Manager: Gerencia a equipe, define metas, monitora o desempenho, monitora/gerencia riscos, otimiza a alocação de capital, administra a blacklist. Tools: maybe all, don't know
+
+Also, i'd like to know if these security measures are covered in our current code or not, and if not, what do you think about them (if you think it's valid, go for it):
+MEV Protection: Uso do Flashbots Protect RPC
+Sandwich Attack Detection: Simulação de transações com w3.eth.call antes do envio, verificando o slippage (ou algo)
+Rug Pull Detection: Consulta a APIs externas (GoPlus, Rugcheck.xyz - a definir qual usar), Verificações básicas na blockchain (via web3.py, se possível - totalSupply, mas não num_holders ou is_verified), etc
+Fake Volume Detection: Pocket Universe API + heurísticas (volume/transações).
+Fund Isolation: Uso de hot wallet (para trading) e cold wallet (para armazenamento seguro)
+Approval Revocation: Revogação automática de aprovações de token após cada trade
+
+
+MEV Protection: Using Flashbots Protect RPC
+Sandwich Attack Detection: Simulating transactions with w3.eth.call before sending, checking for slippage (or something)
+Rug Pull Detection: Querying external APIs (GoPlus, Rugcheck.xyz - to be defined which one to use), Basic checks on the blockchain (via web3.py, if possible - totalSupply, but not num_holders or is_verified), etc
+Fake Volume Detection: Pocket Universe API + heuristics (volume/transactions).
+Fund Isolation: Using hot wallet (for trading) and cold wallet (for safe storage)
+Approval Revocation: Automatic revocation of token approvals after each trade
+
+----
+
+Below is a description of a software I am developing. Do some research that
+1 - Determine all the necessary aspects to be covered in a complete implementation,
+2 - Establish criteria to evaluate each aspect according to the project (such as security, efficiency, accuracy of the final product, ease of implementation),
+3 - Discover all the technical aspects involved in creating the software,
+4 - What are the best open source solutions for each one, what are the best APIs, what are the best ways to implement each thing, consult the documentation for each one online
+5 - Decide which is the winner in each case and include in the final project a detailed method for implementation
+6 - Create a complete implementation roadmap (include a link to the documentation for each chosen tool)
+
+Focus: I want a complete final product implementation roadmap, but it envolves many phases, one of which is creation of a functional MVP / POC, testing several areas, etc. Estabilish what are the crucial functions that need to be functioning in the MVP/POC  and leave the implementation of others for a later stage.
+
+Requirements/Preference: Since it is an autonomous solution, it needs to have LLM's involved in a multiagent framework, and it's agents need to have acess to tools and RAG. The only reliable framework I know for this is Agency Swarm (from VRSEN) - this is my only requirement. Everything else I'd like you to figure out. There's a draft to the architecture of the agents, but it's completely up to you, so if you think it needs improvement, include that. For example, if you think that the Manager and the Learning Coordinator should actually be the same agent, do that. If you think there should be a 'fullstack developer' agent in the team to build new tools for the other agents when they need, do that.
+
+Time and Budget constraints: Ignore time when you write the roadmap, allow me to define that later when building the project. Consider budget ZERO for programming - i'm starting it alone and I'll probably be able to acquire funds after the MVP/POC. I have some credits in Azure, which I can use to run opensource LLM models (such as deepseek R1 or QwQ reasoning)
+
+The software:
+
+DeepTrader: Your Smart and Autonomous Partner in the World of Cryptocurrencies
+Imagine a world where you could invest in cryptocurrencies without having to spend hours analyzing charts, reading news or worrying about scams and market manipulation. A world where artificial intelligence takes care of everything for you, making buying and selling decisions autonomously, 24 hours a day, 7 days a week. This is the world that DeepTrader seeks to create.
+
+The Problem: The Complexity of Cryptocurrency Trading
+
+The cryptocurrency market is fascinating, but also extremely complex and volatile. To be successful, you need:
+- Deep Knowledge: Understanding technical analysis, fundamental analysis, blockchain, smart contracts, DeFi (Decentralized Finance) and much more.
+- Full-Time: Monitoring the market constantly, as opportunities (and risks!) appear and disappear in a matter of minutes.
+- Emotional Control: Making rational and strategic decisions, without being carried away by fear or greed.
+- Extreme Security: Protecting yourself against scams, hacks, rug pulls and other threats that are unfortunately common in this market.

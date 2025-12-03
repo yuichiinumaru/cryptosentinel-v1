@@ -1,0 +1,93 @@
+* **Fundamental Analyst:** This agent could utilize a custom tool that interfaces with the kukapay/cryptopanic-mcp-server 13. When the agent needs to understand the latest news sentiment around Ethereum, it would call the tool with the parameter "Ethereum". The tool would communicate with the MCP server, which aggregates and analyzes news from various sources and returns a summary or sentiment score to the agent.
+* **Learning Coordinator:** The learning coordinator agent can use custom tools to interact with MCP servers for vector databases like Qdrant and NoSQL databases like MongoDB. To store a new learning, the agent would call a tool with the relevant data, which would then be formatted and sent to the appropriate MCP server for storage. To retrieve past learnings, the agent would call a tool with a query, which would be translated into a vector search or a database query by the respective MCP server.
+* **Risk Analyst:** This agent can use a custom tool that connects to a database MCP server (e.g., PostgreSQL) where the blacklist of bad tokens is stored. To check if a token is blacklisted, the agent would call the tool with the token's identifier. The tool would query the MCP server, which would then check the database and return the result to the agent.
+* **Administrator:** The administrator agent can use a custom tool that interacts with a performance tracking database via an MCP server (e.g., MySQL). To generate a report on the trading performance over the last week, the agent would call the tool with the specified time frame. The tool would then communicate with the MCP server, which would query the database and return the relevant performance data to the agent.
+
+These examples illustrate how MCPs can be seamlessly integrated into the Agency Swarm framework by creating custom tools that act as MCP clients, enabling each agent to access the specific data and functionalities provided by various MCP servers.
+
+## **5\. Monitoring and Observability of MCP Integrations**
+
+Monitoring the integration of MCPs within your Agency Swarm framework is crucial for ensuring the reliability and stability of your autonomous trading system. Agency Swarm offers observability features that can be leveraged to track the performance and health of your MCP integrations.
+
+You can monitor the communication between your Agency Swarm agents and the MCP servers by logging requests and responses. This can help in identifying potential issues such as connection errors, slow response times, or malformed data. Many MCP servers also provide their own logging mechanisms, which can offer additional insights into their operation 17.
+
+Error handling is another important aspect of monitoring. Your custom tools that act as MCP clients should be designed to gracefully handle errors returned by the MCP servers, such as invalid requests, rate limits being exceeded 15, or temporary unavailability of the server 15. Implementing retry mechanisms with exponential backoff can help in mitigating transient network issues.
+
+Furthermore, you can track the usage of different MCP servers by your agents. This can provide valuable information about which data sources and functionalities are being used most frequently and whether there are any bottlenecks in the system. Agency Swarm's shared state could potentially be used to record statistics about MCP server usage.
+
+Consider using monitoring tools or platforms to visualize the performance of your MCP integrations. Metrics such as request latency, error rates, and server availability can be tracked over time to identify trends and potential problems before they impact the trading operations.
+
+By implementing comprehensive monitoring and observability strategies, you can ensure that your MCP integrations are functioning correctly and that your autonomous cryptocurrency trading system remains robust and reliable.
+
+## **6\. Conclusion**
+
+Integrating Model Context Protocols (MCPs) into your Agency Swarm-based autonomous cryptocurrency trader holds significant potential for enhancing its capabilities. The standardized nature of MCPs simplifies the process of connecting your specialized agents with a wide array of external data sources and tools, ranging from real-time cryptocurrency market data and news feeds to blockchain explorers and databases. By developing custom tools within Agency Swarm that act as MCP clients, you can seamlessly leverage the growing ecosystem of MCP servers to provide each agent with the specific information and functionalities they need to perform their roles effectively. While careful consideration of security and privacy is essential, the benefits of MCPs in terms of interoperability, efficiency, and access to specialized knowledge make them a valuable asset for building a sophisticated and adaptable autonomous trading system. Implementing robust monitoring and observability will be key to ensuring the long-term reliability and performance of these integrations.
+
+#### **Referências citadas**
+
+1. Introducing the Model Context Protocol \- Anthropic, acessado em março 21, 2025, [https://www.anthropic.com/news/model-context-protocol](https://www.anthropic.com/news/model-context-protocol)
+2. Model Context Protocol (MCP) \- Anthropic API, acessado em março 21, 2025, [https://docs.anthropic.com/en/docs/agents-and-tools/mcp](https://docs.anthropic.com/en/docs/agents-and-tools/mcp)
+3. Model Context Protocol: Introduction, acessado em março 21, 2025, [https://modelcontextprotocol.io/introduction](https://modelcontextprotocol.io/introduction)
+4. What is Model Context Protocol (MCP)? How it simplifies AI integrations compared to APIs, acessado em março 21, 2025, [https://norahsakal.com/blog/mcp-vs-api-model-context-protocol-explained/](https://norahsakal.com/blog/mcp-vs-api-model-context-protocol-explained/)
+5. AI Spotlight: MCP (Model Context Protocol) and Agentic AI systems \- Gravitee, acessado em março 21, 2025, [https://www.gravitee.io/blog/mcp-model-context-protocol-agentic-ai](https://www.gravitee.io/blog/mcp-model-context-protocol-agentic-ai)
+6. MCP 101: An Introduction to Model Context Protocol \- DigitalOcean, acessado em março 21, 2025, [https://www.digitalocean.com/community/tutorials/model-context-protocol](https://www.digitalocean.com/community/tutorials/model-context-protocol)
+7. Model Context Protocol (MCP): Integrating Azure OpenAI for Enhanced Tool Integration and Prompting | Microsoft Community Hub, acessado em março 21, 2025, [https://techcommunity.microsoft.com/blog/azure-ai-services-blog/model-context-protocol-mcp-integrating-azure-openai-for-enhanced-tool-integratio/4393788](https://techcommunity.microsoft.com/blog/azure-ai-services-blog/model-context-protocol-mcp-integrating-azure-openai-for-enhanced-tool-integratio/4393788)
+8. Anthropic's Model Context Protocol (MCP) is way bigger than most people think \- Reddit, acessado em março 21, 2025, [https://www.reddit.com/r/ClaudeAI/comments/1gzv8b9/anthropics\_model\_context\_protocol\_mcp\_is\_way/](https://www.reddit.com/r/ClaudeAI/comments/1gzv8b9/anthropics_model_context_protocol_mcp_is_way/)
+9. Model Context Protocol (MCP): An Introduction Guide | by Michael Bauer-Wapp | Mar, 2025, acessado em março 21, 2025, [https://michaelwapp.medium.com/model-context-protocol-mcp-an-introduction-guide-25736f3dd672](https://michaelwapp.medium.com/model-context-protocol-mcp-an-introduction-guide-25736f3dd672)
+10. MCP-Mirror/Nayshins\_mcp-server-ccxt: Mirror of https://github.com/Nayshins/mcp-server-ccxt \- GitHub, acessado em março 21, 2025, [https://github.com/MCP-Mirror/Nayshins\_mcp-server-ccxt](https://github.com/MCP-Mirror/Nayshins_mcp-server-ccxt)
+11. longmans/coin\_api\_mcp: A Model Context Protocol server that provides access to CoinMarketCap's cryptocurrency data. This server enables AI-powered applications to retrieve cryptocurrency listings, quotes, and detailed information about various coins. \- GitHub, acessado em março 21, 2025, [https://github.com/longmans/coin\_api\_mcp](https://github.com/longmans/coin_api_mcp)
+12. keywords:crypto price \- npm search, acessado em março 21, 2025, [https://www.npmjs.com/search?q=keywords:crypto%20price](https://www.npmjs.com/search?q=keywords:crypto+price)
+13. Finance \- Glama, acessado em março 21, 2025, [https://glama.ai/mcp/servers/categories/finance](https://glama.ai/mcp/servers/categories/finance)
+14. Step-by-Step Guide: Building an MCP Server using Python-SDK, AlphaVantage & Claude AI | by Syed Hasan | Mar, 2025 | Medium, acessado em março 21, 2025, [https://medium.com/@syed\_hasan/step-by-step-guide-building-an-mcp-server-using-python-sdk-alphavantage-claude-ai-7a2bfb0c3096](https://medium.com/@syed_hasan/step-by-step-guide-building-an-mcp-server-using-python-sdk-alphavantage-claude-ai-7a2bfb0c3096)
+15. berlinbra/alpha-vantage-mcp: MCP Server for Alpha Advantage API \- GitHub, acessado em março 21, 2025, [https://github.com/berlinbra/alpha-vantage-mcp](https://github.com/berlinbra/alpha-vantage-mcp)
+16. punkpeye/awesome-mcp-servers: A collection of MCP ... \- GitHub, acessado em março 21, 2025, [https://github.com/punkpeye/awesome-mcp-servers](https://github.com/punkpeye/awesome-mcp-servers)
+17. Meeting Recording: 5 Feb 2025 \- Demo of AI and MCP servers talking with Blockchain, acessado em março 21, 2025, [https://circle.cloudsecurityalliance.org/discussion/meeting-recording-5-feb-2025-demo-of-ai-and-mcp-servers-talking-with-blockchain](https://circle.cloudsecurityalliance.org/discussion/meeting-recording-5-feb-2025-demo-of-ai-and-mcp-servers-talking-with-blockchain)
+18. Awesome MCP Servers \- A curated list of Model Context ... \- GitHub, acessado em março 21, 2025, [https://github.com/appcypher/awesome-mcp-servers](https://github.com/appcypher/awesome-mcp-servers)
+19. List of all MCP Servers (42) | Portkey, acessado em março 21, 2025, [https://portkey.ai/mcp-servers](https://portkey.ai/mcp-servers)
+20. Awesome MCP Servers, acessado em março 21, 2025, [https://mcpservers.org/](https://mcpservers.org/)
+21. Example Servers \- Model Context Protocol, acessado em março 21, 2025, [https://modelcontextprotocol.io/examples](https://modelcontextprotocol.io/examples)
+22. An MCP server for interacting with the Financial Datasets stock market API. \- GitHub, acessado em março 21, 2025, [https://github.com/financial-datasets/mcp-server](https://github.com/financial-datasets/mcp-server)
+23. kablewy/financial-analysis-mcp-server \- GitHub, acessado em março 21, 2025, [https://github.com/kablewy/financial-analysis-mcp-server](https://github.com/kablewy/financial-analysis-mcp-server)
+24. Fiscal Data MCP Server – Connects to the US Treasury's Fiscal Data API, enabling users to fetch specific treasury statements, access historical data, and generate formatted reports. : r/mcp \- Reddit, acessado em março 21, 2025, [https://www.reddit.com/r/mcp/comments/1j6vf3a/fiscal\_data\_mcp\_server\_connects\_to\_the\_us/](https://www.reddit.com/r/mcp/comments/1j6vf3a/fiscal_data_mcp_server_connects_to_the_us/)
+25. StockScreen MCP Server \- Glama, acessado em março 21, 2025, [https://glama.ai/mcp/servers/ddrv1ksb7n](https://glama.ai/mcp/servers/ddrv1ksb7n)
+26. Hasan-Syed25/MCP-Server-AlphaVantage \- GitHub, acessado em março 21, 2025, [https://github.com/Hasan-Syed25/MCP-Server-AlphaVantage](https://github.com/Hasan-Syed25/MCP-Server-AlphaVantage)
+27. What you need to know about the Model Context Protocol (MCP) \- Merge, acessado em março 21, 2025, [https://www.merge.dev/blog/model-context-protocol](https://www.merge.dev/blog/model-context-protocol)
+
+
+
+
+# **Integração de Bibliotecas Síncronas e Assíncronas em Ferramentas de Agentes Assíncronos**
+
+## **Introdução: Navegando pela Sincronicidade e Assincronicidade em Frameworks de Agentes**
+
+A crescente sofisticação dos sistemas baseados em agentes tem levado a uma adoção cada vez maior da programação assíncrona, impulsionada por sua capacidade de lidar eficientemente com tarefas concorrentes e operações de entrada/saída (I/O). Em domínios como finanças, análise de dados e inteligência artificial, a necessidade de processar múltiplas requisições ou fluxos de dados simultaneamente torna a assincronicidade uma escolha arquitetural vantajosa. No entanto, muitos agentes precisam interagir com bibliotecas síncronas estabelecidas, que oferecem funcionalidades valiosas ainda não disponíveis em suas contrapartes assíncronas. Um desafio fundamental surge dessa necessidade: como integrar bibliotecas síncronas, que por natureza bloqueiam a execução, dentro do paradigma não bloqueante dos frameworks de agentes assíncronos sem comprometer o desempenho e a capacidade de resposta do sistema. A dependência de bibliotecas síncronas em certos campos, como finanças quantitativas com TA-Lib e Backtrader, torna imperativo o desenvolvimento de estratégias de integração robustas em frameworks de agentes assíncronos para aproveitar a expertise específica desses domínios sem sacrificar os benefícios da assincronicidade. \[N/A\]
+
+Este relatório tem como objetivo fornecer uma análise aprofundada dos desafios e soluções associados à integração de bibliotecas Python síncronas e assíncronas em ferramentas de agentes assíncronos. Para estabelecer um entendimento comum, é importante definir alguns conceitos chave. Uma "biblioteca síncrona" é aquela cujas operações bloqueiam o thread de chamada até serem concluídas. Em contraste, uma "biblioteca assíncrona" permite que as operações cedam o controle ao loop de eventos enquanto aguardam a conclusão, possibilitando que outras tarefas sejam executadas. Um "framework de agentes assíncronos" é uma estrutura que facilita a construção de agentes concorrentes utilizando a biblioteca asyncio do Python. O "loop de eventos" é o coração de asyncio, responsável por gerenciar a execução das tarefas assíncronas.
+
+O problema central que este relatório aborda é como desenvolvedores podem integrar efetivamente bibliotecas Python síncronas e assíncronas dentro de frameworks de agentes assíncronos para construir sistemas performáticos e escaláveis. Isso envolve lidar com questões como o bloqueio da execução, o gerenciamento do estado de bibliotecas síncronas, a compatibilidade de dados com Large Language Models (LLMs) e o tratamento de exceções. Os objetivos deste relatório incluem fornecer padrões de código práticos, discutir estratégias de gerenciamento de estado, explorar técnicas de serialização de dados para interação com LLMs, analisar abordagens para tratamento de exceções e examinar exemplos de integração em frameworks existentes. A estrutura do relatório cobrirá a execução eficiente de código síncrono, o gerenciamento de estado, a serialização de dados, o tratamento de exceções e a integração de bibliotecas específicas como TA-Lib, Backtrader, Pyfolio, PyOD e CCXT, além de analisar soluções em LangChain e LlamaIndex. Espera-se que este relatório forneça aos desenvolvedores e arquitetos experientes um conjunto de diretrizes práticas e exemplos de código reutilizáveis para uma integração perfeita de bibliotecas em seus sistemas de agentes assíncronos.
+
+## **Execução Eficiente de Bibliotecas Síncronas em Ambientes Assíncronos**
+
+A execução direta de operações síncronas dentro de uma função async def em um agente assíncrono pode levar a um problema fundamental: o bloqueio do loop de eventos. O loop de eventos do asyncio é projetado para executar múltiplas tarefas concorrentemente, alternando entre elas quando uma tarefa está aguardando uma operação de I/O. Uma operação síncrona, por sua natureza, impede que o thread de execução retorne ao loop de eventos até que seja concluída. Isso pode resultar em lentidão, falta de resposta do agente e, potencialmente, perda de eventos. A utilização indiscriminada de bibliotecas síncronas dentro de um agente assíncrono sem empregar mecanismos adequados para evitar o bloqueio pode, fundamentalmente, comprometer os benefícios da assincronicidade, levando a um desempenho inferior ao de uma implementação puramente síncrona para tarefas concorrentes. \[N/A\]
+
+Para mitigar esse problema, o asyncio oferece o método loop.run\_in\_executor. Este método permite que o desenvolvedor descarregue a execução de funções bloqueantes de I/O ou intensivas em CPU para um pool de threads (ThreadPoolExecutor) ou um pool de processos (ProcessPoolExecutor) separadamente do loop de eventos principal. Ao fazer isso, a operação síncrona é executada em um thread ou processo separado, permitindo que o loop de eventos continue processando outras tarefas assíncronas sem ser bloqueado. A escolha entre ThreadPoolExecutor e ProcessPoolExecutor depende da natureza da operação síncrona. Tarefas vinculadas à CPU podem se beneficiar mais do ProcessPoolExecutor devido ao Global Interpreter Lock (GIL) do Python, que restringe o verdadeiro multithreading para tarefas intensivas em CPU dentro de um único processo. Ao usar processos separados, o GIL é contornado, permitindo a execução paralela genuína em sistemas multi-core. Por outro lado, tarefas vinculadas a I/O geralmente são adequadas para ThreadPoolExecutor, pois passam mais tempo aguardando recursos externos, tornando a concorrência baseada em threads muitas vezes suficiente e potencialmente mais leve em termos de consumo de recursos. \[N/A\]
+
+Para ilustrar a integração de bibliotecas síncronas, considere os seguintes padrões de código:
+
+**TA-Lib:** Para executar uma função do TA-Lib assincronamente, como o cálculo de uma média móvel, pode-se usar o seguinte padrão:
+
+Python
+
+import asyncio
+import talib
+import numpy as np
+
+async def calcular\_media\_movel\_async(data, periodo):
+    loop \= asyncio.get\_running\_loop()
+    return await loop.run\_in\_executor(None, talib.SMA, data, periodo)
+
+async def main():
+    preco \= np.random.rand(100)
+    periodo \= 14
+    media\_movel \= await calcular\_media\_movel\_async(preco, periodo)
+    print(f"Média Móvel: {media\_movel\[-5:\]}")

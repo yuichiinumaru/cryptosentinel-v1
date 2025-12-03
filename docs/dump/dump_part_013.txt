@@ -1,0 +1,417 @@
+Heurísticas: (Já implementadas no código como placeholders, mas precisam ser expandidas e ajustadas)
+
+Total supply muito baixo.
+
+Número de holders muito baixo (se disponível).
+
+Adicionar outras heurísticas relevantes.
+
+Observações:
+
+A implementação atual da CheckTokenSecurity já cobre a maioria dos pontos.
+
+É crucial refinar as heurísticas para reduzir falsos positivos.
+
+A integração com APIs externas (GoPlus, Rugcheck.xyz) é opcional, mas altamente recomendada para aumentar a precisão da detecção.
+
+Decisão: Escolher qual API usar (GoPlus ou Rugcheck.xyz, ou ambas) ou se vai usar outra.
+
+5.4. Fake Volume Detection (Refinado):
+
+Implementação: A detecção de volume falso é feita no método _detect_fake_volume da classe DexBotAdvanced (código já fornecido). Ele combina:
+
+Pocket Universe API (Opcional): Consulta a API do Pocket Universe (se a chave estiver configurada).
+
+Algoritmo Heurístico:
+
+Calcula a relação volume/transações.
+
+Verifica a correlação volume/preço.
+
+Observações:
+
+O algoritmo heurístico é um exemplo e precisa ser refinado e testado.
+
+A integração com a Pocket Universe API é opcional.
+
+5.5. Fund Isolation (Hot/Cold Wallets - Detalhes):
+
+Implementação:
+
+Hot Wallet:
+
+A hot wallet (carteira quente) é usada para executar os trades.
+
+A chave privada da hot wallet é necessária para assinar as transações (via WalletManager).
+
+A hot wallet deve conter apenas os fundos necessários para as operações de trading.
+
+O endereço da hot wallet é configurado no arquivo .env (HOT_WALLET_ADDRESS).
+
+Cold Wallet:
+
+A cold wallet (carteira fria) é usada para armazenar a maior parte dos fundos de forma segura (offline).
+
+A chave privada da cold wallet NUNCA deve ser acessada pelo bot.
+
+O endereço da cold wallet é configurado no arquivo .env (COLD_WALLET_ADDRESS).
+
+Transferência de Fundos (Manual - MVP):
+
+No MVP, a transferência de fundos entre a hot wallet e a cold wallet será feita manualmente pelo usuário. O bot não irá automatizar essa transferência, por questões de segurança.
+
+O bot deve verificar o saldo da hot wallet (usando GetAccountBalance) antes de cada trade e alertar o usuário se o saldo for insuficiente.
+
+Transferência Automática (Futuro):
+
+Em versões futuras, a transferência de fundos entre as carteiras poderá ser automatizada, mas com extrema cautela e múltiplas camadas de segurança:
+
+Usar um hardware wallet para assinar as transações da cold wallet.
+
+Implementar limites de transferência (ex: valor máximo por transferência, frequência máxima de transferências).
+
+Implementar um sistema de aprovação multi-assinatura (multi-sig) para as transferências da cold wallet.
+
+Monitorar constantemente o saldo da hot wallet e cold wallet.
+
+5.6. Approval Revocation (Implementado):
+
+A revogação de aprovações foi implementada como um método privado, _revoke_approvals, dentro da classe ExecuteSwap.
+
+6. Escolha Final: BonkBot vs. Implementação Direta:
+
+✅ Confirmado (Pela Quarta Vez): Implementação direta via web3.py. Descartamos completamente o uso do BonkBot.
+
+7. RAG e Aprendizado Contínuo (Próximos Passos - Detalhes Adicionais):
+
+RAG:
+
+Conteúdo da Base de Conhecimento (Exemplos):
+
+Manuais de análise técnica (ex: livros, artigos, tutoriais).
+
+Documentação de estratégias de trading (ex: descrições de estratégias, exemplos de código).
+
+Artigos sobre gestão de risco em criptomoedas.
+
+Análise de mercado históricas (ex: relatórios de desempenho do DeepTrader).
+
+Documentação das APIs e bibliotecas usadas pelo DeepTrader.
+
+Glossário de termos de criptomoedas e trading.
+
+Formato dos Documentos: .txt (inicialmente, para simplicidade).
+
+Processo de Indexação (Detalhes):
+
+Biblioteca: langchain (já mencionada).
+
+Loader: DirectoryLoader (para carregar arquivos .txt de um diretório).
+
+Splitter: RecursiveCharacterTextSplitter (para dividir os documentos em chunks, com parâmetros chunk_size e chunk_overlap a serem ajustados).
+
+Embeddings: OpenAIEmbeddings (inicialmente, para o MVP). Posteriormente, considerar modelos de embedding open-source e específicos para finanças.
+
+Vector Store: ChromaDB (inicialmente, para o MVP).
+
+Código: (Esboço já fornecido anteriormente).
+
+Tool ConsultKnowledgeBase (Detalhes):
+
+O código já foi esboçado, mas precisa ser testado e integrado ao sistema.
+
+O método run deve receber uma query em linguagem natural e retornar uma lista de trechos de documentos relevantes.
+
+O número de documentos retornados (k=5 no exemplo) deve ser ajustável.
+
+Aprendizado Contínuo:
+
+LearningCoordinator (Detalhes - Futuro):
+
+Métricas de Desempenho:
+
+ROI (Return on Investment): Retorno total do portfólio.
+
+Sharpe Ratio: Retorno ajustado ao risco.
+
+Drawdown Máximo: Maior queda do valor do portfólio em relação a um pico.
+
+Taxa de Acerto (Win Rate): Percentual de trades lucrativos.
+
+Lucro/Prejuízo Médio por Trade.
+
+Tempo Médio de Duração dos Trades.
+
+Coleta de Dados: O LearningCoordinator obterá os dados necessários do banco de dados (tabelas transactions, portfolio) e, potencialmente, de outras fontes (ex: dados de mercado).
+
+Algoritmo de Aprendizado (Opções):
+
+Reinforcement Learning (RL): A opção mais avançada e promissora. Requer a definição de um ambiente de simulação (um "gym environment"), uma função de recompensa e o uso de bibliotecas como Ray RLlib ou Stable Baselines3. Permite que o agente aprenda por tentativa e erro, explorando diferentes estratégias e otimizando seu comportamento ao longo do tempo.
+
+Fine-tuning de LLMs: Ajustar um modelo de LLM (ex: um modelo open-source menor) com dados de trading (histórico de trades, resultados de análises, etc.) para melhorar a capacidade do modelo de tomar decisões de trading. Isso pode ser usado para complementar o RL ou como uma alternativa mais simples.
+
+Aprendizado Supervisionado: Treinar modelos de machine learning (ex: regressão, classificação) para prever o desempenho de trades com base em features extraídas dos dados de mercado, das análises do MarketAnalyst e do estado do portfólio. Isso pode ser usado para filtrar as recomendações do MarketAnalyst ou para ajustar os parâmetros das estratégias.
+
+Análise Estatística: Usar métodos estatísticos (ex: testes de hipóteses, análise de regressão) para identificar quais fatores (indicadores técnicos, notícias, etc.) têm maior influência no desempenho dos trades e ajustar as estratégias com base nesses resultados.
+
+Ajuste de Estratégias:
+
+Modificação de Prompts: O LearningCoordinator pode modificar os prompts (instruções) dos agentes (MarketAnalyst, Trader, DeepTraderManager) para refinar seu comportamento. Exemplo: se a análise de desempenho mostrar que o MarketAnalyst está sendo muito agressivo, o LearningCoordinator pode adicionar instruções para priorizar a segurança e reduzir o risco.
+
+Ajuste de Parâmetros de Tools: O LearningCoordinator pode ajustar os parâmetros das Tools usadas pelos agentes. Exemplo: alterar os limiares do RSI usados pelo MarketAnalyst, modificar o slippage máximo permitido pelo Trader, ajustar os pesos dos diferentes indicadores técnicos usados na análise.
+
+Envio de Mensagens: O LearningCoordinator pode enviar mensagens para os outros agentes com novas instruções, recomendações ou alertas.
+
+Exemplo (Reinforcement Learning - Alto Nível):
+
+Ambiente: Um simulador de trading que usa dados históricos (ou dados em tempo real) para representar o mercado de criptomoedas.
+
+Agente: O LearningCoordinator (ou um agente RL dedicado).
+
+Ações:
+
+Modificar o prompt do MarketAnalyst.
+
+Modificar os parâmetros do Trader (ex: slippage).
+
+Modificar os parâmetros do DeepTraderManager (ex: risco máximo por trade).
+
+Estado: O estado atual do portfólio, as métricas de desempenho, os dados de mercado recentes, etc.
+
+Recompensa: Uma função que combina lucro/prejuízo, risco (ex: drawdown) e outras métricas relevantes.
+
+Treinamento: O agente RL é treinado usando um algoritmo de RL (ex: PPO, A2C, SAC) para aprender a maximizar a recompensa ao longo do tempo, ajustando as ações (modificações de prompts e parâmetros).
+
+Integração com Agency Swarm: O agente RL treinado pode ser integrado como uma Tool no Agency Swarm, que é chamada periodicamente pelo LearningCoordinator para tomar decisões de ajuste de estratégia.
+
+Importante: A implementação do self-learning é um desafio significativo e não é recomendada para o MVP. É um próximo passo importante, mas requer planejamento cuidadoso, pesquisa e testes. Comece com mecanismos de aprendizado mais simples, como análise estatística e ajuste manual de parâmetros, e evolua gradualmente para técnicas mais avançadas (RL, fine-tuning).
+
+continue
+Ok, vamos continuar com a organização e detalhamento, agora focando no protocolo de comunicação.
+
+8. Protocolo de Comunicação (Mensagens entre Agentes):
+
+Tecnologia Base: Mensagens diretas assíncronas (via self.send_message()).
+
+Formato: JSON.
+
+Validação: Pydantic (schemas para cada tipo de mensagem).
+
+Arquivo: protocol.py (centraliza todas as definições de mensagens).
+
+Estrutura Geral da Mensagem:
+
+from pydantic import BaseModel, Field
+from typing import Literal
+
+class MessageHeader(BaseModel):
+    sender: str = Field(..., description="Name of the sending agent")
+    recipient: str = Field(..., description="Name of the receiving agent")
+    timestamp: str = Field(..., description="ISO8601 timestamp")
+    message_id: str = Field(..., description="Unique message ID (e.g., UUID)")
+    priority: Literal["low", "medium", "high", "critical"] = Field("medium", description="Message priority")
+Use code with caution.
+Python
+sender: Nome do agente remetente (string). Exemplo: "MarketAnalyst"
+
+recipient: Nome do agente destinatário (string). Exemplo: "DeepTraderManager"
+
+timestamp: Timestamp da mensagem (string, formato ISO 8601). Exemplo: "2024-03-13T10:30:00Z"
+
+message_id: Identificador único da mensagem (string, UUID recomendado). Exemplo: "a1b2c3d4-e5f6-4789-9012-34567890abcd"
+
+priority: Prioridade da mensagem ("low", "medium", "high", "critical").
+
+Tipos de Mensagens (e seus Schemas Pydantic):
+
+TradeRecommendation (MarketAnalyst -> DeepTraderManager):
+
+# protocol.py
+class TradeRecommendation(BaseModel):
+    header: MessageHeader
+    token_address: str = Field(..., description="Address of the token to trade")
+    chain: str = Field(..., description="Blockchain (e.g., 'ethereum')")
+    action: Literal["buy", "sell"] = Field(..., description="Action: 'buy' or 'sell'")
+    amount: float = Field(..., description="Amount to trade (in base units, e.g., ETH)") # em ETH, não em %
+    confidence: float = Field(..., description="Confidence level of the recommendation (0.0 - 1.0)")
+    reasoning: str = Field(..., description="Chain-of-thought reasoning for the recommendation. VERY IMPORTANT.") # CoT é obrigatório
+Use code with caution.
+Python
+TradeApprovalRequest (DeepTraderManager -> Trader): Esta mensagem, na verdade, não é estritamente necessária na arquitetura atual, pois o DeepTraderManager envia a resposta diretamente de volta para o MarketAnalyst. Ela só seria útil se houvesse um fluxo de comunicação mais complexo. Para o MVP, podemos omitir esta mensagem e usar apenas TradeApprovalResponse.*
+
+# protocol.py (REMOVER - Não necessária no MVP)
+# class TradeApprovalRequest(BaseModel):
+#     header: MessageHeader
+#     trade_id: str = Field(..., description="ID of the trade recommendation")
+#     recommendation: TradeRecommendation = Field(..., description="The original trade recommendation")
+Use code with caution.
+Python
+TradeApprovalResponse (DeepTraderManager -> MarketAnalyst): Modificada para refletir a decisão do gerente e, se aprovado, encaminhar a ordem para o Trader. O MarketAnalyst original não interage diretamente com o Trader, apenas via gerente.
+
+# protocol.py
+class TradeApprovalResponse(BaseModel):
+    header: MessageHeader
+    trade_id: str = Field(..., description="ID of the trade recommendation")  # Referencia a recomendação original
+    approved: bool = Field(..., description="Whether the trade was approved by the DeepTraderManager")
+    reason: Optional[str] = Field(None, description="Reason for rejection, if applicable")
+    tx_hash: Optional[str] = Field(None, description="Transaction hash (filled by Trader, IF approved)")
+Use code with caution.
+Python
+PortfolioUpdate (Trader -> PortfolioManager):
+
+# protocol.py
+class PortfolioUpdate(BaseModel):
+    header: MessageHeader
+    trade_id: str = Field(..., description="ID of the executed trade")
+    token_address: str = Field(..., description="Address of the traded token")
+    chain: str = Field(..., description="Blockchain")
+    action: Literal["buy", "sell"] = Field(..., description="buy or sell")
+    amount: float = Field(..., description="Amount of tokens traded")
+    price_per_unit: float = Field(..., description="Price per unit at which the trade was executed")
+    tx_hash: str = Field(..., description="Transaction hash")
+Use code with caution.
+Python
+RiskReportRequest (DeepTraderManager -> PortfolioManager):
+
+# protocol.py
+class RiskReportRequest(BaseModel):
+    header: MessageHeader
+    period: Literal["daily", "weekly", "monthly"] = Field("daily", description="Reporting period") # type: ignore
+Use code with caution.
+Python
+RiskReport (PortfolioManager -> DeepTraderManager):
+
+# protocol.py
+class RiskReport(BaseModel):
+    header: MessageHeader
+    total_value: float = Field(..., description="Total portfolio value (USD)")
+    volatility: Optional[float] = Field(None, description="Portfolio volatility")
+    sharpe_ratio: Optional[float] = Field(None, description="Sharpe ratio (if calculated)")
+    max_drawdown: Optional[float] = Field(None, description="Maximum drawdown")
+    VaR: Optional[float] = Field(None, description="Value at Risk (if calculated)")
+    risks: List[str] = Field(..., description="List of identified risks (e.g., high concentration in one token)")
+Use code with caution.
+Python
+StrategyAdjustment (DeepTraderManager -> MarketAnalyst):
+
+# protocol.py
+class StrategyAdjustment(BaseModel):
+    header: MessageHeader
+    new_instructions: str = Field(..., description="New instructions for the MarketAnalyst (can be partial updates to the prompt)")
+    # Ou, para ajustes mais estruturados:
+    # parameters: Dict[str, Any] = Field(..., description="New parameters for the MarketAnalyst's strategy")
+Use code with caution.
+Python
+Alert (Qualquer Agente -> Telegram):
+
+class Alert(BaseModel):
+    header: MessageHeader
+    alert_type: str = Field(..., description="Alert type, e.g., 'security', 'performance', 'error'")
+    message: str = Field(..., description="Detailed alert message")
+Use code with caution.
+Python
+Heartbeat (Qualquer Agente -> Monitoramento - Futuro): Uma mensagem periódica para indicar que o agente está ativo.
+
+# protocol.py (Futuro)
+# class Heartbeat(BaseModel):
+#     header: MessageHeader
+#     status: str = Field(..., description="Agent status (e.g., 'OK', 'WARNING', 'ERROR')")
+Use code with caution.
+Python
+Fluxos de Comunicação (Exemplos com Mermaid):
+
+Fluxo de Trade (Simplificado):
+
+sequenceDiagram
+    participant MA as MarketAnalyst
+    participant DM as DeepTraderManager
+    participant T as Trader
+    participant PM as PortfolioManager
+
+    MA->>DM: TradeRecommendation
+    activate DM
+    DM->>DM: Avalia Risco
+    alt Trade Aprovado
+        DM->>MA: TradeApprovalResponse (approved=True)
+        MA->>T: TradeApprovalResponse (approved=True)
+        activate T
+        T->>T: ExecuteSwap()
+        T->>PM: PortfolioUpdate
+        deactivate T
+    else Trade Rejeitado
+        DM->>MA: TradeApprovalResponse (approved=False)
+    end
+    deactivate DM
+    activate PM
+    PM->>PM: Atualiza Portfólio
+    deactivate PM
+Use code with caution.
+Mermaid
+Fluxo de Relatório de Risco:
+
+sequenceDiagram
+    participant DM as DeepTraderManager
+    participant PM as PortfolioManager
+
+    DM->>PM: RiskReportRequest (period="daily")
+    activate PM
+    PM->>PM: Calcula Métricas de Risco
+    PM->>DM: RiskReport
+    deactivate PM
+    activate DM
+    DM->>DM: Analisa Relatório
+    alt Risco Alto
+        DM->>MA: StrategyAdjustment
+    end
+    deactivate DM
+Use code with caution.
+Mermaid
+9. Criação do .env (exemplo):
+
+COINGECKO_API_KEY=
+ETHEREUM_RPC_URL=https://mainnet.infura.io/v3/YOUR_INFURA_KEY
+BSC_RPC_URL=https://bsc-dataseed.binance.org/
+WALLET_PRIVATE_KEY=YOUR_HOT_WALLET_PRIVATE_KEY
+HOT_WALLET_ADDRESS=0xYourHotWalletAddress
+COLD_WALLET_ADDRESS=0xYourColdWalletAddress
+TELEGRAM_BOT_TOKEN=YOUR_TELEGRAM_BOT_TOKEN
+TELEGRAM_CHAT_ID=YOUR_TELEGRAM_CHAT_ID
+UNISWAP_V2_ROUTER_ADDRESS=0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D
+PANCAKESWAP_V2_ROUTER_ADDRESS=0x10ED43C718714eb63d5aA57B78B54704E256024E
+# ... outras chaves de API (GoPlus, Rugcheck.xyz, etc.) ...
+MARKET_CHECK_INTERVAL=5 #Em minutos
+Use code with caution.
+10. Criação do requirements.txt:
+
+agency-swarm>=0.2.4
+web3>=6.0.0
+python-dotenv>=0.19.0
+requests>=2.26.0
+apscheduler>=3.9.1
+python-telegram-bot>=13.7
+ollama>=0.1.0
+openai>=1.0.0
+pydantic>=2.0.0 # USE A VERSÃO 2
+sqlalchemy>=1.4.0
+pandas>=1.3.0
+numpy>=1.21.0
+scikit-learn>=1.0.0
+pycoingecko
+asyncio
+chromadb
+langchain
+tiktoken
+tenacity
+eth-account
+ccxt
+TA-Lib # Verifique a instalação correta no seu sistema (pode ser mais complexo que um simples pip install)
+Use code with caution.
+Este detalhamento, junto com as seções anteriores, cobre todos os aspectos do DeepTrader MVP que havíamos definido, fornecendo um guia completo para a IA desenvolvedora.
+
+DeepTrader
+
+1. Projeto: DeepTrader - Sistema Autônomo de Trading de Criptomoedas
+
+1.1. Visão Geral
+
+DeepTrader é um sistema de trading de criptomoedas autônomo e open-source, projetado para operar em exchanges descentralizadas (DEXs) utilizando uma arquitetura multiagente baseada no framework Agency Swarm. O sistema emprega uma Large Language Model (LLM) como motor de decisão central, permitindo uma abordagem de trading flexível, adaptável e baseada em raciocínio, em vez de regras "hardcoded". O objetivo principal do DeepTrader MVP é maximizar o valor de um portfólio inicial de criptomoedas, operando de forma contínua e segura, com foco em estratégias de baixo risco e validação da arquitetura fundamental.
