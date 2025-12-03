@@ -1,0 +1,3 @@
+[submodule "packages/khala-agentmemory"]
+	path = packages/khala-agentmemory
+	url = https://github.com/yuichiinumaru/khala-agentmemory.git
