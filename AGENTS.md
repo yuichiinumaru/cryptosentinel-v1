@@ -30,7 +30,16 @@ CryptoSentinel is a multi-agent trading system powered by:
 3.  **Strategy Awareness:** When working on memory or reasoning, consult `packages/khala-agentmemory/docs/06-strategies-master.md` to ensure alignment with the 170-strategy roadmap.
 4.  **No Duplication:** Before creating a new tool, check `backend/tools/` and `packages/khala-agentmemory/` to ensure it doesn't already exist.
 
-## 4. Architecture Notes
+## 4. Documentation Standards
+
+*   **Convention:** Use `number-type-specific.md` for documentation files in `docs/` (e.g., `01-plans.md`, `02-tasklist-tradingagents.md`).
+*   **Structure:**
+    *   `01-plans.md`: High-level implementation plans and TDD strategies.
+    *   `02-tasklist.md`: Granular tasks, phases, and subtasks.
+    *   `03-architecture.md`: System architecture maps and diagrams.
+*   **Updates:** Keep these documents updated as the system evolves.
+
+## 5. Architecture Notes
 
 *   **Agents:** Defined in `backend/agents.py`. Each agent has a specific role (e.g., `MarketAnalyst`, `Trader`).
 *   **Memory:** The `khala-agentmemory` package is the source of truth for long-term memory. Use its services rather than creating ad-hoc storage where possible.
