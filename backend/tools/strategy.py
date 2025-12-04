@@ -146,33 +146,3 @@ strategy_toolkit = Toolkit(name="strategy")
 strategy_toolkit.register(backtesting)
 strategy_toolkit.register(strategy_optimization)
 strategy_toolkit.register(paper_trading)
-class StrategyToolkit(Toolkit):
-    def __init__(self, **kwargs):
-        super().__init__(name="strategy", tools=[
-            self.backtesting,
-            self.strategy_optimization,
-            self.paper_trading,
-        ], **kwargs)
-
-    def backtesting(self, input: BacktestingInput) -> BacktestingOutput:
-        """
-        Backtests a trading strategy.
-        """
-        # ... (Placeholder implementation)
-        return BacktestingOutput(results={"pnl": 1000})
-
-    def strategy_optimization(self, input: StrategyOptimizationInput) -> StrategyOptimizationOutput:
-        """
-        Optimizes a trading strategy.
-        """
-        # ... (Placeholder implementation)
-        return StrategyOptimizationOutput(optimized_strategy="Optimized strategy")
-
-    def paper_trading(self, input: PaperTradingInput) -> PaperTradingOutput:
-        """
-        Paper trades a trading strategy.
-        """
-        # ... (Placeholder implementation)
-        return PaperTradingOutput(results={"pnl": 500})
-
-strategy_toolkit = StrategyToolkit()
