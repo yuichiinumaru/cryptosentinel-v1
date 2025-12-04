@@ -1,6 +1,7 @@
 from typing import List, Optional, Dict, Any
 from pydantic import BaseModel
 from datetime import datetime
+from decimal import Decimal
 
 
 class Team(BaseModel):
@@ -22,10 +23,10 @@ class TradeData(BaseModel):
     id: str
     token: str
     action: str
-    amount: float
-    price: float
+    amount: Decimal
+    price: Decimal
     timestamp: datetime
-    profit: float
+    profit: Decimal
     status: str
 
 
@@ -42,10 +43,10 @@ class PortfolioPosition(BaseModel):
     symbol: str
     chain: Optional[str] = None
     coingecko_id: Optional[str] = None
-    amount: float
-    average_price: float
-    last_price: Optional[float] = None
-    last_valuation_usd: Optional[float] = None
+    amount: Decimal
+    average_price: Decimal
+    last_price: Optional[Decimal] = None
+    last_valuation_usd: Optional[Decimal] = None
     updated_at: datetime
 
 
