@@ -6,19 +6,29 @@ from typing import List, Dict, Any, Optional
 
 import httpx
 import uvicorn
-from fastapi import FastAPI, Depends, HTTPException, Header
+from fastapi import FastAPI, Depends, HTTPException, Header, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel, ValidationError
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 
 from agno.tools.duckduckgo import DuckDuckGoTools
 from backend.storage.models import TradeData, ActivityData
 from backend.agents import crypto_trading_team, storage
 
 # Configure Logging
-logging.basicConfig(level=logging.INFO)
+logging.getLogger("uvicorn").setLevel(logging.INFO)
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
+# Rate Limiter
+limiter = Limiter(key_func=get_remote_address)
 
 app = FastAPI(title="DeepTrader API - Resurrected")
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # Add CORS middleware
 app.add_middleware(
@@ -52,9 +62,10 @@ class PriceDataPoint(BaseModel):
     price: float
 
 # --- Authentication Dependency ---
-async def get_api_key(authorization: str = Header(None)):
+async def get_api_key(authorization: str = Header(None)) -> str:
     """
     Validates the Authorization header.
+    SECURITY FIX: Does NOT inject into global os.environ.
     """
     if not authorization:
         raise HTTPException(status_code=401, detail="Authorization header is required")
@@ -69,40 +80,42 @@ async def get_api_key(authorization: str = Header(None)):
     if not api_key:
         raise HTTPException(status_code=401, detail="API key is missing")
 
-    # In a real resurrection, we would validate this key against a vault/DB
-    # For now, we strictly ensure it is passed to the environment context
-    os.environ['OPENAI_API_KEY'] = api_key
+    # In a production environment, we would verify this key against a database.
+    # For now, strict validation is enough.
     return api_key
 
 
 # --- API Endpoints ---
 @app.get("/")
 async def root():
-    return {"message": "DeepTrader API is running (Resurrected)"}
+    return {"message": "DeepTrader API is running (Resurrected & Fortified)"}
 
 @app.get("/health")
 async def health_check():
     return {"status": "ok"}
 
 @app.get("/status")
-async def get_status(api_key: str = Depends(get_api_key)):
+@limiter.limit("60/minute")
+async def get_status(request: Request, api_key: str = Depends(get_api_key)):
     return {"status": "connected", "message": "Authenticated successfully"}
 
 
 # --- Core Data Endpoints ---
 @app.get("/news/latest", response_model=List[NewsItem])
-async def get_latest_news(limit: int = 20, api_key: str = Depends(get_api_key)):
+@limiter.limit("10/minute")
+async def get_latest_news(request: Request, limit: int = 20, api_key: str = Depends(get_api_key)):
     """
     Fetches the latest cryptocurrency news using DuckDuckGo search.
+    Executes in a threadpool to prevent blocking the event loop.
     """
     try:
-        ddg_news = DuckDuckGoTools(news=True)
-        # DuckDuckGoTools is synchronous. Ideally, run in threadpool.
-        # But for now, we wrap the output handling.
-        news_results = ddg_news.duckduckgo_news(query="cryptocurrency")
+        def fetch_news():
+            ddg_news = DuckDuckGoTools(news=True)
+            return ddg_news.duckduckgo_news(query="cryptocurrency")
+
+        news_results = await run_in_threadpool(fetch_news)
 
         if isinstance(news_results, list):
-            # If tool returns list, use it directly (it might be list of dicts)
             news_items_raw = news_results
         elif isinstance(news_results, str):
             try:
@@ -114,7 +127,6 @@ async def get_latest_news(limit: int = 20, api_key: str = Depends(get_api_key)):
             logger.error(f"Unexpected news result type: {type(news_results)}")
             return []
 
-        # Slice limits
         news_items_raw = news_items_raw[:limit]
 
         formatted_news = []
@@ -139,31 +151,39 @@ async def get_latest_news(limit: int = 20, api_key: str = Depends(get_api_key)):
         raise
     except Exception as e:
         logger.exception("Failed to fetch news")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal Server Error")
 
 @app.get("/trades/recent", response_model=List[TradeData])
-async def get_recent_trades(limit: int = 15, api_key: str = Depends(get_api_key)):
-    """Returns the most recent trades from the database."""
-    # storage calls are sync, implying blocking. In real resurrection, convert storage to async.
-    # For now, we accept this legacy sin until storage layer rewrite.
-    return storage.get_recent_trades(limit)
+@limiter.limit("30/minute")
+async def get_recent_trades(request: Request, limit: int = 15, api_key: str = Depends(get_api_key)):
+    """Returns the most recent trades from the database (Non-blocking)."""
+    return await run_in_threadpool(storage.get_recent_trades, limit)
 
 @app.get("/agent/activities/recent", response_model=List[ActivityData])
-async def get_recent_agent_activities(limit: int = 20, api_key: str = Depends(get_api_key)):
-    """Returns the most recent agent activities from the database."""
-    return storage.get_recent_activities(limit)
+@limiter.limit("30/minute")
+async def get_recent_agent_activities(request: Request, limit: int = 20, api_key: str = Depends(get_api_key)):
+    """Returns the most recent agent activities from the database (Non-blocking)."""
+    return await run_in_threadpool(storage.get_recent_activities, limit)
 
 @app.get("/market/price", response_model=List[PriceDataPoint])
-async def get_market_price(symbol: str = "BTC", period: str = "1D", api_key: str = Depends(get_api_key)):
+@limiter.limit("20/minute")
+async def get_market_price(request: Request, symbol: str = "BTC", period: str = "1D", api_key: str = Depends(get_api_key)):
     """
-    Fetches real market price data directly from the CoinGecko API using AsyncClient.
+    Fetches real market price data directly from the CoinGecko API.
     """
-    symbol_to_id = {
-        "BTC": "bitcoin",
-        "ETH": "ethereum",
-        "DOGE": "dogecoin",
-    }
-    coin_id = symbol_to_id.get(symbol.upper(), symbol.lower())
+    # Helper to map symbols. In a real system, this would be a DB lookup or config.
+    def get_coin_id(sym: str) -> str:
+        mapping = {
+            "BTC": "bitcoin",
+            "ETH": "ethereum",
+            "DOGE": "dogecoin",
+            "SOL": "solana",
+            "MATIC": "matic-network",
+            "BNB": "binancecoin",
+        }
+        return mapping.get(sym.upper(), sym.lower())
+
+    coin_id = get_coin_id(symbol)
 
     period_to_days = {
         "1D": 1,
@@ -180,9 +200,11 @@ async def get_market_price(symbol: str = "BTC", period: str = "1D", api_key: str
         "days": days,
     }
 
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=10.0) as client:
         try:
             response = await client.get(url, params=params)
+            if response.status_code == 404:
+                raise HTTPException(status_code=404, detail=f"Coin '{symbol}' not found")
             response.raise_for_status()
             data = response.json()
 
@@ -203,18 +225,18 @@ async def get_market_price(symbol: str = "BTC", period: str = "1D", api_key: str
 
 
 @app.post("/chat")
-async def chat_with_agent(request: ChatRequest, api_key: str = Depends(get_api_key)):
+@limiter.limit("10/minute")
+async def chat_with_agent(request: Request, chat_req: ChatRequest, api_key: str = Depends(get_api_key)):
     """
     Handles chat requests to the agency.
-    REMOVED: Mock logic. This now runs the actual agent.
+    Executes the agent run loop in a separate thread to prevent blocking.
     """
     try:
-        # In a real async system, crypto_trading_team.run would be async.
-        # Since agno is sync, we should offload this to a thread if possible,
-        # or accept the block. Given "Fail Loudly", we will run it and catch errors.
+        def run_agent_sync(msg: str):
+            # This is a blocking CPU/IO bound operation
+            return crypto_trading_team.run(msg)
 
-        # NOTE: crypto_trading_team.run might block!
-        run_output = crypto_trading_team.run(request.message)
+        run_output = await run_in_threadpool(run_agent_sync, chat_req.message)
 
         final_response = ""
         if hasattr(run_output, "get_content_as_string"):
@@ -225,14 +247,13 @@ async def chat_with_agent(request: ChatRequest, api_key: str = Depends(get_api_k
             final_response = run_output
         else:
             try:
-                # Handle iterator output if any
+                # Handle iterator output if any (exhaust it)
                 for chunk in run_output:
                     if isinstance(chunk, dict) and "content" in chunk:
                         final_response += str(chunk["content"])
                     elif isinstance(chunk, str):
                         final_response += chunk
             except TypeError:
-                # If it's not iterable, convert to str
                 final_response = str(run_output)
 
         if not final_response:
@@ -242,7 +263,7 @@ async def chat_with_agent(request: ChatRequest, api_key: str = Depends(get_api_k
 
     except Exception as e:
         logger.exception("Error in chat endpoint")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal Server Error")
 
 
 if __name__ == "__main__":
