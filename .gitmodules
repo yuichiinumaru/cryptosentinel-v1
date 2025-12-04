@@ -1,3 +1,6 @@
 [submodule "packages/khala-agentmemory"]
 	path = packages/khala-agentmemory
 	url = https://github.com/yuichiinumaru/khala-agentmemory.git
+[submodule "reference/TradingAgents"]
+	path = reference/TradingAgents
+	url = https://github.com/TauricResearch/TradingAgents
