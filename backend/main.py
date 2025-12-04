@@ -1,22 +1,24 @@
 import os
+import json
+import logging
+from datetime import datetime
+from typing import List, Dict, Any, Optional
+
+import httpx
+import uvicorn
 from fastapi import FastAPI, Depends, HTTPException, Header
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-import uvicorn
-from typing import List, Dict, Any
-from datetime import datetime
-import json
-import requests
-from fastapi.responses import StreamingResponse
+from pydantic import BaseModel, ValidationError
 
 from agno.tools.duckduckgo import DuckDuckGoTools
-from backend.compat import get_sync_layer_method, is_sync_layer_mocked
-from backend.protocol import TradeRecommendation, TradeOrder, TradeResult, MessageHeader
 from backend.storage.models import TradeData, ActivityData
-from backend.agents import crypto_trading_team, storage, key_manager
+from backend.agents import crypto_trading_team, storage
 
+# Configure Logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-app = FastAPI(title="DeepTrader API")
+app = FastAPI(title="DeepTrader API - Resurrected")
 
 # Add CORS middleware
 app.add_middleware(
@@ -30,7 +32,7 @@ app.add_middleware(
 # --- Pydantic Models ---
 class ChatRequest(BaseModel):
     message: str
-    agent: str = "DeepTraderManager"  # Default agent to chat with
+    agent: str = "DeepTraderManager"
 
 class NewsItem(BaseModel):
     id: str
@@ -49,16 +51,10 @@ class PriceDataPoint(BaseModel):
     time: float
     price: float
 
-
-# The crypto_trading_team is already instantiated in backend/agents.py
-# We just use it here.
-
-
 # --- Authentication Dependency ---
 async def get_api_key(authorization: str = Header(None)):
     """
-    Gets the API key from the Authorization header and sets it as an environment variable.
-    This makes the backend compliant with the frontend's expected behavior.
+    Validates the Authorization header.
     """
     if not authorization:
         raise HTTPException(status_code=401, detail="Authorization header is required")
@@ -73,7 +69,8 @@ async def get_api_key(authorization: str = Header(None)):
     if not api_key:
         raise HTTPException(status_code=401, detail="API key is missing")
 
-    # Set the environment variable for the agno library to use for this request's context
+    # In a real resurrection, we would validate this key against a vault/DB
+    # For now, we strictly ensure it is passed to the environment context
     os.environ['OPENAI_API_KEY'] = api_key
     return api_key
 
@@ -81,7 +78,7 @@ async def get_api_key(authorization: str = Header(None)):
 # --- API Endpoints ---
 @app.get("/")
 async def root():
-    return {"message": "DeepTrader API is running"}
+    return {"message": "DeepTrader API is running (Resurrected)"}
 
 @app.get("/health")
 async def health_check():
@@ -99,33 +96,29 @@ async def get_latest_news(limit: int = 20, api_key: str = Depends(get_api_key)):
     Fetches the latest cryptocurrency news using DuckDuckGo search.
     """
     try:
-        # Use DuckDuckGo news tool directly for reliability
         ddg_news = DuckDuckGoTools(news=True)
+        # DuckDuckGoTools is synchronous. Ideally, run in threadpool.
+        # But for now, we wrap the output handling.
         news_results = ddg_news.duckduckgo_news(query="cryptocurrency")
 
-        # The tool does not support a limit, so we slice the results
         if isinstance(news_results, list):
-            news_results = news_results[:limit]
-
-        # The output of the tool is a string, so we need to parse it.
-        # This is a bit brittle, but it's how the tool is designed.
-        # A better implementation would have the tool return structured data.
-        if isinstance(news_results, str):
-            try:
-                # The string is a JSON representation of a list of dicts
-                news_items_raw = json.loads(news_results)
-            except json.JSONDecodeError:
-                print(f"Failed to parse news results from DDG: {news_results}")
-                return []
-        else:
-            # If it's already a list (which it should be), use it directly
+            # If tool returns list, use it directly (it might be list of dicts)
             news_items_raw = news_results
+        elif isinstance(news_results, str):
+            try:
+                news_items_raw = json.loads(news_results)
+            except json.JSONDecodeError as e:
+                logger.error(f"Failed to parse news results: {e}")
+                raise HTTPException(status_code=502, detail="Upstream news provider returned invalid data")
+        else:
+            logger.error(f"Unexpected news result type: {type(news_results)}")
+            return []
 
-        # Format the results into the NewsItem model
+        # Slice limits
+        news_items_raw = news_items_raw[:limit]
+
         formatted_news = []
         for i, item in enumerate(news_items_raw):
-            # The news tool returns 'date', 'title', 'body', 'url', 'source'
-            # We need to map this to our NewsItem model
             formatted_news.append(
                 NewsItem(
                     id=f"news_{int(datetime.now().timestamp())}_{i}",
@@ -134,21 +127,25 @@ async def get_latest_news(limit: int = 20, api_key: str = Depends(get_api_key)):
                     source=item.get("source", "Unknown Source"),
                     url=item.get("url", "#"),
                     timestamp=datetime.fromisoformat(item.get("date")) if item.get("date") else datetime.now(),
-                    sentiment="neutral",  # Sentiment analysis would require another agent/tool
-                    relevance=0.8,  # Relevance scoring would require another agent/tool
+                    sentiment="neutral",
+                    relevance=0.8,
                     tags=["crypto"],
-                    coins=[],  # Coin extraction would require another agent/tool
+                    coins=[],
                     agentId="DuckDuckGoTools",
                 )
             )
         return formatted_news
+    except HTTPException:
+        raise
     except Exception as e:
-        print(f"Failed to fetch news from DuckDuckGo: {e}")
-        return []
+        logger.exception("Failed to fetch news")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/trades/recent", response_model=List[TradeData])
 async def get_recent_trades(limit: int = 15, api_key: str = Depends(get_api_key)):
     """Returns the most recent trades from the database."""
+    # storage calls are sync, implying blocking. In real resurrection, convert storage to async.
+    # For now, we accept this legacy sin until storage layer rewrite.
     return storage.get_recent_trades(limit)
 
 @app.get("/agent/activities/recent", response_model=List[ActivityData])
@@ -159,18 +156,15 @@ async def get_recent_agent_activities(limit: int = 20, api_key: str = Depends(ge
 @app.get("/market/price", response_model=List[PriceDataPoint])
 async def get_market_price(symbol: str = "BTC", period: str = "1D", api_key: str = Depends(get_api_key)):
     """
-    Fetches real market price data directly from the CoinGecko API.
+    Fetches real market price data directly from the CoinGecko API using AsyncClient.
     """
-    # Mapping for symbols to CoinGecko IDs
     symbol_to_id = {
         "BTC": "bitcoin",
         "ETH": "ethereum",
         "DOGE": "dogecoin",
-        # Add other common symbols here
     }
     coin_id = symbol_to_id.get(symbol.upper(), symbol.lower())
 
-    # Mapping for period to days
     period_to_days = {
         "1D": 1,
         "7D": 7,
@@ -186,98 +180,40 @@ async def get_market_price(symbol: str = "BTC", period: str = "1D", api_key: str
         "days": days,
     }
 
-    try:
-        response = requests.get(url, params=params)
-        response.raise_for_status()  # Raise an exception for bad status codes
-        data = response.json()
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.get(url, params=params)
+            response.raise_for_status()
+            data = response.json()
 
-        # Process the data into the format expected by the frontend
-        price_data = [
-            PriceDataPoint(time=item[0] / 1000, price=item[1])
-            for item in data.get("prices", [])
-        ]
-        return price_data
-    except requests.exceptions.RequestException as e:
-        print(f"Failed to fetch data from CoinGecko: {e}")
-        return []
-    except Exception as e:
-        print(f"An error occurred while processing price data: {e}")
-        return []
+            price_data = [
+                PriceDataPoint(time=item[0] / 1000, price=item[1])
+                for item in data.get("prices", [])
+            ]
+            return price_data
+        except httpx.HTTPStatusError as e:
+            logger.error(f"CoinGecko API error: {e}")
+            raise HTTPException(status_code=e.response.status_code, detail="Market data provider error")
+        except httpx.RequestError as e:
+            logger.error(f"CoinGecko connection error: {e}")
+            raise HTTPException(status_code=503, detail="Market data provider unavailable")
+        except Exception as e:
+            logger.exception("Unexpected error processing price data")
+            raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @app.post("/chat")
 async def chat_with_agent(request: ChatRequest, api_key: str = Depends(get_api_key)):
     """
-    Handles chat requests to the agency. The user can specify which agent to talk to.
-    The message is sent from a "User" sender to the specified agent.
+    Handles chat requests to the agency.
+    REMOVED: Mock logic. This now runs the actual agent.
     """
     try:
-        # Use the team to get a response.
-        # The 'team' object from agno might have a different interface.
-        # Based on the library's likely design, it probably takes the message
-        # and determines the initial agent based on its internal logic or a default.
-        # The concept of a specific 'receiver' might be handled differently in a Team.
-        # For now, let's assume a simple run method. I may need to adjust this
-        # after checking the agno library's source or getting more errors.
-        sync_method = get_sync_layer_method()
-        if sync_method and is_sync_layer_mocked():
-            agent_name = request.agent or "MarketAnalyst"
-            recommendation_raw = sync_method(
-                agent_name,
-                request.message,
-                context="initial_market_analysis",
-            )
-            final_response = str(recommendation_raw)
-            try:
-                recommendation = TradeRecommendation.model_validate_json(str(recommendation_raw))
-            except Exception:
-                recommendation = None
+        # In a real async system, crypto_trading_team.run would be async.
+        # Since agno is sync, we should offload this to a thread if possible,
+        # or accept the block. Given "Fail Loudly", we will run it and catch errors.
 
-            if recommendation is not None:
-                manager_prompt = (
-                    f"TradeRecommendation: {recommendation.model_dump_json()} "
-                    f"| RSI is low, please coordinate the next steps."
-                )
-                manager_response = sync_method(
-                    "DeepTraderManager",
-                    manager_prompt,
-                    context="manager_coordination",
-                )
-                final_response = str(manager_response)
-                try:
-                    order = TradeOrder.model_validate_json(str(manager_response))
-                except Exception:
-                    order = None
-
-                if order is not None:
-                    trader_prompt = (
-                        f"TradeOrder: {order.model_dump_json()} | Risk-adjusted execution required."
-                    )
-                    trader_response = sync_method(
-                        "Trader",
-                        trader_prompt,
-                        context="trade_execution",
-                    )
-                    final_response = str(trader_response)
-                    try:
-                        trade_result = TradeResult.model_validate_json(str(trader_response))
-                    except Exception:
-                        trade_result = None
-
-                    if trade_result is not None:
-                        closing_prompt = (
-                            f"TradeResult: {trade_result.model_dump_json()} | order-123 summary."
-                        )
-                        final_response = str(
-                            sync_method(
-                                "DeepTraderManager",
-                                closing_prompt,
-                                context="trade_summary",
-                            )
-                        )
-
-            return {"response": final_response}
-
+        # NOTE: crypto_trading_team.run might block!
         run_output = crypto_trading_team.run(request.message)
 
         final_response = ""
@@ -289,25 +225,23 @@ async def chat_with_agent(request: ChatRequest, api_key: str = Depends(get_api_k
             final_response = run_output
         else:
             try:
-                for chunk in run_output:  # type: ignore[operator]
+                # Handle iterator output if any
+                for chunk in run_output:
                     if isinstance(chunk, dict) and "content" in chunk:
                         final_response += str(chunk["content"])
                     elif isinstance(chunk, str):
-                        final_response = chunk
+                        final_response += chunk
             except TypeError:
-                pass
+                # If it's not iterable, convert to str
+                final_response = str(run_output)
 
         if not final_response:
-            final_response = (
-                "The agent did not return a message. This could be because it performed an action "
-                "without a verbal response."
-            )
+            final_response = "The agent performed an action but returned no verbal response."
 
         return {"response": final_response}
 
     except Exception as e:
-        print(f"Error in chat endpoint: {e}")
-        # This will catch errors like agent not found, etc.
+        logger.exception("Error in chat endpoint")
         raise HTTPException(status_code=500, detail=str(e))
 
 
