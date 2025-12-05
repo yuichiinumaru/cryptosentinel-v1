@@ -8,7 +8,10 @@ from typing import Optional
 from agno.tools.toolkit import Toolkit
 from pydantic import BaseModel, Field
 from web3 import Web3
-from web3.middleware import geth_poa_middleware
+try:
+    from web3.middleware import geth_poa_middleware
+except ImportError:
+    from web3.middleware import ExtraDataToPOAMiddleware as geth_poa_middleware
 
 # Configure logging
 logger = logging.getLogger(__name__)

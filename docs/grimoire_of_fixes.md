@@ -59,3 +59,40 @@
 
 **The Immortal Code:**
 *(See `backend/tools/risk_management.py` and `backend/tools/portfolio.py`)*
+
+## 💀 Rite of Resurrection: Configuration - Zero Trust
+
+**The Rot (Original Sin):**
+> "Key rotation is a lie... Module level singleton initialized at import."
+
+**The Purification Strategy:**
+*   **True Rotation:** Implemented random selection from `gemini_api_keys`.
+*   **Validation:** Crash immediately if keys are missing or invalid (`ValueError`).
+*   **Cleanup:** Removed module-level `shared_model` side effect.
+
+**The Immortal Code:**
+*(See `backend/config.py`)*
+
+## 💀 Rite of Resurrection: Protocol - Precision
+
+**The Rot (Original Sin):**
+> "Uses float for amount... Floating point arithmetic is forbidden in finance."
+
+**The Purification Strategy:**
+*   **Type Safety:** Replaced `float` with `Decimal` in `TradeOrder`, `TradeResult`, and other financial models.
+*   **Immortal Math:** Ensures precision for all monetary values.
+
+**The Immortal Code:**
+*(See `backend/protocol.py`)*
+
+## 💀 Rite of Resurrection: Agents - Clean Initialization
+
+**The Rot (Original Sin):**
+> "Storage execution at module level... Spaghetti Factory."
+
+**The Purification Strategy:**
+*   **Lazy Loading:** Wrapped storage initialization in `get_storage()`.
+*   **Safe Dependency:** Updated Team to use `Config.get_model()` instead of relying on the fragile global `shared_model`.
+
+**The Immortal Code:**
+*(See `backend/agents.py`)*
