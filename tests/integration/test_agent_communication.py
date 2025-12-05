@@ -9,13 +9,11 @@ import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
 
 # Assuming the agent and tool definitions are in these modules
-from backend.agents import market_analyst, trader_agent, deep_trader_manager, portfolio_manager, crypto_trading_team
+from backend.agents import market_analyst, trader_agent, deep_trader_manager, portfolio_manager, get_crypto_trading_team
 from backend.tools.market_data import fetch_market_data
 from backend.tools.token_security import check_token_security
-from backend.tools.dex import execute_swap
+from backend.tools.dex import dex_toolkit
 from backend.tools.portfolio import get_portfolio
-from backend.tools.wallet import get_account_balance
-
 
 class TestAgentCommunication(unittest.TestCase):
 
@@ -23,7 +21,7 @@ class TestAgentCommunication(unittest.TestCase):
     @patch('backend.tools.token_security.requests.get')
     @patch('backend.tools.dex.Web3')
     @patch('backend.tools.wallet.Web3')
-    @patch('backend.agents.Gemini')
+    @patch('agno.models.google.Gemini')
     def test_trading_workflow(self, MockGemini, MockWalletWeb3, MockDexWeb3, mock_requests_get, MockCoinGeckoAPI):
         print("Running test_trading_workflow...")
         # 1. Mock external dependencies
@@ -57,7 +55,8 @@ class TestAgentCommunication(unittest.TestCase):
 
 
         # 2. Setup Agency and mock agent interactions
-        team = crypto_trading_team
+        # RESURRECTION FIX: Use Factory
+        team = get_crypto_trading_team("test-session")
 
         # We need to mock the `invoke` method of the agents to simulate communication
         market_analyst.invoke = MagicMock(return_value="Recommend buying Bitcoin.")
@@ -66,7 +65,7 @@ class TestAgentCommunication(unittest.TestCase):
 
         # Mock tools to track calls
         market_analyst.tools = [MagicMock(spec=fetch_market_data), MagicMock(spec=check_token_security)]
-        trader_agent.tools = [MagicMock(spec=execute_swap), MagicMock(spec=get_portfolio), MagicMock(spec=get_account_balance)]
+        trader_agent.tools = [MagicMock(spec=dex_toolkit.execute_swap), MagicMock(spec=get_portfolio), MagicMock()]
         deep_trader_manager.tools = []
         portfolio_manager.tools = []
 

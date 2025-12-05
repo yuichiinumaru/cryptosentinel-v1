@@ -35,9 +35,6 @@ class SecurityConfig:
         if not self._api_key or len(self._api_key) < 32:
             raise ValueError("FATAL: API_KEY env var missing or too weak (min 32 chars).")
         # Store hash in memory to avoid keeping plain text key if possible
-        # Store hash in memory to avoid keeping plain text key if possible,
-        # or just compare directly if simple. For this Rite, we compare directly
-        # but safely.
 
     def validate(self, input_key: str) -> bool:
         return secrets.compare_digest(self._api_key, input_key)
@@ -93,8 +90,6 @@ We destroy the Singleton.
 from agno.agent import Agent
 from agno.team.team import Team
 from typing import List
-
-# ... Agent Definitions ...
 
 def create_user_team(session_id: str) -> Team:
     """

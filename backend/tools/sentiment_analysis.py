@@ -7,7 +7,6 @@ import nltk
 # Download the VADER lexicon if it's not already downloaded
 try:
     nltk.data.find('sentiment/vader_lexicon.zip')
-except LookupError:  # pragma: no cover - depends on environment state
 except LookupError:
     nltk.download('vader_lexicon')
 

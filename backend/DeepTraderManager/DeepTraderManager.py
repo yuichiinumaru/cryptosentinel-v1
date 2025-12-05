@@ -1,8 +1,8 @@
 import os
 from agno.agent import Agent
 from agno.models.google import Gemini
-from backend.tools.risk_management import RiskManagementToolkit
-from backend.tools.strategy import StrategyToolkit
+from backend.tools.risk_management import risk_management_toolkit
+from backend.tools.strategy import strategy_toolkit
 from backend.tools.market_data import fetch_market_data
 from backend.khala_integration import KhalaMemoryToolkit
 
@@ -15,7 +15,7 @@ deep_trader_manager = Agent(
     name="DeepTraderManager",
     description="Gerencia a equipe DeepTrader, define metas, monitora riscos e otimiza a alocação de capital.",
     instructions=instructions,
-    tools=[RiskManagementToolkit(), StrategyToolkit(), fetch_market_data, KhalaMemoryToolkit()],
+    tools=[risk_management_toolkit, strategy_toolkit, fetch_market_data, KhalaMemoryToolkit()],
     model=Gemini(
         id=os.getenv("gemini_model", "gemini-1.5-flash-latest"),
         api_key=os.getenv("gemini_api_key"),
