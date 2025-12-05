@@ -32,7 +32,7 @@ _storage = None
 def get_storage() -> Storage:
     """
     Returns the singleton storage instance.
-    Initializes safely using SQLAlchemy pooling.
+    Initializes safely using SQLAlchemy pooling (configured with WAL in sqlite.py).
     """
     global _storage
     if _storage is None:
@@ -47,24 +47,36 @@ def get_storage() -> Storage:
 # Initialize storage (lazy-ish, but accessible globally)
 storage = get_storage()
 
-# Define the team with all 12 agents
-# We use a singleton team for now to maintain conversation state if held in-memory.
-# In a robust system, state should be externalized (DB) and Team re-created per request/session.
-crypto_trading_team = Team(
-    members=[
-        deep_trader_manager,
-        market_analyst,
-        trader_agent,
-        portfolio_manager,
-        analista_fundamentalista,
-        analista_de_sentimento,
-        risk_analyst,
-        strategy_agent,
-        asset_manager,
-        compliance_officer,
-        learning_coordinator,
-        dev_agent,
-    ],
-    name="CryptoSentinelTeam",
-    model=Config.get_model(), # Use the safe Config
-)
+def get_crypto_trading_team(session_id: str) -> Team:
+    """
+    Factory function to create a Team instance for a specific user session.
+    Ensures isolation of conversation history and context.
+
+    Args:
+        session_id: Unique identifier for the user session (e.g. from API Key hash).
+    """
+    if not session_id:
+        raise ValueError("Session ID is required to create a trading team.")
+
+    # We recreate the team structure for each request/session.
+
+    return Team(
+        members=[
+            deep_trader_manager,
+            market_analyst,
+            trader_agent,
+            portfolio_manager,
+            analista_fundamentalista,
+            analista_de_sentimento,
+            risk_analyst,
+            strategy_agent,
+            asset_manager,
+            compliance_officer,
+            learning_coordinator,
+            dev_agent,
+        ],
+        name=f"CryptoSentinelTeam-{session_id}",
+        session_id=session_id, # Scopes the memory in storage
+        model=Config.get_model(),
+        # storage=storage, # Removed as Team doesn't accept it directly or incompatible type
+    )

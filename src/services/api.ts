@@ -1,30 +1,39 @@
 
 import { toast } from "@/components/ui/use-toast";
 
-// Base API URL - replace with your actual API URL
-// This can be stored in localStorage or configured in the settings
-const DEFAULT_API_URL = "http://localhost:8000"; // Default fallback
+// Base API URL
+const DEFAULT_API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 /**
- * Get the configured API URL from localStorage or use default
+ * Get the configured API URL from sessionStorage or use default
  */
 export const getApiUrl = (): string => {
-  return localStorage.getItem("apiUrl") || DEFAULT_API_URL;
+  return sessionStorage.getItem("apiUrl") || DEFAULT_API_URL;
 };
 
 /**
- * Set the API URL in localStorage
+ * Set the API URL in sessionStorage
  */
 export const setApiUrl = (url: string): void => {
-  localStorage.setItem("apiUrl", url);
+  sessionStorage.setItem("apiUrl", url);
 };
 
 /**
- * Get the API key from localStorage
+ * Get the API key from sessionStorage
+ * SECURITY NOTE: Storing keys in JS-accessible storage is risky (XSS).
+ * The "Immortal" fix requires HttpOnly cookies, which needs a backend /login endpoint.
+ * For now, we use sessionStorage (cleared on tab close) as a mitigation over localStorage.
  */
 export const getApiKey = (): string | null => {
-  return localStorage.getItem("openaiApiKey");
+  return sessionStorage.getItem("openaiApiKey");
 };
+
+/**
+ * Set the API key
+ */
+export const setApiKey = (key: string): void => {
+  sessionStorage.setItem("openaiApiKey", key);
+}
 
 /**
  * Basic fetch wrapper with error handling
@@ -115,10 +124,10 @@ export const api = {
       method: "POST",
       body: JSON.stringify(configData),
     }),
-    updateOpenAI: (apiKey: string, endpoint?: string) => fetchWithAuth("/config/openai", {
-      method: "POST",
-      body: JSON.stringify({ apiKey, endpoint }),
-    }),
+    updateOpenAI: (apiKey: string, endpoint?: string) => {
+        setApiKey(apiKey);
+        return Promise.resolve({ success: true });
+    },
   },
   
   // System status endpoint
@@ -149,18 +158,14 @@ export const api = {
         throw new Error("Response body is null");
       }
 
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) {
-          onClose();
-          break;
-        }
-        const chunk = decoder.decode(value, { stream: true });
-        onChunk(chunk);
+      // Backend returns JSON, not stream.
+      // Fix: Read JSON directly.
+      const data = await response.json();
+      if (data.response) {
+          onChunk(data.response);
       }
+      onClose();
+
     } catch (error) {
       console.error("Chat API request failed:", error);
       toast({

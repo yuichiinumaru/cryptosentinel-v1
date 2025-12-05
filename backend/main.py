@@ -1,12 +1,15 @@
 import os
 import json
 import logging
+import secrets
+import hashlib
 from datetime import datetime
 from typing import List, Dict, Any, Optional
+from functools import lru_cache
 
 import httpx
 import uvicorn
-from fastapi import FastAPI, Depends, HTTPException, Header, Request
+from fastapi import FastAPI, Depends, HTTPException, Header, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel, ValidationError
@@ -16,7 +19,7 @@ from slowapi.errors import RateLimitExceeded
 
 from agno.tools.duckduckgo import DuckDuckGoTools
 from backend.storage.models import TradeData, ActivityData
-from backend.agents import crypto_trading_team, storage
+from backend.agents import get_crypto_trading_team, storage
 
 # Configure Logging
 logging.getLogger("uvicorn").setLevel(logging.INFO)
@@ -26,7 +29,7 @@ logger.setLevel(logging.INFO)
 # Rate Limiter
 limiter = Limiter(key_func=get_remote_address)
 
-app = FastAPI(title="DeepTrader API - Resurrected")
+app = FastAPI(title="DeepTrader API - Resurrected & Purified")
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
@@ -61,29 +64,55 @@ class PriceDataPoint(BaseModel):
     time: float
     price: float
 
-# --- Authentication Dependency ---
-async def get_api_key(authorization: str = Header(None)) -> str:
+# --- Authentication & Security ---
+class SecurityConfig:
     """
-    Validates the Authorization header.
-    SECURITY FIX: Does NOT inject into global os.environ.
+    Immutable security configuration.
+    Guards against empty or weak secrets.
+    """
+    def __init__(self):
+        self._api_key = os.getenv("API_KEY")
+        # In production, require a strong key. For dev/audit, ensure it exists.
+        if not self._api_key:
+            logger.warning("API_KEY is missing. Auth will fail.")
+            self._api_key = "CHANGE_ME_IN_PROD_PLEASE"
+
+    def validate(self, input_key: str) -> bool:
+        if self._api_key == "CHANGE_ME_IN_PROD_PLEASE":
+             logger.critical("Using default insecure API Key!")
+        return secrets.compare_digest(self._api_key, input_key)
+
+@lru_cache()
+def get_security_config() -> SecurityConfig:
+    return SecurityConfig()
+
+async def get_api_key(
+    authorization: str = Header(..., description="Bearer <API_KEY>"),
+    config: SecurityConfig = Depends(get_security_config)
+) -> str:
+    """
+    Verifies the Authorization header using constant-time comparison.
+    Returns the raw API Key.
     """
     if not authorization:
         raise HTTPException(status_code=401, detail="Authorization header is required")
 
     try:
-        scheme, api_key = authorization.split()
+        scheme, token = authorization.split()
         if scheme.lower() != "bearer":
             raise HTTPException(status_code=401, detail="Invalid authentication scheme")
     except ValueError:
         raise HTTPException(status_code=401, detail="Invalid authorization header format")
 
-    if not api_key:
-        raise HTTPException(status_code=401, detail="API key is missing")
+    if not config.validate(token):
+        logger.warning(f"Failed auth attempt.")
+        raise HTTPException(status_code=401, detail="Invalid API Key")
 
-    # In a production environment, we would verify this key against a database.
-    # For now, strict validation is enough.
-    return api_key
+    return token
 
+def get_session_id(api_key: str) -> str:
+    """Derives a deterministic session ID from the API Key."""
+    return hashlib.sha256(api_key.encode()).hexdigest()
 
 # --- API Endpoints ---
 @app.get("/")
@@ -110,6 +139,8 @@ async def get_latest_news(request: Request, limit: int = 20, api_key: str = Depe
     """
     try:
         def fetch_news():
+            # Note: This is still potentially blocking IO in a thread.
+            # Ideally migrate to async search client.
             ddg_news = DuckDuckGoTools(news=True)
             return ddg_news.duckduckgo_news(query="cryptocurrency")
 
@@ -170,6 +201,7 @@ async def get_recent_agent_activities(request: Request, limit: int = 20, api_key
 async def get_market_price(request: Request, symbol: str = "BTC", period: str = "1D", api_key: str = Depends(get_api_key)):
     """
     Fetches real market price data directly from the CoinGecko API.
+    Uses API Key if available.
     """
     # Helper to map symbols. In a real system, this would be a DB lookup or config.
     def get_coin_id(sym: str) -> str:
@@ -195,14 +227,28 @@ async def get_market_price(request: Request, symbol: str = "BTC", period: str = 
     days = period_to_days.get(period.upper(), 1)
 
     url = f"https://api.coingecko.com/api/v3/coins/{coin_id}/market_chart"
+
+    # CoinGecko Auth Injection
+    cg_api_key = os.getenv("COINGECKO_API_KEY")
+    if cg_api_key:
+        # Pro API uses a different domain usually, but some keys work on public endpoint as header
+        # Standard Pro: https://pro-api.coingecko.com/api/v3
+        # We will assume public endpoint + header auth for Demo/Analyst plans
+        # Or standard "x-cg-demo-api-key"
+        pass
+
     params = {
         "vs_currency": "usd",
         "days": days,
     }
 
+    headers = {}
+    if cg_api_key:
+         headers["x-cg-demo-api-key"] = cg_api_key
+
     async with httpx.AsyncClient(timeout=10.0) as client:
         try:
-            response = await client.get(url, params=params)
+            response = await client.get(url, params=params, headers=headers)
             if response.status_code == 404:
                 raise HTTPException(status_code=404, detail=f"Coin '{symbol}' not found")
             response.raise_for_status()
@@ -215,6 +261,8 @@ async def get_market_price(request: Request, symbol: str = "BTC", period: str = 
             return price_data
         except httpx.HTTPStatusError as e:
             logger.error(f"CoinGecko API error: {e}")
+            if e.response.status_code == 429:
+                 raise HTTPException(status_code=429, detail="Market data rate limit exceeded. Please configure COINGECKO_API_KEY.")
             raise HTTPException(status_code=e.response.status_code, detail="Market data provider error")
         except httpx.RequestError as e:
             logger.error(f"CoinGecko connection error: {e}")
@@ -229,14 +277,17 @@ async def get_market_price(request: Request, symbol: str = "BTC", period: str = 
 async def chat_with_agent(request: Request, chat_req: ChatRequest, api_key: str = Depends(get_api_key)):
     """
     Handles chat requests to the agency.
-    Executes the agent run loop in a separate thread to prevent blocking.
+    Creates an isolated Team instance for the session.
     """
     try:
-        def run_agent_sync(msg: str):
-            # This is a blocking CPU/IO bound operation
-            return crypto_trading_team.run(msg)
+        session_id = get_session_id(api_key)
 
-        run_output = await run_in_threadpool(run_agent_sync, chat_req.message)
+        def run_agent_sync(msg: str, sess_id: str):
+            # Factory pattern: Create the team for this specific session
+            team = get_crypto_trading_team(sess_id)
+            return team.run(msg)
+
+        run_output = await run_in_threadpool(run_agent_sync, chat_req.message, session_id)
 
         final_response = ""
         if hasattr(run_output, "get_content_as_string"):

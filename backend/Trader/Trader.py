@@ -2,7 +2,7 @@ import os
 from agno.agent import Agent
 from agno.models.google import Gemini
 from backend.tools.dex import DexToolkit
-from backend.tools.portfolio import PortfolioToolkit
+from backend.tools.portfolio import portfolio_toolkit
 from backend.tools.wallet import WalletToolkit
 
 # Load instructions from the markdown file
@@ -14,7 +14,7 @@ trader_agent = Agent(
     name="Trader",
     description="Executa ordens de compra e venda em DEXs e CEXs, e gerencia o portfólio.",
     instructions=instructions,
-    tools=[DexToolkit(), PortfolioToolkit(), WalletToolkit()],
+    tools=[DexToolkit(), portfolio_toolkit, WalletToolkit()],
     model=Gemini(
         id=os.getenv("gemini_model", "gemini-1.5-flash-latest"),
         api_key=os.getenv("gemini_api_key"),

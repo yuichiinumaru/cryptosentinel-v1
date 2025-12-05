@@ -1,10 +1,11 @@
 import json
 import logging
+import os
 from typing import List, Optional, Dict, Any
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, text, event
 from sqlalchemy.pool import QueuePool
 from sqlalchemy.engine import Row
 
@@ -21,24 +22,29 @@ from .models import (
 
 logger = logging.getLogger(__name__)
 
+def _configure_sqlite(dbapi_connection, connection_record):
+    cursor = dbapi_connection.cursor()
+    cursor.execute("PRAGMA journal_mode=WAL")
+    cursor.execute("PRAGMA synchronous=NORMAL")
+    cursor.close()
+
 class SqliteStorage(Storage):
     """
     Thread-safe SQLite storage implementation using SQLAlchemy connection pooling.
-    Resurrected from the corrupt original.
+    Fortified with WAL mode and Decimal precision.
     """
 
     def __init__(self, url: str):
         # Normalize URL
-        if not url.startswith("sqlite"):
-            # Handle local file paths
+        if not url.startswith("sqlite:"):
             if "://" not in url:
                 url = f"sqlite:///{url}"
-            else:
-                 # Assume it's a valid url
-                 pass
 
-        # Check_same_thread=False is necessary for SQLite when using a pool across threads,
-        # provided we handle the connections properly (which QueuePool/Engine does).
+        # Ensure it starts with sqlite:/// if it was just sqlite:path
+        # Actually sqlalchemy handles sqlite:///file.db
+
+        # WAL mode handles concurrency better.
+        # check_same_thread=False is needed for QueuePool, but WAL makes it safer.
         self.engine = create_engine(
             url,
             poolclass=QueuePool,
@@ -46,9 +52,16 @@ class SqliteStorage(Storage):
             max_overflow=10,
             connect_args={"check_same_thread": False}
         )
+
+        # Listen for connect event to set WAL mode
+        event.listen(self.engine, "connect", _configure_sqlite)
+
         self._create_tables()
 
+    # ... (Rest of the class is same as previous overwrite) ...
+
     def _create_tables(self):
+        # RESURRECTION FIX: Use TEXT for financial values to prevent precision loss.
         queries = [
             """
             CREATE TABLE IF NOT EXISTS teams (
@@ -72,10 +85,10 @@ class SqliteStorage(Storage):
                 id TEXT PRIMARY KEY,
                 token TEXT,
                 action TEXT,
-                amount REAL,
-                price REAL,
+                amount TEXT,
+                price TEXT,
                 timestamp TEXT,
-                profit REAL,
+                profit TEXT,
                 status TEXT
             );
             """,
@@ -94,10 +107,10 @@ class SqliteStorage(Storage):
                 symbol TEXT,
                 chain TEXT,
                 coingecko_id TEXT,
-                amount REAL,
-                average_price REAL,
-                last_price REAL,
-                last_valuation_usd REAL,
+                amount TEXT,
+                average_price TEXT,
+                last_price TEXT,
+                last_valuation_usd TEXT,
                 updated_at TEXT
             );
             """,
@@ -227,6 +240,7 @@ class SqliteStorage(Storage):
             return workflows
 
     def add_trade(self, trade: TradeData) -> None:
+        # RESURRECTION FIX: Remove float casting. Store as str.
         query = """
         INSERT INTO trades (id, token, action, amount, price, timestamp, profit, status)
         VALUES (:id, :token, :action, :amount, :price, :timestamp, :profit, :status)
@@ -235,10 +249,10 @@ class SqliteStorage(Storage):
             "id": trade.id,
             "token": trade.token,
             "action": trade.action,
-            "amount": float(trade.amount), # CAST DECIMAL TO FLOAT
-            "price": float(trade.price),
+            "amount": str(trade.amount),
+            "price": str(trade.price),
             "timestamp": trade.timestamp.isoformat(),
-            "profit": float(trade.profit) if trade.profit is not None else 0.0,
+            "profit": str(trade.profit) if trade.profit is not None else "0",
             "status": trade.status,
         }
         with self.engine.connect() as conn:
@@ -291,6 +305,7 @@ class SqliteStorage(Storage):
             return positions
 
     def upsert_portfolio_position(self, position: PortfolioPosition) -> None:
+        # RESURRECTION FIX: Remove float casting.
         query = """
         INSERT INTO portfolio_positions (
             token_address, symbol, chain, coingecko_id, amount,
@@ -314,10 +329,10 @@ class SqliteStorage(Storage):
             "symbol": position.symbol,
             "chain": position.chain,
             "coingecko_id": position.coingecko_id,
-            "amount": float(position.amount),
-            "average_price": float(position.average_price),
-            "last_price": float(position.last_price) if position.last_price else None,
-            "last_valuation_usd": float(position.last_valuation_usd) if position.last_valuation_usd else None,
+            "amount": str(position.amount),
+            "average_price": str(position.average_price),
+            "last_price": str(position.last_price) if position.last_price else None,
+            "last_valuation_usd": str(position.last_valuation_usd) if position.last_valuation_usd else None,
             "updated_at": position.updated_at.isoformat(),
         }
         with self.engine.connect() as conn:
