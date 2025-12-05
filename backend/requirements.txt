@@ -1,5 +1,5 @@
-fastapi
-uvicorn[standard]
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
 agno
 python-dotenv
 requests
@@ -12,12 +12,9 @@ numpy
 TA-Lib
 pandas-ta
 ccxt
-backtrader
-optuna
-chromadb
-langchain
 web3
-nltk
 surrealdb
--e ../packages/khala-agentmemory
 httpx
+slowapi
+sqlalchemy
+-e ../packages/khala-agentmemory

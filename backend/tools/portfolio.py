@@ -7,7 +7,6 @@ from pycoingecko import CoinGeckoAPI
 from pydantic import BaseModel, Field
 
 from backend.storage.models import PortfolioPosition
-from agno.tools.toolkit import Toolkit
 from backend.storage.sqlite import SqliteStorage
 
 
@@ -66,10 +65,10 @@ def get_portfolio() -> GetPortfolioOutput:
             PortfolioItem(
                 token_address=position.token_address,
                 symbol=position.symbol,
-                amount=position.amount,
+                amount=float(position.amount), # CAST DECIMAL TO FLOAT for response
                 chain=position.chain,
                 coingecko_id=position.coingecko_id,
-                average_price=position.average_price,
+                average_price=float(position.average_price),
                 current_price=price,
                 value_usd=value,
                 last_updated=position.updated_at,
@@ -112,12 +111,17 @@ def update_portfolio(input: UpdatePortfolioInput) -> None:
             updated_at=now,
         )
 
-    new_amount = position.amount + input.amount_change
+    # Cast to float for calculation if they are Decimal coming from Pydantic,
+    # but here they are likely float from input or loaded from DB.
+    # To be safe:
+    current_amount = float(position.amount)
+
+    new_amount = current_amount + input.amount_change
     if new_amount < -1e-9:
         raise ValueError("Resulting position amount cannot be negative")
 
     if input.amount_change > 0:
-        total_cost = position.average_price * position.amount + input.price * input.amount_change
+        total_cost = float(position.average_price) * current_amount + input.price * input.amount_change
         position.average_price = total_cost / new_amount if new_amount else input.price
     elif new_amount == 0:
         position.average_price = 0.0
@@ -137,38 +141,3 @@ def update_portfolio(input: UpdatePortfolioInput) -> None:
 portfolio_toolkit = Toolkit(name="portfolio")
 portfolio_toolkit.register(get_portfolio)
 portfolio_toolkit.register(update_portfolio)
-class PortfolioToolkit(Toolkit):
-    def __init__(self, **kwargs):
-        super().__init__(name="portfolio", tools=[
-            self.get_portfolio,
-            self.update_portfolio,
-        ], **kwargs)
-
-    def get_portfolio(self) -> GetPortfolioOutput:
-        """
-        Retrieves the current portfolio from the database and calculates its total value.
-        """
-        storage = SqliteStorage()
-        portfolio_items = storage.get_all_portfolio_items()
-
-        # In a real implementation, you would fetch the current prices for each token
-        # and calculate the total value. For this example, we'll use placeholder values.
-        for item in portfolio_items:
-            item.current_price = 1.0 # Placeholder
-            item.value_usd = item.amount * item.current_price
-
-        total_value = sum(item.value_usd for item in portfolio_items if item.value_usd is not None)
-
-        return GetPortfolioOutput(items=portfolio_items, total_value_usd=total_value)
-
-    def update_portfolio(self, input: UpdatePortfolioInput) -> None:
-        """
-        Updates the portfolio in the database after a trade.
-        """
-        storage = SqliteStorage()
-        storage.update_portfolio_item(
-            token_address=input.token_address,
-            symbol=input.symbol,
-            amount_change=input.amount_change,
-            price=input.price
-        )
