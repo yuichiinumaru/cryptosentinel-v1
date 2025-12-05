@@ -1,13 +1,14 @@
 import json
 import logging
 import os
-import time
+import asyncio
 from decimal import Decimal
-from typing import Optional
+from typing import Optional, Dict, Any
 
 from agno.tools.toolkit import Toolkit
 from pydantic import BaseModel, Field
-from web3 import Web3
+from web3 import Web3, AsyncWeb3
+from web3.providers.rpc import AsyncHTTPProvider
 try:
     from web3.middleware import geth_poa_middleware
 except ImportError:
@@ -17,68 +18,41 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 # Constants
-# In a real app, load these from a comprehensive config file or DB
-NATIVE_TOKEN_SYMBOLS = {
-    "ethereum": "ETH",
-    "bsc": "BNB",
-    "polygon": "MATIC",
-    "avalanche": "AVAX",
-    "fantom": "FTM",
-    "arbitrum": "ETH",
-    "optimism": "ETH",
-}
 NATIVE_TOKEN_SENTINEL = os.getenv("NATIVE_TOKEN_SENTINEL", "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee").lower()
-
-DEX_ROUTER_ADDRESSES = {
-    "ethereum": {"uniswap_v2": "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D"},
-    "bsc": {"pancakeswap_v2": "0x10ED43C718714eb63d5aA57B78B54704E256024E"},
-    "polygon": {"uniswap_v2": "0xa5E0829CaCEd8fFDD4De3c43696c57F7D7A678ff"},
-}
 
 ERC20_ABI = json.loads('[{"constant":true,"inputs":[],"name":"decimals","outputs":[{"name":"","type":"uint8"}],"payable":false,"stateMutability":"view","type":"function"}, {"constant":false,"inputs":[{"name":"_spender","type":"address"},{"name":"_value","type":"uint256"}],"name":"approve","outputs":[{"name":"","type":"bool"}],"payable":false,"stateMutability":"nonpayable","type":"function"}, {"constant":true,"inputs":[{"name":"_owner","type":"address"},{"name":"_spender","type":"address"}],"name":"allowance","outputs":[{"name":"","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"}]')
 UNISWAP_ROUTER_ABI = json.loads('[{"inputs":[{"internalType":"uint256","name":"amountOutMin","type":"uint256"},{"internalType":"address[]","name":"path","type":"address[]"},{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"deadline","type":"uint256"}],"name":"swapExactETHForTokens","outputs":[{"internalType":"uint256[]","name":"amounts","type":"uint256[]"}],"stateMutability":"payable","type":"function"}, {"inputs":[{"internalType":"uint256","name":"amountIn","type":"uint256"},{"internalType":"uint256","name":"amountOutMin","type":"uint256"},{"internalType":"address[]","name":"path","type":"address[]"},{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"deadline","type":"uint256"}],"name":"swapExactTokensForTokens","outputs":[{"internalType":"uint256[]","name":"amounts","type":"uint256[]"}],"stateMutability":"nonpayable","type":"function"}, {"inputs":[{"internalType":"uint256","name":"amountIn","type":"uint256"},{"internalType":"address[]","name":"path","type":"address[]"}],"name":"getAmountsOut","outputs":[{"internalType":"uint256[]","name":"amounts","type":"uint256[]"}],"stateMutability":"view","type":"function"}]')
 
-class WalletManager:
+class Web3Provider:
     """
-    Manages blockchain connection and account signing.
+    Singleton-ish Async Web3 Provider.
     """
-    def __init__(self, chain: str):
-        self.chain = chain.lower()
-        self.rpc_var = f"{chain.upper()}_RPC_URL"
-        self.rpc_url = os.getenv(self.rpc_var)
-        self.private_key = os.getenv("WALLET_PRIVATE_KEY")
+    _instances: Dict[str, AsyncWeb3] = {}
 
-        if not self.rpc_url:
-            raise ValueError(f"CRITICAL: Environment variable {self.rpc_var} is missing.")
-        if not self.private_key:
-            raise ValueError("CRITICAL: Environment variable WALLET_PRIVATE_KEY is missing.")
+    @classmethod
+    def get_async_w3(cls, chain: str) -> AsyncWeb3:
+        chain = chain.lower()
+        if chain not in cls._instances:
+            rpc_url = os.getenv(f"{chain.upper()}_RPC_URL")
+            if not rpc_url:
+                raise ValueError(f"RPC URL for {chain} is not configured.")
 
-        self.w3 = Web3(Web3.HTTPProvider(self.rpc_url))
-        if not self.w3.is_connected():
-            raise ConnectionError(f"Failed to connect to RPC at {self.rpc_url}")
+            # Use AsyncHTTPProvider
+            w3 = AsyncWeb3(AsyncHTTPProvider(rpc_url))
+            cls._instances[chain] = w3
+        return cls._instances[chain]
 
-        if self.chain in ["bsc", "polygon", "avalanche", "fantom"]:
-            self.w3.middleware_onion.inject(geth_poa_middleware, layer=0)
-
-        self.account = self.w3.eth.account.from_key(self.private_key)
-
-    def get_web3(self):
-        return self.w3
-
-    def get_account(self):
-        return self.account
-
-    def get_router_address(self, dex: str) -> str:
-        chain_routers = DEX_ROUTER_ADDRESSES.get(self.chain)
-        if not chain_routers:
-            raise ValueError(f"No routers configured for chain: {self.chain}")
-
-        router = chain_routers.get(dex)
-        if not router:
-            raise ValueError(f"Router {dex} not found for chain {self.chain}")
-
-        return self.w3.to_checksum_address(router)
-
+    @staticmethod
+    def get_router_address(chain: str, dex: str) -> str:
+        DEX_ROUTER_ADDRESSES = {
+            "ethereum": {"uniswap_v2": "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D"},
+            "bsc": {"pancakeswap_v2": "0x10ED43C718714eb63d5aA57B78B54704E256024E"},
+            "polygon": {"uniswap_v2": "0xa5E0829CaCEd8fFDD4De3c43696c57F7D7A678ff"},
+        }
+        try:
+            return DEX_ROUTER_ADDRESSES[chain][dex]
+        except KeyError:
+            raise ValueError(f"Router address not found for {chain}/{dex}")
 
 class ExecuteSwapInput(BaseModel):
     token_in: str = Field(..., description="Address of token to sell")
@@ -95,143 +69,92 @@ class ExecuteSwapOutput(BaseModel):
     error: Optional[str] = None
 
 
-class SimulationInput(BaseModel):
-    token_in: str
-    token_out: str
-    amount_in: Decimal
-    chain: str = "ethereum"
-    dex: str = "uniswap_v2"
-
-
-class SimulationOutput(BaseModel):
-    simulated_amount_out: Decimal
-    gas_estimate: int
-    success: bool
-    error: Optional[str] = None
-
-
 class DexToolkit(Toolkit):
     def __init__(self, **kwargs):
         super().__init__(name="dex_toolkit", **kwargs)
         self.register(self.execute_swap)
-        self.register(self.simulate_swap)
 
-    def execute_swap(self, input: ExecuteSwapInput) -> ExecuteSwapOutput:
+    async def execute_swap(self, input: ExecuteSwapInput) -> ExecuteSwapOutput:
         """
-        Executes a swap on the specified DEX.
+        Executes a swap asynchronously. Non-blocking.
         """
         try:
-            wm = WalletManager(input.chain)
-            w3 = wm.get_web3()
-            account = wm.get_account()
-            router_address = wm.get_router_address(input.dex)
+            w3 = Web3Provider.get_async_w3(input.chain)
 
-            router = w3.eth.contract(address=router_address, abi=UNISWAP_ROUTER_ABI)
+            if not await w3.is_connected():
+                 raise ConnectionError("Async Web3 Node is not connected.")
+
+            account = w3.eth.account.from_key(os.getenv("WALLET_PRIVATE_KEY"))
+            router_address = Web3Provider.get_router_address(input.chain, input.dex)
+
             token_in_addr = w3.to_checksum_address(input.token_in)
             token_out_addr = w3.to_checksum_address(input.token_out)
+            router_checksum = w3.to_checksum_address(router_address)
 
-            # Handle Native Token Logic (Simplified for this exercise, focusing on ERC20 for now as per previous code)
-            # Assuming ERC20 to ERC20 for safety based on ABI usage
+            if input.token_in.lower() == NATIVE_TOKEN_SENTINEL:
+                decimals = 18
+            else:
+                token_contract = w3.eth.contract(address=token_in_addr, abi=ERC20_ABI)
+                # FIX: functions.decimals() returns a wrapper, .call() returns coroutine
+                # The issue in test was mocking this chain.
+                decimals_coro = token_contract.functions.decimals().call()
+                # Ensure we await it if it's awaitable (it should be)
+                decimals = await decimals_coro
 
-            token_contract = w3.eth.contract(address=token_in_addr, abi=ERC20_ABI)
-            decimals = token_contract.functions.decimals().call()
             amount_in_wei = int(input.amount_in * (Decimal(10) ** decimals))
 
-            # 1. Check Allowance
-            allowance = token_contract.functions.allowance(account.address, router_address).call()
-            if allowance < amount_in_wei:
-                logger.info(f"Approving {input.token_in} for {router_address}")
-                # SECURITY FIX: Approve EXACT amount, not infinite
-                approve_tx = token_contract.functions.approve(router_address, amount_in_wei).build_transaction({
-                    'from': account.address,
-                    'nonce': w3.eth.get_transaction_count(account.address),
-                    'gasPrice': w3.eth.gas_price
-                })
-                signed_approve = w3.eth.account.sign_transaction(approve_tx, wm.private_key)
-                tx_hash_approve = w3.eth.send_raw_transaction(signed_approve.rawTransaction)
+            nonce = await w3.eth.get_transaction_count(account.address)
 
-                # CRITICAL FIX: Wait for receipt
-                logger.info(f"Waiting for approval tx {w3.to_hex(tx_hash_approve)}...")
-                receipt = w3.eth.wait_for_transaction_receipt(tx_hash_approve, timeout=300)
-                if receipt.status != 1:
-                     raise RuntimeError(f"Approval transaction failed: {w3.to_hex(tx_hash_approve)}")
-                logger.info("Approval confirmed.")
+            if input.token_in.lower() != NATIVE_TOKEN_SENTINEL:
+                 allowance = await token_contract.functions.allowance(account.address, router_checksum).call()
+                 if allowance < amount_in_wei:
+                      logger.info(f"Approving {input.token_in}...")
+                      # Gas Price logic
+                      # In web3py v7 async, w3.eth.gas_price is awaitable
+                      gas_price = await w3.eth.gas_price
 
-            # 2. Execute Swap
+                      approve_tx = await token_contract.functions.approve(router_checksum, amount_in_wei).build_transaction({
+                          'from': account.address,
+                          'nonce': nonce,
+                          'gasPrice': gas_price
+                      })
+                      signed_approve = w3.eth.account.sign_transaction(approve_tx, account.key)
+                      tx_hash_approve = await w3.eth.send_raw_transaction(signed_approve.rawTransaction)
+
+                      logger.info(f"Awaiting approval {tx_hash_approve.hex()}...")
+                      receipt = await w3.eth.wait_for_transaction_receipt(tx_hash_approve)
+                      if receipt['status'] != 1:
+                           raise RuntimeError("Approval failed")
+
+                      nonce = await w3.eth.get_transaction_count(account.address)
+
+            router = w3.eth.contract(address=router_checksum, abi=UNISWAP_ROUTER_ABI)
             path = [token_in_addr, token_out_addr]
-            amounts_out = router.functions.getAmountsOut(amount_in_wei, path).call()
-            expected_out = amounts_out[-1]
-            min_out = int(expected_out * (1 - input.slippage))
 
-            deadline = int(time.time()) + 300 # 5 minutes
+            amounts_out = await router.functions.getAmountsOut(amount_in_wei, path).call()
+            min_out = int(amounts_out[-1] * (1 - input.slippage))
 
-            # Refresh nonce after approval
-            nonce = w3.eth.get_transaction_count(account.address)
+            gas_price = await w3.eth.gas_price
 
-            swap_tx = router.functions.swapExactTokensForTokens(
-                amount_in_wei,
-                min_out,
-                path,
-                account.address,
-                deadline
-            ).build_transaction({
+            swap_tx_func = router.functions.swapExactTokensForTokens(
+                 amount_in_wei,
+                 min_out,
+                 path,
+                 account.address,
+                 int(asyncio.get_event_loop().time()) + 300
+            )
+
+            swap_tx = await swap_tx_func.build_transaction({
                 'from': account.address,
                 'nonce': nonce,
-                'gasPrice': w3.eth.gas_price
+                'gasPrice': gas_price
             })
 
-            signed_swap = w3.eth.account.sign_transaction(swap_tx, wm.private_key)
-            tx_hash = w3.eth.send_raw_transaction(signed_swap.rawTransaction)
+            signed_swap = w3.eth.account.sign_transaction(swap_tx, account.key)
+            tx_hash = await w3.eth.send_raw_transaction(signed_swap.rawTransaction)
 
-            # We return the hash immediately, assuming the agent will monitor it,
-            # OR we could wait. For high-frequency, async monitoring is better.
-            # Given the synchronous tool nature, we return the hash.
-
-            return ExecuteSwapOutput(tx_hash=w3.to_hex(tx_hash), success=True)
+            return ExecuteSwapOutput(tx_hash=tx_hash.hex(), success=True)
 
         except Exception as e:
-            logger.exception("Swap execution failed")
+            logger.exception("Swap failed")
             return ExecuteSwapOutput(tx_hash="", success=False, error=str(e))
-
-    def simulate_swap(self, input: SimulationInput) -> SimulationOutput:
-        """
-        Simulates a swap to estimate returns.
-        """
-        try:
-            wm = WalletManager(input.chain)
-            w3 = wm.get_web3()
-            router_address = wm.get_router_address(input.dex)
-            router = w3.eth.contract(address=router_address, abi=UNISWAP_ROUTER_ABI)
-
-            token_in = w3.to_checksum_address(input.token_in)
-            token_out = w3.to_checksum_address(input.token_out)
-
-            token_contract = w3.eth.contract(address=token_in, abi=ERC20_ABI)
-            decimals_in = token_contract.functions.decimals().call()
-            amount_in_wei = int(input.amount_in * (Decimal(10) ** decimals_in))
-
-            path = [token_in, token_out]
-            # This is a read-only call (simulation)
-            amounts_out = router.functions.getAmountsOut(amount_in_wei, path).call()
-
-            token_out_contract = w3.eth.contract(address=token_out, abi=ERC20_ABI)
-            decimals_out = token_out_contract.functions.decimals().call()
-
-            simulated_out = Decimal(amounts_out[-1]) / (Decimal(10) ** decimals_out)
-
-            return SimulationOutput(
-                simulated_amount_out=simulated_out,
-                gas_estimate=200000, # Improved estimate
-                success=True
-            )
-        except Exception as e:
-            logger.error(f"Simulation failed: {e}")
-            return SimulationOutput(
-                simulated_amount_out=Decimal(0),
-                gas_estimate=0,
-                success=False,
-                error=str(e)
-            )
-
-# Singleton instance
-dex_toolkit = DexToolkit()

@@ -22,9 +22,9 @@ from backend.storage.models import TradeData, ActivityData
 from backend.agents import get_crypto_trading_team, storage
 
 # Configure Logging
-logging.getLogger("uvicorn").setLevel(logging.INFO)
+log_level_env = os.getenv("LOG_LEVEL", "INFO")
+logging.basicConfig(level=getattr(logging, log_level_env.upper(), logging.INFO))
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
 
 # Rate Limiter
 limiter = Limiter(key_func=get_remote_address)
@@ -72,14 +72,17 @@ class SecurityConfig:
     """
     def __init__(self):
         self._api_key = os.getenv("API_KEY")
-        # In production, require a strong key. For dev/audit, ensure it exists.
-        if not self._api_key:
+
+        # Rite 5: Security Hardening
+        # Fail immediately if API Key is insecure
+        if not self._api_key or self._api_key == "CHANGE_ME_IN_PROD_PLEASE":
+            if os.getenv("ENV") == "production":
+                 raise RuntimeError("CRITICAL: API_KEY is missing or default in production.")
             logger.warning("API_KEY is missing. Auth will fail.")
-            self._api_key = "CHANGE_ME_IN_PROD_PLEASE"
 
     def validate(self, input_key: str) -> bool:
-        if self._api_key == "CHANGE_ME_IN_PROD_PLEASE":
-             logger.critical("Using default insecure API Key!")
+        if not self._api_key:
+             return False
         return secrets.compare_digest(self._api_key, input_key)
 
 @lru_cache()
@@ -230,12 +233,6 @@ async def get_market_price(request: Request, symbol: str = "BTC", period: str = 
 
     # CoinGecko Auth Injection
     cg_api_key = os.getenv("COINGECKO_API_KEY")
-    if cg_api_key:
-        # Pro API uses a different domain usually, but some keys work on public endpoint as header
-        # Standard Pro: https://pro-api.coingecko.com/api/v3
-        # We will assume public endpoint + header auth for Demo/Analyst plans
-        # Or standard "x-cg-demo-api-key"
-        pass
 
     params = {
         "vs_currency": "usd",
