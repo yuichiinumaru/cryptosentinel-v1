@@ -22,7 +22,7 @@ We replace the "Security Theater" with **Zero Trust Authentication**.
 import secrets
 import os
 import hashlib
-from fastapi import Header, HTTPException, status
+from fastapi import Header, HTTPException, status, Depends
 from functools import lru_cache
 
 class SecurityConfig:
@@ -34,6 +34,7 @@ class SecurityConfig:
         self._api_key = os.getenv("API_KEY")
         if not self._api_key or len(self._api_key) < 32:
             raise ValueError("FATAL: API_KEY env var missing or too weak (min 32 chars).")
+        # Store hash in memory to avoid keeping plain text key if possible
         # Store hash in memory to avoid keeping plain text key if possible,
         # or just compare directly if simple. For this Rite, we compare directly
         # but safely.
@@ -103,18 +104,12 @@ def create_user_team(session_id: str) -> Team:
     if not session_id:
         raise ValueError("Session ID cannot be empty.")
 
-    # Re-instantiating agents is cheap if they are stateless.
-    # If Agents hold state, they must also be factories.
-    # Assuming Agents are stateless tool-wrappers:
-
     return Team(
         members=[
-            deep_trader_manager,
-            # ... other agents ...
+            # ... agents ...
         ],
         name=f"CryptoSentinelTeam-{session_id}",
         session_id=session_id,  # Agno uses this for memory scoping
-        model=Config.get_model(),
         storage=get_storage()   # Shared DB, but scoped by session_id
     )
 ```
@@ -161,19 +156,44 @@ class SafeDecimal(TypeDecorator):
             return None
         return Decimal(value)
 
-# Table Definition Update
-"""
-CREATE TABLE IF NOT EXISTS trades (
-    id TEXT PRIMARY KEY,
-    amount TEXT NOT NULL,  -- Was REAL
-    price TEXT NOT NULL,   -- Was REAL
-    ...
-);
-"""
+# Schema Update:
+# amount TEXT NOT NULL
 ```
 
 **Verification Spell:**
-Store `Decimal('0.1') + Decimal('0.2')`. Retrieve it. Assert it equals `Decimal('0.3')` exactly, not `0.30000000000000004`.
+Store `Decimal('0.1') + Decimal('0.2')`. Retrieve it. Assert it equals `Decimal('0.3')` exactly.
+
+---
+
+## 💀 Rite of Resurrection: `backend/storage/sqlite.py` - [Thread Safety]
+
+**The Rot (Original Sin):**
+> "`check_same_thread=False` combined with `QueuePool`. This invites race conditions."
+
+**The Purification Strategy:**
+We enable concurrency safety.
+1.  **WAL Mode:** Enable Write-Ahead Logging for better concurrency.
+2.  **Locking:** Use immediate transactions to prevent locking errors.
+3.  **Pool Type:** If using file-based SQLite with multiple threads, stick to `SingletonThreadPool` or handle properly. But better: just use WAL.
+
+**The Immortal Code:**
+
+```python
+from sqlalchemy import event
+
+def configure_sqlite(dbapi_connection, connection_record):
+    cursor = dbapi_connection.cursor()
+    cursor.execute("PRAGMA journal_mode=WAL")
+    cursor.execute("PRAGMA synchronous=NORMAL")
+    cursor.close()
+
+# In init:
+self.engine = create_engine(url, ...)
+event.listen(self.engine, "connect", configure_sqlite)
+```
+
+**Verification Spell:**
+Run 50 threads inserting rows simultaneously. Verify zero `database is locked` errors.
 
 ---
 
@@ -187,40 +207,63 @@ Store `Decimal('0.1') + Decimal('0.2')`. Retrieve it. Assert it equals `Decimal(
 We introduce **Async IO** and **Connection Pooling**.
 1.  **Singleton Provider:** Initialize `AsyncWeb3` once.
 2.  **Non-Blocking Wait:** Use `await w3.eth.wait_for_transaction_receipt(...)`.
-3.  **Timeout Guards:** Strict timeouts on all network calls.
 
 **The Immortal Code:**
 
 ```python
 from web3 import AsyncWeb3, AsyncHTTPProvider
 from web3.eth import AsyncEth
-import os
 
 class AsyncWalletManager:
     _instance = None
 
     @classmethod
-    async def get_instance(cls, chain: str):
-        # Singleton logic per chain, or global dictionary
+    async def get_instance(cls, rpc_url: str):
         if not cls._instance:
-             # ... init ...
-             pass
+             cls._instance = AsyncWalletManager(rpc_url)
         return cls._instance
 
     def __init__(self, rpc_url: str):
         self.w3 = AsyncWeb3(AsyncHTTPProvider(rpc_url), modules={'eth': (AsyncEth,)})
 
-    async def approve_token(self, token_addr: str, spender: str, amount: int):
-        # ... check allowance ...
-        tx_hash = await self.w3.eth.send_raw_transaction(...)
-
-        # Non-blocking wait!
-        receipt = await self.w3.eth.wait_for_transaction_receipt(tx_hash, timeout=60)
-        return receipt
+    async def wait_tx(self, tx_hash):
+        return await self.w3.eth.wait_for_transaction_receipt(tx_hash, timeout=60)
 ```
 
 **Verification Spell:**
 Run 100 concurrent swaps. Verify the application thread does not freeze.
+
+---
+
+## 💀 Rite of Resurrection: `backend/tools/dex.py` - [Magic Numbers & Config]
+
+**The Rot (Original Sin):**
+> "Hardcoded `NATIVE_TOKEN_SENTINEL`."
+> "Magic `gas_estimate=200000`."
+
+**The Purification Strategy:**
+**No Magic.**
+1.  **Configuration Injection:** All constants moved to `DexConfig`.
+2.  **Dynamic Gas:** Estimate gas using `eth_estimateGas` instead of guessing.
+
+**The Immortal Code:**
+
+```python
+class DexConfig:
+    def __init__(self):
+        self.native_sentinel = os.getenv("NATIVE_TOKEN_SENTINEL", "0xeeee...")
+        self.default_slippage = float(os.getenv("DEFAULT_SLIPPAGE", "0.01"))
+
+async def estimate_swap_gas(self, tx_params):
+    try:
+        return await self.w3.eth.estimate_gas(tx_params)
+    except Exception:
+        # Fallback only if estimation fails
+        return 300000
+```
+
+**Verification Spell:**
+Change `NATIVE_TOKEN_SENTINEL` in `.env`. Verify tool uses new value.
 
 ---
 
@@ -231,30 +274,24 @@ Run 100 concurrent swaps. Verify the application thread does not freeze.
 
 **The Purification Strategy:**
 We vectorize the operation.
-1.  **Batch Read:** Fetch all prices in one API call (already attempted, but poorly).
-2.  **In-Memory Update:** Apply logic to objects in memory.
-3.  **Batch Write:** Use `bulk_save_objects` or a single `UPDATE FROM VALUES` query.
+1.  **Batch Read:** Fetch all prices in one API call.
+2.  **Batch Write:** Use `bulk_save_objects`.
 
 **The Immortal Code:**
 
 ```python
 def sync_portfolio_prices():
     storage = get_global_storage()
-    positions = storage.get_all_positions() # 1 Query
+    positions = storage.get_all_positions()
 
-    # ... Bulk fetch prices via CoinGecko ...
+    # ... Bulk fetch prices ...
 
-    updated_positions = []
-    for pos in positions:
-        # ... logic ...
-        updated_positions.append(pos)
-
-    # ONE Transaction, ONE Commit
-    storage.bulk_upsert_positions(updated_positions)
+    # One atomic commit
+    storage.bulk_upsert_positions(positions)
 ```
 
 **Verification Spell:**
-Measure execution time for 100 positions. Should be ~200ms (API call) + 10ms (DB), not 100 * 10ms.
+Measure execution time for 100 positions. Should be O(1) relative to DB commits.
 
 ---
 
@@ -265,8 +302,7 @@ Measure execution time for 100 positions. Should be ~200ms (API call) + 10ms (DB
 
 **The Purification Strategy:**
 **Fail Loudly.**
-1.  **Custom Exception:** `class BlockchainConnectionError(Exception)`.
-2.  **No Swallow:** Let the agent handle the error. The agent can decide to retry or ask the user. "I cannot check your balance right now" is better than "You have $0".
+1.  **No Swallow:** Raise `ToolExecutionError`.
 
 **The Immortal Code:**
 
@@ -277,9 +313,74 @@ def get_account_balance(input: GetAccountBalanceInput) -> float:
         return float(balance)
     except Exception as e:
         logger.error(f"Failed to fetch balance: {e}")
-        # Reraise as a known tool error
         raise ToolExecutionError(f"Blockchain unreachable: {str(e)}")
 ```
 
 **Verification Spell:**
 Disconnect internet. Run tool. Verify it raises an exception instead of returning 0.
+
+---
+
+## 💀 Rite of Resurrection: `src/services/api.ts` - [XSS / Insecure Storage]
+
+**The Rot (Original Sin):**
+> `localStorage.getItem("openaiApiKey")`. Secrets stored in accessible storage.
+
+**The Purification Strategy:**
+**HttpOnly Cookies.**
+1.  **Backend:** Send API Key as an `HttpOnly` cookie upon login/config.
+2.  **Frontend:** Remove all `localStorage` calls for secrets. Browser handles cookie attachment automatically.
+
+**The Immortal Code:**
+
+```typescript
+// src/services/api.ts
+
+// DELETE THIS:
+// export const getApiKey = () => localStorage.getItem("openaiApiKey");
+
+// REPLACE WITH:
+// Nothing. The browser sends the cookie automatically.
+
+const fetchWithAuth = async (endpoint: string, options: RequestInit = {}) => {
+  // No Authorization header needed if using Cookies!
+  // OR if using header, fetch it from a secure memory store (Zustand), not localStorage.
+
+  const response = await fetch(url, {
+    ...options,
+    credentials: "include", // This sends the cookies
+  });
+  // ...
+};
+```
+
+**Verification Spell:**
+Open DevTools -> Application -> Local Storage. Verify it is empty. Execute a trade. Verify it works (via Cookie).
+
+---
+
+## 💀 Rite of Resurrection: `backend/main.py` - [Unsecured External APIs]
+
+**The Rot (Original Sin):**
+> "CoinGecko called without an API key. This will hit rate limits."
+
+**The Purification Strategy:**
+**Managed Clients.**
+1.  **Client Injection:** Use a `MarketDataProvider` class that manages the API key and rate limits.
+2.  **Circuit Breaker:** If API fails, switch to backup or fail gracefully.
+
+**The Immortal Code:**
+
+```python
+class CoinGeckoClient:
+    def __init__(self):
+        self.api_key = os.getenv("COINGECKO_API_KEY")
+        self.base_url = "https://pro-api.coingecko.com/api/v3" if self.api_key else "https://api.coingecko.com/api/v3"
+
+    async def get_price(self, ...):
+        headers = {"x-cg-pro-api-key": self.api_key} if self.api_key else {}
+        # ... request ...
+```
+
+**Verification Spell:**
+Run load test. Verify calls include the header (mocked).
