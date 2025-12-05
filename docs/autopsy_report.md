@@ -1,82 +1,75 @@
-# The Code Autopsy: Forensic Pathologist Report
+# The Forensic Code Autopsy: CryptoSentinel
 
-**Pathologist:** Senior Engineer Forensic Pathologist (Zero-Mercy)
-**Subject:** CryptoSentinel Codebase
-**Status:** DECEASED (Cause of Death: Multiple Organ Failure due to Incompetence)
-**Date:** 2024-10-24
-
----
+**Pathologist:** The Senior Engineer Forensic Pathologist
+**Date:** 2024-05-22
+**Doctrine:** Atomic Decomposition.
 
 ## Section 1: The File-by-File Breakdown
 
 ### File: `backend/main.py`
-**Shame Score:** 10/100 (Hazardous Material)
+**Shame Score:** 30/100 (Critical Condition)
 **Findings:**
-*   `[Line 71]` **(Critical)**: `os.environ['OPENAI_API_KEY'] = api_key`. Injecting request headers into global process state. This is a security suicide pact. Race conditions guarantee key leakage between users.
-*   `[Line 112]` **(High)**: `DuckDuckGoTools` (synchronous) called inside `async def`. Blocks the main event loop. The server will freeze during searches.
-*   `[Line 147]` **(High)**: `storage.get_recent_trades` (synchronous) called inside `async def`. More blocking.
-*   `[Line 200]` **(High)**: `crypto_trading_team.run` (synchronous) called inside `async def`. The entire AI inference blocks the web server.
-*   `[Line 160]` **(Nitpick)**: Hardcoded `symbol_to_id` map (BTC, ETH, DOGE). Lazy. What about SOL?
-
-### File: `backend/agents.py`
-**Shame Score:** 20/100 (Spaghetti Factory)
-**Findings:**
-*   `[Line 40]` **(High)**: `storage = get_storage()` executes at module level. This creates a global state object that is difficult to mock in tests and shares a non-thread-safe connection.
-*   `[Line 50]` **(Med)**: Explicit import of 12 agents creates a massive dependency graph. `agents.py` imports everything, meaning any syntax error anywhere crashes the app on startup.
-
-### File: `backend/config.py`
-**Shame Score:** 40/100 (Unfinished)
-**Findings:**
-*   `[Line 15]` **(Med)**: `api_key = keys_str.split(',')[0]`. Implements "key rotation" by always picking the first key. This is not rotation; it's a lie.
-*   `[Line 30]` **(Med)**: `shared_model` singleton initialized at module level. If env vars are missing, this crashes on import.
-
-### File: `backend/protocol.py`
-**Shame Score:** 60/100 (Type Mismatch)
-**Findings:**
-*   `[Line 50]` **(Med)**: Uses `float` for `amount` in `TradeOrder` and `TradeResult`. Floating point arithmetic is forbidden in finance. Use `Decimal`.
+* `[Line 22]` **(Nitpick)**: `logging.basicConfig` settings are hardcoded. Use a config file.
+* `[Line 44]` **(High)**: Docstring claims "SECURITY FIX" but implementation is `Authorization: Bearer <any_string>`. This is Security Theater.
+* `[Line 59]` **(Critical)**: `return api_key`. The function validates the *format* of the key but never checks if the key is *valid*. **Auth Bypass.**
+* `[Line 115]` **(Med)**: `run_in_threadpool(fetch_news)`. DuckDuckGo search is IO-bound; threadpool is acceptable but async HTTP client would be native and faster.
+* `[Line 118]` **(Med)**: `news_items_raw[:limit]`. Slicing *after* fetching potential thousands of results wastes memory.
+* `[Line 179]` **(High)**: `api.coingecko.com` called without an API key. This will hit rate limits immediately in production.
+* `[Line 186]` **(Critical)**: `crypto_trading_team.run(msg)`. **Global Shared State.** The agent team is a singleton. All users share the same conversation context. Privacy violation.
+* `[Line 189]` **(Nitpick)**: `hasattr(run_output, ...)` logic is spaghetti. Use a defined interface/protocol for agent responses.
 
 ### File: `backend/storage/sqlite.py`
-**Shame Score:** 0/100 (Data Corruption Engine)
+**Shame Score:** 40/100 (Unstable)
 **Findings:**
-*   `[Line 27]` **(Critical)**: `sqlite3.connect(..., check_same_thread=False)`. Sharing a single connection across an async/threaded web server without locking is guaranteed to cause `OperationalError: database is locked` or corruption.
-*   `[Line 28]` **(Med)**: `row_factory` returns dicts, but manual JSON handling in methods is inconsistent.
-*   `[Line 100+]` **(Med)**: Massive raw SQL strings. Use an ORM or at least a query builder.
-
-### File: `backend/storage/models.py`
-**Shame Score:** 50/100 (Inconsistent)
-**Findings:**
-*   `[Line 35]` **(Med)**: `amount: Decimal`. Good intent, but `sqlite.py` stores it as `REAL` (float). Precision is lost at the database layer, rendering the Pydantic type useless.
+* `[Line 34]` **(Nitpick)**: `url.startswith("sqlite")` check is manual and fragile. Rely on SQLAlchemy's parsing.
+* `[Line 47]` **(Critical)**: `check_same_thread=False` combined with `QueuePool`. This invites race conditions and database corruption when multiple threads write to SQLite.
+* `[Line 48]` **(High)**: `_create_tables` runs on every instantiation. Slow startup. No migration strategy.
+* `[Line 186]` **(Critical)**: `amount: float(trade.amount)`. **Financial Precision Loss.** Casting `Decimal` to `float` (REAL) destroys monetary accuracy.
+* `[Line 235]` **(Critical)**: Same error for `portfolio_positions`. Money is being stored as approximate floats.
+* `[Line 242]` **(Med)**: `conn.commit()` used without a transaction block context manager. Risk of partial commits.
 
 ### File: `backend/tools/dex.py`
-**Shame Score:** 5/100 (Wallet Drainer)
+**Shame Score:** 35/100 (Inefficient & Dangerous)
 **Findings:**
-*   `[Line 126]` **(Critical)**: `approve(..., 2**256 - 1)`. Infinite approval. Violates security best practices.
-*   `[Line 133]` **(Critical)**: `w3.eth.send_raw_transaction` for Swap is called immediately after Approve. It *will* fail because the Approve tx is not yet mined.
-*   `[Line 16]` **(Med)**: Hardcoded `NATIVE_TOKEN_SYMBOLS`.
-*   `[Line 95]` **(High)**: Nonce management uses `get_transaction_count`. Because of the race condition above, the Swap tx tries to reuse the Approve tx's nonce.
-
-### File: `backend/tools/risk_management.py`
-**Shame Score:** 0/100 (The Placebo Effect)
-**Findings:**
-*   `[Line 59]` **(Critical)**: The class `RiskManagementToolkit` overwrites the functional `risk_management_toolkit` instance with a version that only `print()`s to stdout. The "Panic Button" is fake.
+* `[Line 30]` **(Med)**: `NATIVE_TOKEN_SENTINEL` hardcoded default. If the chain uses a different address (e.g. Matic), swaps fail.
+* `[Line 40]` **(Med)**: `os.getenv` in `__init__`. Reads env vars on every single swap operation.
+* `[Line 81]` **(Critical)**: `wm = WalletManager(input.chain)` inside `execute_swap`. Creates a **NEW** Web3 HTTP connection for every single transaction. Massive performance killer.
+* `[Line 99]` **(High)**: `token_contract...decimals().call()`. Assumes every token strictly follows standard ERC20 ABI.
+* `[Line 116]` **(Critical)**: `w3.eth.wait_for_transaction_receipt(..., timeout=300)`. **Blocking Call.** This halts the thread for up to 5 minutes. In a threadpool of 40, 40 users can freeze the entire backend.
+* `[Line 176]` **(Nitpick)**: `gas_estimate=200000`. Magic number.
 
 ### File: `backend/tools/portfolio.py`
-**Shame Score:** 10/100 (Broken)
+**Shame Score:** 25/100 (Broken Logic)
 **Findings:**
-*   `[Line 145]` **(High)**: `PortfolioToolkit` class overwrites the standalone toolkit.
-*   `[Line 153]` **(Critical)**: The class method `get_portfolio` calls `storage.get_all_portfolio_items()`, which *does not exist* in `SqliteStorage`. This code will crash 100% of the time.
+* `[Line 12]` **(High)**: `_get_storage()` creates a new `SqliteStorage` (and thus new DB Engine/Pool) on every call. Connection exhaustion guaranteed.
+* `[Line 38]` **(Med)**: `storage.get_portfolio_positions()` reads the entire table. O(N) scaling issues.
+* `[Line 44]` **(High)**: `cg.get_price` is a blocking synchronous network call inside the main logic flow.
+* `[Line 63]` **(Critical)**: `storage.upsert_portfolio_position` called inside the loop. **N+1 Query Problem.** Writes to DB for every item read.
+* `[Line 121]` **(Med)**: `1e-9` epsilon check. Crypto often requires `1e-18` (Wei) precision.
+
+### File: `backend/tools/wallet.py`
+**Shame Score:** 10/100 (Garbage)
+**Findings:**
+* `[Line 1-5]` **(Nitpick)**: Duplicate imports.
+* `[Line 24]` **(High)**: `Web3(...)` instantiation per call. Connection spam.
+* `[Line 28]` **(Critical)**: `except Exception: return ... balance=0.0`. **Silent Failure.** If the RPC is down, the system tells the user they are broke.
+* `[Line 34]` **(Nitpick)**: `wallet_toolkit` defined as instance, then redefined as class, then redefined as instance. Identity crisis.
+* `[Line 49]` **(Med)**: Duplicate function logic `get_account_balance` defined twice.
+
+### File: `backend/agents.py`
+**Shame Score:** 40/100 (Architectural Flaw)
+**Findings:**
+* `[Line 35]` **(Med)**: `_storage` global variable.
+* `[Line 47]` **(Critical)**: `crypto_trading_team` instantiated as a Global Singleton. Confirms the shared state vulnerability found in `main.py`.
+* `[Line 3]` **(Nitpick)**: Side-effect import `backend.compat`.
 
 ### File: `src/services/api.ts`
-**Shame Score:** 30/100 (XSS Vector)
+**Shame Score:** 20/100 (Insecure)
 **Findings:**
-*   `[Line 25]` **(Critical)**: `localStorage.getItem("openaiApiKey")`. Storing secrets in LocalStorage is a novice security error.
-*   `[Line 30]` **(Med)**: `Promise<any>`. TypeScript is treated as "AnyScript".
-*   `[Line 140]` **(Med)**: Manual stream reading in `chat` endpoint, but backend returns JSON. Mismatch.
-
-### File: `src/components/WalletConnection.tsx`
-**Shame Score:** 0/100 (Potemkin Village)
-**Findings:**
-*   `[Line 34]` **(Critical)**: `connectWallet` function sets `isConnected(true)` and logs to console. It does not connect to Metamask, Coinbase, or anything. It is a visual mockup masquerading as functionality.
+* `[Line 6]` **(Med)**: Hardcoded `http://localhost:8000`.
+* `[Line 24]` **(Critical)**: `localStorage.getItem("openaiApiKey")`. **XSS Vulnerability.** Secrets stored in accessible storage.
+* `[Line 83]` **(Nitpick)**: `tradeData: any`. TypeScript usage defeated.
+* `[Line 147]` **(High)**: `reader.read()` loop expects a stream, but backend returns a single JSON blob. This frontend code is incompatible with the backend.
 
 ---
 
@@ -84,20 +77,17 @@
 
 | Severity | File:Line | Error Type | Description | The Fix |
 | :--- | :--- | :--- | :--- | :--- |
-| **CRITICAL** | `backend/main.py:71` | Security | `os.environ` injection via API headers. Leaks keys, thread-unsafe. | **DELETE**. Use ContextVar or Dependency Injection. |
-| **CRITICAL** | `backend/storage/sqlite.py:27` | Concurrency | `check_same_thread=False` on shared SQLite connection. DB corruption risk. | Use `sqlalchemy` with connection pooling. |
-| **CRITICAL** | `backend/tools/dex.py:126` | Security | Infinite Token Approval. | Approve only `amount_in_wei`. |
-| **CRITICAL** | `backend/tools/dex.py:133` | Logic | Race condition: Swap sent before Approve confirms. | `await w3.eth.wait_for_transaction_receipt`. |
-| **CRITICAL** | `backend/tools/risk_management.py:59` | Deception | Panic button implementation is a `print()` placeholder that overwrites real logic. | Remove the placeholder class. |
-| **CRITICAL** | `backend/tools/portfolio.py:153` | Logic | Calls non-existent method `storage.get_all_portfolio_items`. | Fix method name or implement it. |
-| **CRITICAL** | `src/services/api.ts:25` | Security | API Key stored in `localStorage`. | Move to server-side env vars/vault. |
-| **CRITICAL** | `src/components/WalletConnection.tsx:34` | Logic | Wallet connection is a UI mock with no Web3 logic. | Implement `wagmi` or `ethers.js`. |
-| **HIGH** | `backend/main.py:112` | Perf | Blocking sync calls (`DuckDuckGo`) in async endpoint. | Run in `threadpool`. |
-| **HIGH** | `backend/main.py:147` | Perf | Blocking sync storage calls in async endpoint. | Make storage async or threadpool. |
-| **HIGH** | `backend/main.py` | Security | No Rate Limiting. | Implement `slowapi`. |
-| **MED** | `backend/storage/models.py` | Type | Decimal used in Pydantic, Float (REAL) in SQLite. Precision loss. | Use string storage or Postgres `NUMERIC`. |
-| **MED** | `backend/protocol.py` | Type | Float used for currency. | Switch to `Decimal`. |
-| **MED** | `backend/agents.py` | Architecture | Module-level side effects (database connection). | Lazy initialization. |
-| **NIT** | `backend/main.py` | Style | Hardcoded `symbol_to_id` map. | Use dynamic lookup. |
-
-**Final Verdict:** The patient requires immediate resuscitation (Rewrite) or burial (Delete).
+| **CRITICAL** | `backend/main.py:59` | Security | **Fake Auth Bypass**. `get_api_key` accepts any token. | Implement DB/Hash verification. |
+| **CRITICAL** | `backend/main.py:186` | Concurrency | **Global Shared State**. Singleton agent team leaks user context. | Instantiate Team per request with `session_id`. |
+| **CRITICAL** | `backend/storage/sqlite.py:186` | Logic | **Financial Precision Loss**. `Decimal` cast to `float`. | Use `TEXT`/`INTEGER` for money in SQLite. |
+| **CRITICAL** | `backend/storage/sqlite.py:47` | Concurrency | **Thread Safety**. `check_same_thread=False` with `QueuePool`. | Use Postgres or serialize writes. |
+| **CRITICAL** | `backend/tools/dex.py:116` | Performance | **Blocking Call**. `wait_for_transaction_receipt` blocks thread for minutes. | Use Async Web3 or background workers. |
+| **CRITICAL** | `backend/tools/dex.py:81` | Performance | **Connection Spam**. New Web3 connection per tool call. | Use a global singleton Web3 provider. |
+| **CRITICAL** | `backend/tools/wallet.py:28` | Logic | **Silent Failure**. Returns 0.0 balance on error. | Raise exceptions. |
+| **CRITICAL** | `backend/tools/portfolio.py:63` | Performance | **N+1 Query**. DB write inside read loop. | Batch updates. |
+| **CRITICAL** | `src/services/api.ts:24` | Security | **XSS Risk**. API Key in `localStorage`. | Use HttpOnly Cookies. |
+| **HIGH** | `backend/main.py:179` | API | CoinGecko called without API Key. | Add API Key support. |
+| **HIGH** | `backend/tools/portfolio.py:12` | Performance | New DB Engine per call. | Use global/dependency-injected storage. |
+| **HIGH** | `src/services/api.ts:147` | Logic | Stream reading on JSON endpoint. | Fix client to expect JSON. |
+| **MED** | `backend/tools/dex.py:30` | Logic | Hardcoded Native Sentinel. | Configurable Sentinel. |
+| **MED** | `backend/main.py:115` | Performance | Sync IO in threadpool. | Use Async IO. |
