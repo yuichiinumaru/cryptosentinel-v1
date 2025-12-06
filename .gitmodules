@@ -4,3 +4,6 @@
 [submodule "reference/TradingAgents"]
 	path = reference/TradingAgents
 	url = https://github.com/TauricResearch/TradingAgents
+[submodule "references/stockpredictionai"]
+	path = references/stockpredictionai
+	url = https://github.com/borisbanushev/stockpredictionai.git

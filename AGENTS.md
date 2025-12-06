@@ -56,3 +56,8 @@ CryptoSentinel is a multi-agent trading system powered by:
     *   `04-changelog.md`: History of Changes.
     *   `05-ideas.md`: Feature Backlog.
     *   `06-rules.md`: Specific pattern rules (e.g., .cursorrules).
+
+## 6. External References
+
+*   **`references/` Folder:** This directory contains external repositories added as submodules. These are to be studied for architectural patterns, strategies, and code snippets.
+*   **Usage:** Code from `references/` should not be imported directly in production. Instead, analyze, adapt, and integrate it into the codebase, following CryptoSentinel's coding standards.

@@ -34,3 +34,18 @@
 ### 2.2 Trading Logic
 - [ ] **Implement Adversarial Debate**
     - Create `DebateCoordinator` agent.
+
+## Phase 3: Quantitative Analysis (StockPredictionAI)
+
+### 3.1 Technical Tools
+- [ ] **Implement `TechnicalAnalysisToolkit` (`backend/tools/technical_analysis.py`)**
+    - Port logic from reference: `get_technical_indicators` (MA, MACD, Bollinger, Momentum).
+    - Ensure methods return structured data for Agents.
+- [ ] **Implement `MarketCorrelationToolkit` (`backend/tools/market_correlation.py`)**
+    - Create tools to fetch BTC/ETH trends as context for altcoin trades.
+
+### 3.2 Advanced Analysis
+- [ ] **Implement `FourierToolkit` (`backend/tools/math_tools.py`)**
+    - Implement FFT-based trend extraction.
+- [ ] **Implement `SentimentToolkit` (`backend/tools/sentiment.py`)**
+    - Create a tool that fetches news (via Search) and uses LLM to score sentiment (0-100).
