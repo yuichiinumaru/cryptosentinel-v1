@@ -17,11 +17,13 @@ This document outlines the strategic plans to enhance CryptoSentinel, moving fro
 3.  **Governance Compliance:**
     *   Enforce `AGENTS.md` and FORGE file structure.
 
-## Phase 2: Feature Enhancement (TradingAgents Integration)
+## Phase 2: Intelligent Agent Architecture (Source: TradingAgents)
+**Goal:** Implement the "Debate" architecture to reduce hallucination and risk.
 
 1.  **Adversarial Debate Workflow:**
-    *   Implement `BullResearcher` and `BearResearcher`.
-    *   Create a `DebateCoordinator` to moderate thesis/antithesis loops before trading.
+    *   **Source:** `TauricResearch/TradingAgents`
+    *   Implement `BullResearcher` and `BearResearcher` agents with conflicting system prompts.
+    *   Create a `DebateCoordinator` (Risk Debator) to moderate the discussion and force a synthesis.
 
 2.  **Situation-Aware Memory:**
     *   Schema for `MarketSituation`.
@@ -30,24 +32,33 @@ This document outlines the strategic plans to enhance CryptoSentinel, moving fro
 3.  **Deep Thinking Prompts:**
     *   Refactor Agent instructions to "Role-Task-Constraint-Output" format.
 
-## Phase 3: Quantitative Analysis Integration (StockPredictionAI)
-**Goal:** Incorporate advanced quantitative strategies extracted from the `stockpredictionai` reference.
+## Phase 3: Scientific Validation & Analysis (Source: AgentQuant & StockPredictionAI)
+**Goal:** Incorporate advanced quantitative strategies and regime detection.
 
-1.  **Technical Analysis Engine:**
-    *   Implement `TechnicalAnalysisToolkit` using Pandas to calculate Moving Averages, MACD, Bollinger Bands, and Momentum.
-    *   Provide these indicators as tools to the Trading Agents.
+1.  **Regime Detection Engine:**
+    *   **Source:** `OnePunchMonk/AgentQuant`
+    *   Implement `MarketRegimeToolkit` to classify market state (Bull/Bear/Sideways/Crisis) using VIX and Momentum.
+    *   Inject "Regime" context into all agent prompts.
 
-2.  **Market Context Awareness:**
-    *   Implement `MarketCorrelationToolkit` to fetch and analyze correlated assets (BTC, ETH, SP500, VIX) alongside the target asset.
-    *   Implement `SentimentToolkit` to score news sentiment using LLMs (adapting the BERT logic).
+2.  **Technical Analysis Engine:**
+    *   **Source:** `borisbanushev/stockpredictionai` & `ai-hedge-fund-crypto`
+    *   Implement `TechnicalAnalysisToolkit` (MA, MACD, Bollinger, Momentum).
+    *   Implement `FourierToolkit` for trend denoising.
 
-3.  **Mathematical Signal Processing:**
-    *   Implement `FourierToolkit` to perform trend analysis and denoising using FFT.
-    *   (Optional) Implement ARIMA forecasting tools.
+3.  **Market Context Awareness:**
+    *   Implement `MarketCorrelationToolkit` (BTC/ETH context).
+    *   Implement `SentimentToolkit` (News Analysis).
 
-## Phase 4: Advanced Security & Optimization
+## Phase 4: Advanced Security & Optimization (Source: AI Memecoin Bot)
+**Goal:** Zero-Trust execution and simulation.
 
-1.  **MEV Protection:**
+1.  **Honeypot Protection:**
+    *   **Source:** `Jackhuang166/ai-memecoin-trading-bot`
+    *   Port "Honeypot Detection" logic (Go -> Python) to `SecurityToolkit`.
+    *   Implement "Win Probability" safety checks.
+
+2.  **MEV Protection:**
     *   Flashbots integration.
-2.  **Simulation:**
-    *   Pre-trade simulation (Tenderly/Forked Mainnet) to verify outcomes before execution.
+
+3.  **Simulation:**
+    *   Pre-trade simulation (Tenderly/Forked Mainnet).
