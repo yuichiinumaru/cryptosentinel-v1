@@ -1,82 +1,75 @@
 from typing import Dict, Any, List
-
-from agno.tools.toolkit import Toolkit
 import pandas as pd
-import pandas_ta as ta
+import numpy as np
+import httpx
 from agno.tools.toolkit import Toolkit
 from pydantic import BaseModel, Field
 
+class GetTechIndicatorsInput(BaseModel):
+    symbol: str = Field(..., description="The CoinGecko ID of the token (e.g., 'bitcoin').")
+    days: int = Field(100, description="Number of days of history to analyze.")
 
-class CalculateTechnicalIndicatorInput(BaseModel):
-    data: List[Dict[str, float]] = Field(..., description="OHLCV data points.")
-    indicator: str = Field(..., description="Indicator name (sma, rsi, macd).")
-    params: Dict[str, Any] = Field(default_factory=dict, description="Indicator-specific parameters.")
-
-
-class CalculateTechnicalIndicatorOutput(BaseModel):
-    result: List[float] = Field(..., description="Indicator series values.")
-
-
-def calculate_technical_indicator(input: CalculateTechnicalIndicatorInput) -> CalculateTechnicalIndicatorOutput:
-    df = pd.DataFrame(input.data)
-    if "close" not in df.columns:
-        raise ValueError("Data must contain a 'close' column.")
-
-    indicator = input.indicator.lower()
-    if indicator == "sma":
-        result = ta.sma(df["close"], length=input.params.get("length", 14))
-    elif indicator == "rsi":
-        result = ta.rsi(df["close"], length=input.params.get("length", 14))
-    elif indicator == "macd":
-        macd_df = ta.macd(
-            df["close"],
-            fast=input.params.get("fast", 12),
-            slow=input.params.get("slow", 26),
-            signal=input.params.get("signal", 9),
-        )
-        key = f"MACD_{input.params.get('fast', 12)}_{input.params.get('slow', 26)}_{input.params.get('signal', 9)}"
-        result = macd_df[key] if macd_df is not None else None
-    else:
-        raise ValueError(f"Indicator {input.indicator} not supported.")
-
-    if result is None:
-        return CalculateTechnicalIndicatorOutput(result=[])
-    return CalculateTechnicalIndicatorOutput(result=result.dropna().tolist())
-
-
-technical_analysis_toolkit = Toolkit(name="technical_analysis")
-technical_analysis_toolkit.register(calculate_technical_indicator)
 class TechnicalAnalysisToolkit(Toolkit):
     def __init__(self, **kwargs):
-        super().__init__(name="technical_analysis", tools=[self.calculate_technical_indicator], **kwargs)
+        super().__init__(name="technical_analysis", **kwargs)
+        self.register(self.get_technical_indicators)
 
-    def calculate_technical_indicator(self, input: CalculateTechnicalIndicatorInput) -> CalculateTechnicalIndicatorOutput:
+    async def get_technical_indicators(self, input: GetTechIndicatorsInput) -> Dict[str, Any]:
         """
-        Calculates a technical indicator on the given data.
+        Calculates technical indicators (RSI, MACD, Bollinger Bands, MA) for a token.
         """
-        df = pd.DataFrame(input.data)
-        # This is a simplified implementation. A real implementation would need to handle different indicators and parameters.
-        if 'close' not in df.columns:
-            raise ValueError("Data must contain a 'close' column.")
+        symbol = input.symbol
+        days = input.days
 
-        if input.indicator == "sma":
-            result = df.ta.sma(length=input.params.get("length", 14), close=df['close'], append=False)
-        elif input.indicator == "rsi":
-            result = df.ta.rsi(length=input.params.get("length", 14), close=df['close'], append=False)
-        elif input.indicator == "macd":
-            result = df.ta.macd(fast=input.params.get("fast", 12), slow=input.params.get("slow", 26), signal=input.params.get("signal", 9), close=df['close'], append=False)
-        else:
-            raise ValueError(f"Indicator {input.indicator} not supported.")
+        # 1. Fetch Data
+        try:
+            async with httpx.AsyncClient() as client:
+                url = f"https://api.coingecko.com/api/v3/coins/{symbol}/market_chart?vs_currency=usd&days={days}"
+                resp = await client.get(url, timeout=10.0)
+                if resp.status_code == 429:
+                    return {"error": "Rate Limit Exceeded"}
+                resp.raise_for_status()
+                data = resp.json()
 
-        # The result from pandas_ta can be a DataFrame, so we need to handle it correctly
-        if isinstance(result, pd.DataFrame):
-            # For MACD, it returns a DataFrame with multiple columns. We can return the main line.
-            if input.indicator == "macd":
-                result = result[f"MACD_{input.params.get('fast', 12)}_{input.params.get('slow', 26)}_{input.params.get('signal', 9)}"]
+            if "prices" not in data:
+                return {"error": "No price data found"}
 
-        if result is None:
-            return CalculateTechnicalIndicatorOutput(result=[])
+            df = pd.DataFrame(data["prices"], columns=["timestamp", "price"])
+            df["timestamp"] = pd.to_datetime(df["timestamp"], unit="ms")
+            prices = df["price"]
 
-        return CalculateTechnicalIndicatorOutput(result=result.dropna().tolist())
+            # 2. Calculate Indicators
+            results = {}
 
-technical_analysis_toolkit = TechnicalAnalysisToolkit()
+            # Moving Averages
+            results["ma_7"] = float(prices.rolling(window=7).mean().iloc[-1])
+            results["ma_25"] = float(prices.rolling(window=25).mean().iloc[-1])
+            results["ma_100"] = float(prices.rolling(window=100).mean().iloc[-1])
+
+            # RSI (14)
+            delta = prices.diff()
+            gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
+            loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
+            rs = gain / loss
+            results["rsi_14"] = float(100 - (100 / (1 + rs)).iloc[-1])
+
+            # MACD (12, 26, 9)
+            exp1 = prices.ewm(span=12, adjust=False).mean()
+            exp2 = prices.ewm(span=26, adjust=False).mean()
+            macd = exp1 - exp2
+            signal = macd.ewm(span=9, adjust=False).mean()
+            results["macd"] = float(macd.iloc[-1])
+            results["macd_signal"] = float(signal.iloc[-1])
+            results["macd_hist"] = float((macd - signal).iloc[-1])
+
+            # Bollinger Bands (20, 2)
+            bb_ma = prices.rolling(window=20).mean()
+            bb_std = prices.rolling(window=20).std()
+            results["bb_upper"] = float((bb_ma + (bb_std * 2)).iloc[-1])
+            results["bb_lower"] = float((bb_ma - (bb_std * 2)).iloc[-1])
+            results["current_price"] = float(prices.iloc[-1])
+
+            return results
+
+        except Exception as e:
+            return {"error": str(e)}
