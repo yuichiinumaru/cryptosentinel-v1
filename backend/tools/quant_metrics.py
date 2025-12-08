@@ -4,6 +4,7 @@ import numpy as np
 import httpx
 from agno.tools.toolkit import Toolkit
 from pydantic import BaseModel, Field
+from backend.tools.utils import fetch_coingecko_prices
 
 class GetQuantMetricsInput(BaseModel):
     symbol: str = Field(..., description="The CoinGecko ID of the token.")
@@ -25,17 +26,14 @@ class QuantitativeAnalysisToolkit(Toolkit):
 
         try:
             async with httpx.AsyncClient() as client:
-                url = f"https://api.coingecko.com/api/v3/coins/{symbol}/market_chart?vs_currency=usd&days={days}"
-                resp = await client.get(url, timeout=10.0)
-                if resp.status_code == 429:
-                    return {"error": "Rate Limit Exceeded"}
-                resp.raise_for_status()
-                data = resp.json()
+                try:
+                    df = await fetch_coingecko_prices(client, symbol, days)
+                except Exception as e:
+                    return {"error": f"Failed to fetch data: {e}"}
 
-            if "prices" not in data or len(data["prices"]) < 2:
+            if len(df) < 2:
                 return {"error": "Insufficient data"}
 
-            df = pd.DataFrame(data["prices"], columns=["timestamp", "price"])
             prices = df["price"]
 
             # Returns
@@ -57,7 +55,10 @@ class QuantitativeAnalysisToolkit(Toolkit):
                 sortino = 0.0
             else:
                 downside_std = downside_returns.std() * np.sqrt(365)
-                sortino = (mean_return - rf) / downside_std
+                if downside_std == 0:
+                    sortino = 0.0
+                else:
+                    sortino = (mean_return - rf) / downside_std
 
             # Value at Risk (Historical 95%)
             var_95 = np.percentile(returns, 5) # 5th percentile of daily returns

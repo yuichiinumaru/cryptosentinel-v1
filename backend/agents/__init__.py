@@ -18,6 +18,7 @@ from backend.storage.sqlite import SqliteStorage
 from backend.storage.base import Storage
 from backend.config import Config
 from backend.factory import create_agent
+from backend.agents.researchers import get_bull_researcher, get_bear_researcher, get_debate_coordinator
 
 load_dotenv()
 logger = logging.getLogger(__name__)
@@ -105,13 +106,20 @@ def get_crypto_trading_team(session_id: str) -> Team:
     # 5. Asset Manager (Placeholder for Rite 3 fix)
     # asset_manager = create_agent(...)
 
+    # 6. Debate Team (Scavenged from TradingAgents)
+    bull_researcher = get_bull_researcher(model, session_id)
+    bear_researcher = get_bear_researcher(model, session_id)
+    debate_coordinator = get_debate_coordinator(model, session_id)
+
     team = Team(
         members=[
             deep_trader_manager,
             market_analyst,
             trader_agent,
             risk_analyst,
-            # Add others...
+            bull_researcher,
+            bear_researcher,
+            debate_coordinator,
         ],
         name=f"CryptoSentinelTeam-{session_id}",
         session_id=session_id,

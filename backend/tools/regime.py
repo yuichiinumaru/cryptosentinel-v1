@@ -4,6 +4,7 @@ import numpy as np
 import httpx
 from agno.tools.toolkit import Toolkit
 from pydantic import BaseModel, Field
+from backend.tools.utils import fetch_coingecko_prices
 
 class DetectRegimeInput(BaseModel):
     symbol: str = Field(..., description="The CoinGecko ID of the token.")
@@ -22,18 +23,15 @@ class MarketRegimeToolkit(Toolkit):
 
         try:
             async with httpx.AsyncClient() as client:
-                url = f"https://api.coingecko.com/api/v3/coins/{symbol}/market_chart?vs_currency=usd&days={days}"
-                resp = await client.get(url, timeout=10.0)
-                if resp.status_code == 429:
-                    return {"error": "Rate Limit Exceeded"}
-                resp.raise_for_status()
-                data = resp.json()
+                try:
+                    df = await fetch_coingecko_prices(client, symbol, days)
+                except Exception as e:
+                    return {"error": f"Failed to fetch data: {e}"}
 
-            if "prices" not in data or len(data["prices"]) < 200:
-                return {"error": "Insufficient data for Regime Detection (Need 200+ days)"}
-
-            df = pd.DataFrame(data["prices"], columns=["timestamp", "price"])
             prices = df["price"]
+
+            if len(prices) < 200:
+                return {"error": "Insufficient data for Regime Detection (Need 200+ days)"}
 
             # 1. Trend (SMA200 vs Price)
             current_price = prices.iloc[-1]

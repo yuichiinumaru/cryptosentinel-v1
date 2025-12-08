@@ -4,6 +4,7 @@ import numpy as np
 import httpx
 from agno.tools.toolkit import Toolkit
 from pydantic import BaseModel, Field
+from backend.tools.utils import fetch_coingecko_prices
 
 class GetTechIndicatorsInput(BaseModel):
     symbol: str = Field(..., description="The CoinGecko ID of the token (e.g., 'bitcoin').")
@@ -21,21 +22,13 @@ class TechnicalAnalysisToolkit(Toolkit):
         symbol = input.symbol
         days = input.days
 
-        # 1. Fetch Data
         try:
             async with httpx.AsyncClient() as client:
-                url = f"https://api.coingecko.com/api/v3/coins/{symbol}/market_chart?vs_currency=usd&days={days}"
-                resp = await client.get(url, timeout=10.0)
-                if resp.status_code == 429:
-                    return {"error": "Rate Limit Exceeded"}
-                resp.raise_for_status()
-                data = resp.json()
+                try:
+                    df = await fetch_coingecko_prices(client, symbol, days)
+                except Exception as e:
+                    return {"error": f"Failed to fetch data: {e}"}
 
-            if "prices" not in data:
-                return {"error": "No price data found"}
-
-            df = pd.DataFrame(data["prices"], columns=["timestamp", "price"])
-            df["timestamp"] = pd.to_datetime(df["timestamp"], unit="ms")
             prices = df["price"]
 
             # 2. Calculate Indicators

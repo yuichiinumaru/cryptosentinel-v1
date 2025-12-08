@@ -46,7 +46,7 @@ class TestDexToolkit(unittest.IsolatedAsyncioTestCase):
             # So `w3.eth.gas_price` must evaluate to an Awaitable.
 
             # Let's set it to a simple Awaitable (Coroutine)
-            mock_w3.eth.gas_price = get_gas_price() # This sets it to a coroutine object.
+            # mock_w3.eth.gas_price = get_gas_price() # (Removed to avoid RuntimeWarning: never awaited)
             # But `await coroutine` works once. If code calls it twice, second await fails (cannot reuse coroutine).
             # Code calls it multiple times.
 
