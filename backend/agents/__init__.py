@@ -57,7 +57,8 @@ def get_crypto_trading_team(session_id: str) -> Team:
     model = Config.get_model()
 
     # Define base path for instructions
-    base_dir = os.path.dirname(__file__)
+    # Adjusted for package structure: backend/agents/__init__.py -> backend/
+    base_dir = os.path.dirname(os.path.dirname(__file__))
 
     # --- Instantiate Agents Freshly ---
 

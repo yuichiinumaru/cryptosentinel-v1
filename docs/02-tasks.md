@@ -40,7 +40,7 @@
 - [ ] **Upgrade Khala Toolkit**
     - Implement `store_market_situation` in `backend/khala_integration.py`.
 
-## Phase 3: Quantitative Analysis (AgentQuant & StockPredictionAI)
+## Phase 3: Quantitative Analysis (AgentQuant, StockPredictionAI, SquareQuant)
 
 ### 3.1 Regime Detection
 - [ ] **Implement `MarketRegimeToolkit` (`backend/tools/regime.py`)**
@@ -53,7 +53,10 @@
 - [ ] **Implement `MarketCorrelationToolkit` (`backend/tools/market_correlation.py`)**
     - Create tools to fetch BTC/ETH trends as context.
 
-### 3.3 Advanced Math
+### 3.3 Quantitative Metrics
+- [ ] **Implement `QuantitativeAnalysisToolkit` (`backend/tools/quant_metrics.py`)**
+    - [Scavenger] Port `Sharpe`, `Sortino`, `Calmar` logic from `SquareQuant`.
+    - [Scavenger] Port `ValueAtRisk` (VaR) logic from `SquareQuant`.
 - [ ] **Implement `FourierToolkit` (`backend/tools/math_tools.py`)**
     - [Scavenger] Implement FFT-based trend extraction from `stockpredictionai`.
 

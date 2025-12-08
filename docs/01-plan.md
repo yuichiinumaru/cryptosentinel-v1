@@ -32,7 +32,7 @@ This document outlines the strategic plans to enhance CryptoSentinel, moving fro
 3.  **Deep Thinking Prompts:**
     *   Refactor Agent instructions to "Role-Task-Constraint-Output" format.
 
-## Phase 3: Scientific Validation & Analysis (Source: AgentQuant & StockPredictionAI)
+## Phase 3: Scientific Validation & Analysis (Source: AgentQuant, StockPredictionAI, SquareQuant)
 **Goal:** Incorporate advanced quantitative strategies and regime detection.
 
 1.  **Regime Detection Engine:**
@@ -45,7 +45,12 @@ This document outlines the strategic plans to enhance CryptoSentinel, moving fro
     *   Implement `TechnicalAnalysisToolkit` (MA, MACD, Bollinger, Momentum).
     *   Implement `FourierToolkit` for trend denoising.
 
-3.  **Market Context Awareness:**
+3.  **Risk Metrics Engine:**
+    *   **Source:** `SquareQuant/squarequant-package`
+    *   Implement `QuantitativeAnalysisToolkit` to calculate VaR, Sharpe, Sortino, and Calmar ratios.
+    *   Use these metrics in the Debate phase to validate proposed trades.
+
+4.  **Market Context Awareness:**
     *   Implement `MarketCorrelationToolkit` (BTC/ETH context).
     *   Implement `SentimentToolkit` (News Analysis).
 
