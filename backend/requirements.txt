@@ -77,3 +77,6 @@ yarl==1.22.0
 pandas
 numpy
 scipy
+
+pytest
+pytest-asyncio

@@ -55,7 +55,10 @@ class QuantitativeAnalysisToolkit(Toolkit):
                 sortino = 0.0
             else:
                 downside_std = downside_returns.std() * np.sqrt(365)
-                sortino = (mean_return - rf) / downside_std
+                if downside_std == 0:
+                    sortino = 0.0
+                else:
+                    sortino = (mean_return - rf) / downside_std
 
             # Value at Risk (Historical 95%)
             var_95 = np.percentile(returns, 5) # 5th percentile of daily returns
