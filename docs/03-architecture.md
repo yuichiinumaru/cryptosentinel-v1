@@ -9,7 +9,7 @@ CryptoSentinel is a multi-agent autonomous cryptocurrency trading system. It uti
 *   **`main.py` (API Layer):**
     *   **Responsibility:** Authentication, Rate Limiting, Request Routing.
     *   **Constraint:** Must NOT contain business logic. Delegates immediately to Agents.
-*   **`agents.py` (Orchestration Layer):**
+*   **`agents/__init__.py` (Orchestration Layer):**
     *   **Responsibility:** Agent Team Factory.
     *   **Pattern:** **Factory Method**. Must instantiate NEW agents for every `session_id`.
 *   **`config.py` (Configuration):**
