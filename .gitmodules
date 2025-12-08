@@ -2,5 +2,29 @@
 	path = packages/khala-agentmemory
 	url = https://github.com/yuichiinumaru/khala-agentmemory.git
 [submodule "reference/TradingAgents"]
-	path = reference/TradingAgents
+	path = references/TradingAgents
 	url = https://github.com/TauricResearch/TradingAgents
+[submodule "references/stockpredictionai"]
+	path = references/stockpredictionai
+	url = https://github.com/borisbanushev/stockpredictionai.git
+[submodule "references/squarequant-package"]
+	path = references/squarequant-package
+	url = https://github.com/SquareQuant/squarequant-package.git
+[submodule "references/AgentQuant"]
+	path = references/AgentQuant
+	url = https://github.com/OnePunchMonk/AgentQuant
+[submodule "references/ai-hedge-fund-crypto"]
+	path = references/ai-hedge-fund-crypto
+	url = https://github.com/51bitquant/ai-hedge-fund-crypto.git
+[submodule "references/ai-memecoin-trading-bot"]
+	path = references/ai-memecoin-trading-bot
+	url = https://github.com/Jackhuang166/ai-memecoin-trading-bot.git
+[submodule "references/ai-trading-agent"]
+	path = references/ai-trading-agent
+	url = https://github.com/Daniyal-GraphicDesigner/ai-trading-agent
+[submodule "references/Web3-AI-Trading-Agent"]
+	path = references/Web3-AI-Trading-Agent
+	url = https://github.com/posimer/Web3-AI-Trading-Agent.git
+[submodule "references/Ascend-Institute"]
+	path = references/Ascend-Institute
+	url = https://github.com/statikfintechllc/Ascend-Institute.git

@@ -43,12 +43,19 @@ class StoreMemoryInput(BaseModel):
     importance: float = Field(0.5, description="Importance score (0.0 to 1.0).")
     tags: List[str] = Field(default_factory=list, description="Tags for the memory.")
 
+class StoreMarketSituationInput(BaseModel):
+    symbol: str = Field(..., description="The asset symbol (e.g., bitcoin).")
+    regime: str = Field(..., description="Market regime (e.g., Bull, Bear).")
+    trend: str = Field(..., description="Trend direction.")
+    summary: str = Field(..., description="Brief summary of the situation.")
+
 class KhalaMemoryToolkit(Toolkit):
     def __init__(self, **kwargs):
         super().__init__(name="khala_memory", **kwargs)
         if SurrealDBClient:
             self.register(self.search_memory)
             self.register(self.store_memory)
+            self.register(self.store_market_situation)
         else:
             logger.warning("KhalaMemoryToolkit initialized but Khala library is missing.")
 
@@ -101,3 +108,16 @@ class KhalaMemoryToolkit(Toolkit):
         except Exception as e:
             logger.error(f"Error storing memory: {e}")
             return f"Error storing memory: {str(e)}"
+
+    async def store_market_situation(self, input: StoreMarketSituationInput) -> str:
+        """Stores a structured snapshot of the market situation."""
+        content = f"MARKET SITUATION for {input.symbol.upper()}: Regime={input.regime}, Trend={input.trend}.\nSummary: {input.summary}"
+
+        # We delegate to store_memory
+        # Importance 0.8 because market context is high value
+        store_input = StoreMemoryInput(
+            content=content,
+            importance=0.8,
+            tags=["market_situation", input.symbol.lower(), input.regime.lower()]
+        )
+        return await self.store_memory(store_input)
