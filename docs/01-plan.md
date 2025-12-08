@@ -67,3 +67,21 @@ This document outlines the strategic plans to enhance CryptoSentinel, moving fro
 
 3.  **Simulation:**
     *   Pre-trade simulation (Tenderly/Forked Mainnet).
+
+## Phase 5: Productization & Automation (The Final Mile)
+**Goal:** Transform the scripts into an autonomous, user-friendly trading bot.
+
+1.  **The Pulse (Scheduler):**
+    *   Implement `backend/scheduler.py` (using `apscheduler` or async loop) to run the Debate Team every 15 minutes.
+    *   Persist "Market Situation" and "Debate Outcome" to SQLite automatically.
+
+2.  **The Ledger (Paper Trading):**
+    *   Implement a `PaperTradingService` that listens for "BUY" signals from the Coordinator.
+    *   Track a virtual portfolio (USD Balance, Asset Holdings) in the database.
+    *   Calculate PnL based on real price updates.
+
+3.  **The Dashboard (Frontend):**
+    *   Update React UI to display:
+        *   **Market Regime Indicator** (Bull/Bear).
+        *   **Debate Logs** (Bull Thesis vs Bear Antithesis).
+        *   **Portfolio Performance** (Paper Trading PnL).

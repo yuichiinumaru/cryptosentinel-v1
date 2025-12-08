@@ -66,3 +66,27 @@
 - [x] **Implement `SecurityToolkit` (`backend/tools/security.py`)**
     - [Scavenger] Port "Honeypot Detection" logic (Renounced, Liquidity Locked) from `ai-memecoin-trading-bot` (Go -> Python).
     - Implement `calculate_safety_score`.
+
+### 4.2 Advanced Security
+- [ ] **MEV Protection**
+    - Integrate Flashbots.
+- [ ] **Pre-Trade Simulation**
+    - Implement simulation via Tenderly/Fork.
+
+## Phase 5: Productization (The Final Mile)
+
+### 5.1 Automation
+- [ ] **Implement Scheduler (`backend/scheduler.py`)**
+    - Run `DebateCoordinator` loop every X minutes.
+    - Persist outcomes to `ActivityData` table.
+
+### 5.2 Paper Trading
+- [ ] **Implement `PaperTradingService` (`backend/services/paper_trading.py`)**
+    - Create `PortfolioLedger` table.
+    - Execute virtual trades based on Coordinator signals.
+
+### 5.3 Frontend
+- [ ] **Visualize Debate (`src/components/DebateView.tsx`)**
+    - Show Bull vs Bear cards.
+- [ ] **Visualize Regime (`src/components/RegimeIndicator.tsx`)**
+    - Show "Bull/Bear" status.
