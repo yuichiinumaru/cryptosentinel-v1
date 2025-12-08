@@ -74,11 +74,9 @@ class SecurityConfig:
         self._api_key = os.getenv("API_KEY")
 
         # Rite 5: Security Hardening
-        # Fail immediately if API Key is insecure
+        # Fail immediately if API Key is insecure. Zero Trust.
         if not self._api_key or self._api_key == "CHANGE_ME_IN_PROD_PLEASE":
-            if os.getenv("ENV") == "production":
-                 raise RuntimeError("CRITICAL: API_KEY is missing or default in production.")
-            logger.warning("API_KEY is missing. Auth will fail.")
+            raise RuntimeError("CRITICAL: API_KEY is missing or default. Please set a secure API_KEY in .env.")
 
     def validate(self, input_key: str) -> bool:
         if not self._api_key:

@@ -25,12 +25,44 @@
 - [ ] **Fix Frontend Mockery (`src/components/WalletConnection.tsx`)**
     - (Low Priority) Mark as "UI Only" or implement `wagmi`.
 
-## Phase 2: Feature Restoration
+## Phase 2: Intelligent Agents (TradingAgents Integration)
 
-### 2.1 Memory Integration
+### 2.1 Adversarial Debate
+- [ ] **Implement Researchers (`backend/agents/researchers.py`)**
+    - [Scavenger] Port `BullResearcher` prompt and logic from `TradingAgents`.
+    - [Scavenger] Port `BearResearcher` prompt and logic from `TradingAgents`.
+- [ ] **Implement Debators (`backend/agents/debators.py`)**
+    - [Scavenger] Port `RiskDebator` (Conservative/Aggressive) logic from `TradingAgents`.
+- [ ] **Implement Debate Coordinator (`backend/agents/coordinator.py`)**
+    - Create a workflow (Thesis -> Antithesis -> Synthesis) using Agno.
+
+### 2.2 Memory Integration
 - [ ] **Upgrade Khala Toolkit**
     - Implement `store_market_situation` in `backend/khala_integration.py`.
 
-### 2.2 Trading Logic
-- [ ] **Implement Adversarial Debate**
-    - Create `DebateCoordinator` agent.
+## Phase 3: Quantitative Analysis (AgentQuant, StockPredictionAI, SquareQuant)
+
+### 3.1 Regime Detection
+- [ ] **Implement `MarketRegimeToolkit` (`backend/tools/regime.py`)**
+    - [Scavenger] Port `RegimeDetection` logic (VIX/Momentum) from `AgentQuant`.
+    - Create tool `detect_market_regime(symbol)`.
+
+### 3.2 Technical Tools
+- [ ] **Implement `TechnicalAnalysisToolkit` (`backend/tools/technical_analysis.py`)**
+    - [Scavenger] Port `get_technical_indicators` from `stockpredictionai` / `ai-hedge-fund-crypto`.
+- [ ] **Implement `MarketCorrelationToolkit` (`backend/tools/market_correlation.py`)**
+    - Create tools to fetch BTC/ETH trends as context.
+
+### 3.3 Quantitative Metrics
+- [ ] **Implement `QuantitativeAnalysisToolkit` (`backend/tools/quant_metrics.py`)**
+    - [Scavenger] Port `Sharpe`, `Sortino`, `Calmar` logic from `SquareQuant`.
+    - [Scavenger] Port `ValueAtRisk` (VaR) logic from `SquareQuant`.
+- [ ] **Implement `FourierToolkit` (`backend/tools/math_tools.py`)**
+    - [Scavenger] Implement FFT-based trend extraction from `stockpredictionai`.
+
+## Phase 4: Security & Optimization (AI Memecoin Bot)
+
+### 4.1 Zero Trust Security
+- [ ] **Implement `SecurityToolkit` (`backend/tools/security.py`)**
+    - [Scavenger] Port "Honeypot Detection" logic (Renounced, Liquidity Locked) from `ai-memecoin-trading-bot` (Go -> Python).
+    - Implement `calculate_safety_score`.
