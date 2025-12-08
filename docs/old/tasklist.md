@@ -1,89 +1,35 @@
-# Tasklist
+# Task List
 
-## Phase 1: Scaffolding and Core Agents
+## 1. Core Development
+- [x] Initial project setup
+- [x] Define agent roles and responsibilities
+- [x] Implement core agent classes
+- [x] Implement tools for market data, token security, and trading
+- [x] Write unit tests for each agent and tool
+- [x] Write integration tests for the core agents (in progress)
 
-- [x] **Create Project Structure**
-    - [x] Create directories for all 12 agents.
-    - [x] Create `instructions.md`, `files/`, and `schemas/` for each agent.
-    - [x] Create a central `/tools` directory.
-    - [x] Create `protocol.py` for communication schemas.
-- [x] **Implement Storage Layer**
-    - [x] Define `Storage` abstract base class.
-    - [x] Define data models in `models.py`.
-    - [x] Implement `SqliteStorage`.
-- [x] **Implement `MarketAnalyst` Agent**
-    - [x] Write `instructions.md`.
-    - [x] Implement `FetchMarketData` tool.
-    - [x] Implement `CheckTokenSecurity` tool.
-    - [x] Implement `CalculateTechnicalIndicator` tool.
-    - [x] Implement `MarketAnalyst` agent.
-- [x] **Implement `Trader` Agent**
-    - [x] Write `instructions.md`.
-    - [x] Implement wallet management tools (`GetAccountBalance`, `GetGasPrice`, `GetTransactionReceipt`).
-    - [x] Implement DEX tools (`ExecuteSwap`, `ExecuteTransactionSimulation`, `RevokeApprovalTool`) (placeholders).
-    - [x] Implement CEX tools (`ExecuteOrder`, `GetOrderBook`) (placeholders).
-    - [x] Implement `Trader` agent.
-- [x] **Implement `DeepTraderManager` Agent**
-    - [x] Write `instructions.md`.
-    - [x] Implement portfolio tools (`GetPortfolio`).
-    - [x] Implement communication tools (`ApproveTradeTool`, `RejectTradeTool`).
-    - [x] Implement risk management tools (`AdjustGlobalRiskParameters`, `PauseTradingTool`).
-    - [x] Implement `DeepTraderManager` agent.
-- [x] **Implement `PortfolioManager` Agent**
-    - [x] Write `instructions.md`.
-    - [x] Implement portfolio analysis tools (`CalculatePortfolioMetrics`, `CalculatePortfolioRisk`, `GetTradeHistoryFromDB`).
-    - [x] Implement `PortfolioManager` agent.
-- [x] **Implement `AnalistaFundamentalista` Agent**
-    - [x] Write `instructions.md`.
-    - [x] Implement fundamental analysis tools (`FetchNewsTool`, `FetchFundamentalDataTool`, `AnalyzeDocumentTool`, `FetchBlockchainDataTool`, `FetchSocialMediaTool`).
-    - [x] Implement `AnalistaFundamentalista` agent.
-- [x] **Implement `AnalistaDeSentimento` Agent**
-    - [x] Write `instructions.md`.
-    - [x] Implement sentiment analysis tools (`AnalyzeSentimentTool`, `SendInternalAlertTool`).
-    - [x] Implement `AnalistaDeSentimento` agent.
-- [x] **Implement `RiskAnalyst` Agent**
-    - [x] Write `instructions.md`.
-    - [x] Implement risk analysis tools (`CalculateRiskMetricsTool`, `ManageBlacklistTool`, `DetectAnomaliesTool`, `StressTestingTool`).
-    - [x] Implement `RiskAnalyst` agent.
-- [x] **Implement `StrategyAgent` Agent**
-    - [x] Write `instructions.md`.
-    - [x] Implement strategy analysis tools (`AnalyzePerformanceTool`, `FetchHistoricalDataTool`, `CheckArbitrageOpportunitiesTool`, `IdentifyMarketRegimeTool`).
-    - [x] Implement `StrategyAgent` agent.
-- [x] **Implement `AssetManager` Agent**
-    - [x] Write `instructions.md`.
-    - [x] Implement asset management tools (`MonitorTransactionsTool`, `CheckWalletSecurityTool`, `SystemMonitoringTool`, `SecureTransferTool`, `FetchSecretTool`).
-    - [x] Implement `AssetManager` agent.
-- [x] **Implement `ComplianceOfficer` Agent**
-    - [x] Write `instructions.md`.
-    - [x] Implement compliance tools (`ComplianceCheckTool`, `CalculateFeesTool`, `GenerateFinancialReportsTool`, `RegulatoryWatchTool`).
-    - [x] Implement `ComplianceOfficer` agent.
-- [x] **Implement `LearningCoordinator` Agent**
-    - [x] Write `instructions.md`.
-    - [x] Implement learning tools (`KnowledgeStorageTool`, `AnalyzeAgentPerformanceTool`, `AdjustAgentInstructionsTool`, `AdjustToolParametersTool`).
-    - [x] Implement `LearningCoordinator` agent.
-- [x] **Implement `Dev` Agent**
-    - [x] Write `instructions.md`.
-    - [x] Implement dev tools (`DevelopmentEnvironmentTool`, `VersionControlTool`, `ContainerizationTool`, `CICDTool`, `DependencyManagementTool`, `TestingFrameworkTool`, `ProjectManagementTool`, `DocumentationGeneratorTool`).
-    - [x] Implement `Dev` agent.
+## 2. Refactoring & Fixes
+- [x] **Fix:** Resolve class redefinition in `backend/tools/strategy.py`
+- [x] **Refactor:** Standardize agent model initialization to reduce redundancy
+- [ ] **Cleanup:** Address "TODO" comments in `packages/khala-agentmemory`
 
-## Phase 2: Integration and Testing
+## 3. Frontend & UI
+- [ ] Implement a simple UI for monitoring the bot (Partial)
+- [x] **Test:** Add unit/integration tests for Frontend components (Dashboard, AgentStatus)
+- [ ] **Feature:** Visualize `khala-agentmemory` Knowledge Graph (Strategy 56)
 
-- [ ] **Integrate Agents**
-    - [ ] Update `Agency` instance in `main.py` to include all agents.
-    - [ ] Implement the communication flow between agents using the defined protocol.
-- [ ] **Write Comprehensive Tests**
-    - [ ] Write unit tests for all tools.
-    - [ ] Write integration tests for the agents.
-    - [ ] Write end-to-end tests for the multi-agent system.
+## 4. Integration & Deployment
+- [ ] Add `khala-agentmemory` as a submodule (Done/In-Tree)
+- [ ] Deploy the bot to a cloud environment
+- [x] **Docs:** Create root `AGENTS.md`
+- [x] **Docs:** Update `README.md` to reflect current architecture
 
-## Phase 3: Advanced Features
-
-- [ ] **Implement Full Tool Logic**
-    - [ ] Replace placeholder implementations with full logic for all tools.
-- [ ] **Implement Knowledge Base**
-    - [ ] Set up a vector database (e.g., ChromaDB).
-    - [ ] Implement `ConsultKnowledgeBase` and `RAGQueryTool`.
-- [ ] **Implement Backtesting Engine**
-    - [ ] Implement `BacktestingTool` and `OptimizeStrategyTool`.
-- [ ] **Implement MCP Integration**
-    - [ ] Implement MCP clients for non-critical tools.
+## 5. Critical Architecture Hardening (The Necromancer's Plan)
+- [x] **Security:** Implement Zero Trust Authentication (API Key Hash) in `backend/main.py`.
+- [x] **Concurrency:** Fix Global Shared State by implementing Team Factory in `backend/agents.py`.
+- [x] **Data:** Implement `SafeDecimal` and WAL mode in `backend/storage/sqlite.py`.
+- [x] **Quality:** Fix silent failures and duplicates in `backend/tools/wallet.py`.
+- [ ] **DEX:** Refactor `backend/tools/dex.py` to use `AsyncWeb3` and singleton provider (Rite 5).
+- [ ] **DEX:** Externalize `NATIVE_TOKEN_SENTINEL` and gas configs (Rite 6).
+- [ ] **Portfolio:** Fix N+1 Query issue in `backend/tools/portfolio.py` (Rite 7).
+- [ ] **Frontend:** Implement Full Cookie Auth (requires Backend `/login` endpoint) to replace sessionStorage.

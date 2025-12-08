@@ -32,3 +32,6 @@ __pycache__/
 env/
 venv/
 .env
+sqlite.db
+test_storage.db*
+*.db
