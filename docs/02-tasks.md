@@ -60,6 +60,21 @@
 - [x] **Implement `FourierToolkit` (`backend/tools/math_tools.py`)**
     - [x] [Scavenger] Implement FFT-based trend extraction from `stockpredictionai`.
 
+## Phase 3.5: The Harvest Integration (Multi-Repo Scavenger Hunt)
+
+### 3.5.1 The Champions Integration
+- [ ] **Refactor `QuantitativeAnalysisToolkit` (Metrics Champion: `ffn`)**
+    - [ ] Enhance metrics with `ffn`-style vectorized calcs (Drawdown, Sortino).
+    - [ ] Ensure functions are clean and decoupled.
+- [ ] **Implement `OptionsMathToolkit` (Math Champion: `vollib`)**
+    - [ ] Create `backend/tools/options_math.py`.
+    - [ ] Implement Black-Scholes and Greeks using `vollib` (or rational approximation logic).
+- [ ] **Standardize Technical Analysis (TA Champion: `pandas-ta`)**
+    - [ ] Verify `backend/tools/technical_analysis.py` uses `pandas-ta` core logic.
+    - [ ] Ensure consistent indicator naming conventions (as per OpenBB standard).
+- [ ] **Market Data Provider Pattern (Architecture Champion: `OpenBB`)**
+    - [ ] (Refactor) Ensure `MarketDataToolkit` separates "Source" from "Logic" (Interface pattern).
+
 ## Phase 4: Security & Optimization (AI Memecoin Bot)
 
 ### 4.1 Zero Trust Security
