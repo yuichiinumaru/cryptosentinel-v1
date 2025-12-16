@@ -12,6 +12,7 @@ from backend.tools.portfolio import portfolio_toolkit
 from backend.tools.market_data import market_data_toolkit
 # from backend.tools.asset_management import asset_management_toolkit # To be fixed in Rite 3
 from backend.tools.risk_management import risk_management_toolkit
+from backend.khala_integration import KhalaMemoryToolkit
 
 # Import storage and config
 from backend.storage.sqlite import SqliteStorage
@@ -68,7 +69,7 @@ def get_crypto_trading_team(session_id: str) -> Team:
         name="DeepTraderManager",
         role="Trading Team Leader",
         instructions_path=os.path.join(base_dir, "DeepTraderManager/instructions.md"),
-        tools=[], # Manager delegates, doesn't use tools directly usually
+        tools=[KhalaMemoryToolkit()], # Manager delegates, doesn't use tools directly usually
         model_id=model.id
     )
 
@@ -77,7 +78,7 @@ def get_crypto_trading_team(session_id: str) -> Team:
         name="MarketAnalyst",
         role="Market Analyst",
         instructions_path=os.path.join(base_dir, "MarketAnalyst/instructions.md"),
-        tools=[market_data_toolkit],
+        tools=[market_data_toolkit, KhalaMemoryToolkit()],
         model_id=model.id
     )
 
@@ -86,7 +87,7 @@ def get_crypto_trading_team(session_id: str) -> Team:
         name="Trader",
         role="Execution Trader",
         instructions_path=os.path.join(base_dir, "Trader/instructions.md"),
-        tools=[DexToolkit(), portfolio_toolkit], # Instantiate DexToolkit fresh? Ideally shared connection.
+        tools=[DexToolkit(), portfolio_toolkit, KhalaMemoryToolkit()], # Instantiate DexToolkit fresh? Ideally shared connection.
         model_id=model.id
     )
 
@@ -95,7 +96,7 @@ def get_crypto_trading_team(session_id: str) -> Team:
         name="RiskAnalyst",
         role="Risk Manager",
         instructions_path=os.path.join(base_dir, "RiskAnalyst/instructions.md"),
-        tools=[risk_management_toolkit],
+        tools=[risk_management_toolkit, KhalaMemoryToolkit()],
         model_id=model.id
     )
 

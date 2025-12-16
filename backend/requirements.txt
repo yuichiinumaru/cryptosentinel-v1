@@ -80,3 +80,4 @@ scipy
 
 pytest
 pytest-asyncio
+surrealdb>=1.0.0
