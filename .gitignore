@@ -35,3 +35,6 @@ venv/
 sqlite.db
 test_storage.db*
 *.db
+
+# Research
+docs/arxiv/*.pdf
