@@ -1,3 +1,7 @@
+"""
+Integration module for Khala Memory System.
+Provides the KhalaMemoryToolkit for agents to interact with long-term memory.
+"""
 import os
 import logging
 from typing import List, Dict, Any, Optional

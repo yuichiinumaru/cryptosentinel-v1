@@ -8,6 +8,7 @@ from backend.tools.market_data import MarketDataToolkit
 from backend.tools.market_correlation import MarketCorrelationToolkit
 from backend.tools.security import SecurityToolkit
 from backend.tools.math_tools import FourierToolkit
+from backend.khala_integration import KhalaMemoryToolkit
 
 def get_bull_researcher(model: Gemini, session_id: str = None) -> Agent:
     return Agent(
@@ -20,7 +21,8 @@ def get_bull_researcher(model: Gemini, session_id: str = None) -> Agent:
             QuantitativeAnalysisToolkit(),
             MarketCorrelationToolkit(),
             FourierToolkit(),
-            MarketDataToolkit()
+            MarketDataToolkit(),
+            KhalaMemoryToolkit()
         ],
         instructions=[
             "You are the Bullish Researcher. Your goal is to find reasons to BUY.",
@@ -51,7 +53,8 @@ def get_bear_researcher(model: Gemini, session_id: str = None) -> Agent:
             MarketCorrelationToolkit(),
             FourierToolkit(),
             SecurityToolkit(), # Bear checks security risks!
-            MarketDataToolkit()
+            MarketDataToolkit(),
+            KhalaMemoryToolkit()
         ],
         instructions=[
             "You are the Bearish Researcher. Your goal is to find reasons to SELL or AVOID.",
@@ -78,6 +81,7 @@ def get_debate_coordinator(model: Gemini, session_id: str = None) -> Agent:
         tools=[
             QuantitativeAnalysisToolkit(),
             SecurityToolkit(), # Judge double checks security
+            KhalaMemoryToolkit()
         ],
         instructions=[
             "You are the Debate Coordinator and Chief Risk Officer.",

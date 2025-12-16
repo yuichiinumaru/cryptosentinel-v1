@@ -34,6 +34,9 @@ The system is composed of three main pillars:
 
 ### 3.2. Backend Setup
 ```bash
+# Install khala-memory in editable mode
+pip install -e packages/khala-agentmemory
+
 cd backend
 pip install -r requirements.txt
 # Configure .env (see deployment_guide.md)
