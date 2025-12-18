@@ -7,8 +7,9 @@ from typing import Dict, Any, List
 from agno.tools.toolkit import Toolkit
 from pydantic import BaseModel, Field
 
-from backend.storage.models import ActivityData
+from backend.storage.models import ActivityData, TradeData
 from backend.storage.sqlite import SqliteStorage
+from backend.tools.consensus import ConsensusToolkit
 
 
 def _get_storage() -> SqliteStorage:
@@ -118,6 +119,77 @@ learning_toolkit.register(get_trade_history)
 learning_toolkit.register(analyze_performance)
 learning_toolkit.register(adjust_agent_instructions)
 learning_toolkit.register(adjust_tool_parameters)
+
+
+class EvaluateConsensusPerformanceInput(BaseModel):
+    trade_id: str = Field(..., description="The ID of the trade to evaluate against.")
+    votes: List[str] = Field(..., description="The list of votes from the agents.")
+
+class EvaluateConsensusPerformanceOutput(BaseModel):
+    reward: float = Field(..., description="Reward signal based on performance. +1 for correct, -1 for incorrect.")
+    consensus_vote: str = Field(..., description="The majority vote.")
+    actual_outcome: str = Field(..., description="The actual outcome of the trade (PROFIT or LOSS).")
+    recommendation: str = Field(..., description="Recommendation for adjusting agent instructions.")
+
+def evaluate_consensus_performance(input: EvaluateConsensusPerformanceInput) -> EvaluateConsensusPerformanceOutput:
+    """
+    Evaluates the performance of a consensus vote against a trade's actual outcome.
+    Generates a reward signal and a recommendation for the LearningCoordinator.
+    This simulates the core idea of the research paper 2503.19595.
+    """
+    storage = _get_storage()
+    consensus_toolkit = ConsensusToolkit()
+
+    # Get the trade from storage
+    trade = storage.get_trade_by_id(input.trade_id)
+    if not trade:
+        return EvaluateConsensusPerformanceOutput(
+            reward=0.0,
+            consensus_vote="ERROR",
+            actual_outcome="UNKNOWN",
+            recommendation=f"Could not find trade with ID {input.trade_id}."
+        )
+
+    # Determine actual outcome
+    actual_outcome = "PROFIT" if float(trade.profit) > 0 else "LOSS"
+
+    # Get consensus vote
+    consensus_vote = consensus_toolkit.majority_vote(input.votes)
+
+    # Simple reward mechanism
+    is_correct = (consensus_vote == "BULLISH" and actual_outcome == "PROFIT") or \
+                 (consensus_vote == "BEARISH" and actual_outcome == "LOSS")
+    reward = 1.0 if is_correct else -1.0
+
+    # Simulate Leave-One-Out analysis to find the most influential agent
+    influential_vote_index = -1
+    for i in range(len(input.votes)):
+        leave_one_out_votes = input.votes[:i] + input.votes[i+1:]
+        new_consensus = consensus_toolkit.majority_vote(leave_one_out_votes)
+        if new_consensus != consensus_vote:
+            influential_vote_index = i
+            break
+
+    recommendation = (
+        f"Consensus vote '{consensus_vote}' was {'CORRECT' if is_correct else 'INCORRECT'} "
+        f"against actual outcome '{actual_outcome}'. Reward: {reward}. "
+    )
+    if influential_vote_index != -1:
+        recommendation += (
+            f"The vote at index {influential_vote_index} ('{input.votes[influential_vote_index]}') was critical. "
+            f"Consider strengthening the reasoning of agents that align with the correct outcome."
+        )
+    else:
+        recommendation += "The consensus was strong. Reinforce all agents that contributed to the correct vote."
+
+    return EvaluateConsensusPerformanceOutput(
+        reward=reward,
+        consensus_vote=consensus_vote,
+        actual_outcome=actual_outcome,
+        recommendation=recommendation
+    )
+
+learning_toolkit.register(evaluate_consensus_performance)
 class LearningToolkit(Toolkit):
     def __init__(self, **kwargs):
         super().__init__(name="learning", tools=[
