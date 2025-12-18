@@ -18,6 +18,7 @@ from functools import wraps
 from backend.tools.market_data import market_data_toolkit
 # from backend.tools.asset_management import asset_management_toolkit # To be fixed in Rite 3
 from backend.tools.risk_management import risk_management_toolkit
+from backend.tools.traffic_rules import TrafficRuleToolkit
 from backend.khala_integration import KhalaMemoryToolkit
 
 # Import storage and config
@@ -77,7 +78,7 @@ def get_crypto_trading_team(session_id: str) -> Team:
         name="DeepTraderManager",
         role="Trading Team Leader",
         instructions_path=os.path.join(base_dir, "DeepTraderManager/instructions.md"),
-        tools=[KhalaMemoryToolkit()], # Manager delegates, doesn't use tools directly usually
+        tools=[KhalaMemoryToolkit(), TrafficRuleToolkit()], # Manager delegates, doesn't use tools directly usually
         model_id=model.id
     )
 
