@@ -1,3 +1,4 @@
+import asyncio
 import os
 import json
 import logging
@@ -20,6 +21,7 @@ from slowapi.errors import RateLimitExceeded
 from agno.tools.duckduckgo import DuckDuckGoTools
 from backend.storage.models import TradeData, ActivityData
 from backend.agents import get_crypto_trading_team, storage
+from backend.tools.consensus import ConsensusToolkit
 
 # Configure Logging
 log_level_env = os.getenv("LOG_LEVEL", "INFO")
@@ -276,14 +278,83 @@ async def chat_with_agent(request: Request, chat_req: ChatRequest, api_key: str 
     """
     try:
         session_id = get_session_id(api_key)
+        consensus_toolkit = ConsensusToolkit()
 
-        def run_agent_sync(msg: str, sess_id: str):
-            # Factory pattern: Create the team for this specific session
-            team = get_crypto_trading_team(sess_id)
-            return team.run(msg)
+        # New Consensus Logic
+        if "with consensus" in chat_req.message.lower():
+            k = int(os.getenv("CONSENSUS_SAMPLES", "3"))
 
-        run_output = await run_in_threadpool(run_agent_sync, chat_req.message, session_id)
+            async def run_market_analyst_concurrently(msg: str, sess_id: str):
+                # This function is designed to be run concurrently.
+                return await run_in_threadpool(run_market_analyst_sync, msg, sess_id)
 
+            def run_market_analyst_sync(msg: str, sess_id: str) -> str:
+                # This is the synchronous function that will be executed in the threadpool.
+                team = get_crypto_trading_team(sess_id)
+                market_analyst = team.get_member("MarketAnalyst")
+                if not market_analyst:
+                    # Raise an exception to be caught by the calling task
+                    raise ValueError("MarketAnalyst agent not found in the team.")
+
+                # The agent's run method might be blocking, so it's correctly wrapped.
+                result = market_analyst.run(msg)
+
+                # Ensure we return a simple string
+                if hasattr(result, "get_content_as_string"):
+                    return result.get_content_as_string() or ""
+                return str(result)
+
+            analysis_prompt = chat_req.message.lower().replace("with consensus", "").strip()
+
+            # Create k concurrent tasks
+            tasks = [run_market_analyst_concurrently(analysis_prompt, session_id) for _ in range(k)]
+
+            try:
+                # Execute tasks concurrently and gather results
+                analyst_outputs = await asyncio.gather(*tasks, return_exceptions=True)
+            except Exception as e:
+                logger.exception("An error occurred during concurrent agent execution.")
+                raise HTTPException(status_code=500, detail=f"Error during consensus generation: {e}")
+
+
+            votes = []
+            for output in analyst_outputs:
+                if isinstance(output, Exception):
+                    logger.error(f"One of the analyst agents failed: {output}")
+                    votes.append("NEUTRAL") # Default to neutral on error
+                    continue
+
+                # A simple heuristic to extract the vote
+                if "BULLISH" in output.upper():
+                    votes.append("BULLISH")
+                elif "BEARISH" in output.upper():
+                    votes.append("BEARISH")
+                else:
+                    votes.append("NEUTRAL")
+
+            consensus = consensus_toolkit.majority_vote(votes)
+
+            # Now, feed the consensus to the manager
+            manager_prompt = f"The MarketAnalyst team has reached a '{consensus}' consensus on the following topic: '{analysis_prompt}'. Please proceed with the next logical step."
+
+            def run_manager_sync(msg: str, sess_id: str):
+                team = get_crypto_trading_team(sess_id)
+                manager = team.get_member("DeepTraderManager")
+                if not manager:
+                    return "Error: DeepTraderManager not found."
+                return manager.run(msg)
+
+            run_output = await run_in_threadpool(run_manager_sync, manager_prompt, session_id)
+
+        else:
+            # Original logic for non-consensus requests
+            def run_agent_sync(msg: str, sess_id: str):
+                team = get_crypto_trading_team(sess_id)
+                return team.run(msg)
+
+            run_output = await run_in_threadpool(run_agent_sync, chat_req.message, session_id)
+
+        # Process final output (same as before)
         final_response = ""
         if hasattr(run_output, "get_content_as_string"):
             final_response = run_output.get_content_as_string() or ""
@@ -293,7 +364,6 @@ async def chat_with_agent(request: Request, chat_req: ChatRequest, api_key: str 
             final_response = run_output
         else:
             try:
-                # Handle iterator output if any (exhaust it)
                 for chunk in run_output:
                     if isinstance(chunk, dict) and "content" in chunk:
                         final_response += str(chunk["content"])
