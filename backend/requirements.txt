@@ -81,3 +81,11 @@ scipy
 pytest
 pytest-asyncio
 surrealdb>=1.0.0
+
+beautifulsoup4
+rapidfuzz
+
+python-dotenv
+
+google-generativeai
+markdown-it-py
