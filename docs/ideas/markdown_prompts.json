@@ -1,0 +1,32 @@
+[
+  {
+    "prompt": "Explain the concept of 'impermanent loss' in decentralized finance (DeFi) liquidity pools. Provide a simple example."
+  },
+  {
+    "prompt": "Compare and contrast the top 3 layer-2 scaling solutions for Ethereum. Include details on their technology, transaction fees, and adoption."
+  },
+  {
+    "prompt": "What is the role of oracles in blockchain technology? Describe two different oracle solutions and their mechanisms."
+  },
+  {
+    "prompt": "Summarize the key differences between centralized exchanges (CEX) and decentralized exchanges (DEX). List the pros and cons of each."
+  },
+  {
+    "prompt": "Describe the tokenomics of a popular DeFi protocol (e.g., Uniswap, Aave, or MakerDAO). Explain how its token accrues value."
+  },
+  {
+    "prompt": "What are the main arguments for and against the long-term value of Bitcoin as a store of value, comparing it to gold?"
+  },
+  {
+    "prompt": "Provide a step-by-step guide on how to safely self-custody cryptocurrencies using a hardware wallet."
+  },
+  {
+    "prompt": "Analyze the potential impact of Central Bank Digital Currencies (CBDCs) on the cryptocurrency market."
+  },
+  {
+    "prompt": "What is MEV (Maximal Extractable Value)? Explain two common examples of MEV, such as front-running and sandwich attacks."
+  },
+  {
+    "prompt": "Create a brief investment thesis for a specific layer-1 blockchain (other than Ethereum or Bitcoin). Outline its strengths, weaknesses, opportunities, and threats (SWOT analysis)."
+  }
+]
