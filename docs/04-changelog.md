@@ -16,3 +16,10 @@
 ### Architecture
 - Defined "Factory Pattern" for Agents to solve state leakage.
 - Defined "Async-Only" mandate for Tools.
+
+## [0.2.0] - ARTEMIS Integration - 2025-12-18
+### Architecture Harvesting
+- **Event:** ARTEMIS Architecture Harvesting.
+- **Decision:** Adopting ARTEMIS Dynamic Prompting model to solve Static Context limitations.
+- **Decision:** Implementing "Ephemerality" via `AgentSpawner` (Python-native adapter of ARTEMIS Rust Spawner).
+- **Added:** `docs/00-draft.md` (Research), `docs/01-plan.md` (Strategy), `docs/02-tasks.md` (Roadmap).

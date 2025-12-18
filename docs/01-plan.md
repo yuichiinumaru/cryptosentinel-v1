@@ -1,87 +1,63 @@
-# Implementation Plans
+# Strategic Architecture: ARTEMIS Porting Plan
 
-This document outlines the strategic plans to enhance CryptoSentinel, moving from a fragile prototype to a production-grade system.
+## 1. Architecture Pattern
+We will integrate ARTEMIS concepts into the **CFA (Cognitive Fusion Architecture)** of `codeswarm`.
 
-## Phase 1: Structural Stabilization (Operation Ironclad)
-**Goal:** Fix critical architectural and security flaws identified in the Autopsy.
+### Layer Integration
+*   **L1 (Sensation):** Unchanged (Market Data).
+*   **L2 (Perception):** **New Triage Layer.** A lightweight router agent that analyzes intent before the full Team is engaged.
+*   **L3 (Cognition):** **Dynamic Prompting.** Agents in this layer (Analyst, Trader) will have their instructions built at runtime.
+*   **L4 (Action):** **Ephemeral Workers.** Specific tasks (e.g., "Verify Token Contract") will spawn a disposable agent rather than using a generalist.
 
-1.  **Secure Architecture:**
-    *   Implement **Factory Pattern** for Agent instantiation to fix global state leaks.
-    *   Enforce **Async-Only** I/O for Web3 and HTTP calls to fix thread blocking.
-    *   Secure `API_KEY` handling (Env vars, strict validation).
+## 2. Domain Decomposition
 
-2.  **Resource Management:**
-    *   Refactor `DexToolkit` to use a shared/pooled Web3 connection.
-    *   Fix N+1 database write issues in `PortfolioToolkit`.
+### Domain: DynamicPrompting (`backend/scaffolding/`)
+*   **Responsibility:** Assembling system prompts from fragments.
+*   **Components:**
+    *   `PromptBuilder`: The builder pattern implementation.
+    *   `PromptTemplate`: Value objects holding template strings.
+    *   `ContextInjector`: Injects real-time data (Time, Market State) into the prompt.
 
-3.  **Governance Compliance:**
-    *   Enforce `AGENTS.md` and FORGE file structure.
+### Domain: AgentLifecycle (`backend/orchestration/`)
+*   **Responsibility:** Managing the birth and death of agents.
+*   **Components:**
+    *   `AgentSpawner`: Factory service to create agents on demand.
+    *   `AgentRegistry`: Tracks active ephemeral agents.
+    *   `TriageUnit`: The decision engine for spawning.
 
-## Phase 2: Intelligent Agent Architecture (Source: TradingAgents)
-**Goal:** Implement the "Debate" architecture to reduce hallucination and risk.
+## 3. Technology Decisions (ADRs)
 
-1.  **Adversarial Debate Workflow:**
-    *   **Source:** `TauricResearch/TradingAgents`
-    *   Implement `BullResearcher` and `BearResearcher` agents with conflicting system prompts.
-    *   Create a `DebateCoordinator` (Risk Debator) to moderate the discussion and force a synthesis.
+### ADR-001: Python-Native Spawning
+*   **Decision:** Implement `AgentSpawner` using Python classes and `Agno` factories, NOT Docker containers.
+*   **Rationale:**
+    *   **Constraints:** Sandbox environment limits Docker usage.
+    *   **Performance:** Lower overhead for intra-process communication.
+    *   **Compatibility:** Native integration with existing `backend/agents/__init__.py`.
 
-2.  **Situation-Aware Memory:**
-    *   Schema for `MarketSituation`.
-    *   Vector Search integration in `KhalaMemoryToolkit`.
+### ADR-002: Jinja2-based Prompting
+*   **Decision:** Use `Jinja2` for `PromptBuilder`.
+*   **Rationale:**
+    *   Powerful logic (loops, conditionals) within templates.
+    *   Standard Python library for text generation.
+    *   Superior to simple `f-string` for complex conditional instructions.
 
-3.  **Deep Thinking Prompts:**
-    *   Refactor Agent instructions to "Role-Task-Constraint-Output" format.
+## 4. Data Flow (Triage -> Spawn -> Execute)
 
-## Phase 3: Scientific Validation & Analysis (Source: AgentQuant, StockPredictionAI, SquareQuant)
-**Goal:** Incorporate advanced quantitative strategies and regime detection.
+```mermaid
+sequenceDiagram
+    participant User
+    participant Triage
+    participant Spawner
+    participant Worker
+    participant DB
 
-1.  **Regime Detection Engine:**
-    *   **Source:** `OnePunchMonk/AgentQuant`
-    *   Implement `MarketRegimeToolkit` to classify market state (Bull/Bear/Sideways/Crisis) using VIX and Momentum.
-    *   Inject "Regime" context into all agent prompts.
-
-2.  **Technical Analysis Engine:**
-    *   **Source:** `borisbanushev/stockpredictionai` & `ai-hedge-fund-crypto`
-    *   Implement `TechnicalAnalysisToolkit` (MA, MACD, Bollinger, Momentum).
-    *   Implement `FourierToolkit` for trend denoising.
-
-3.  **Risk Metrics Engine:**
-    *   **Source:** `SquareQuant/squarequant-package`
-    *   Implement `QuantitativeAnalysisToolkit` to calculate VaR, Sharpe, Sortino, and Calmar ratios.
-    *   Use these metrics in the Debate phase to validate proposed trades.
-
-4.  **Market Context Awareness:**
-    *   Implement `MarketCorrelationToolkit` (BTC/ETH context).
-    *   Implement `SentimentToolkit` (News Analysis).
-
-## Phase 4: Advanced Security & Optimization (Source: AI Memecoin Bot)
-**Goal:** Zero-Trust execution and simulation.
-
-1.  **Honeypot Protection:**
-    *   **Source:** `Jackhuang166/ai-memecoin-trading-bot`
-    *   Port "Honeypot Detection" logic (Go -> Python) to `SecurityToolkit`.
-    *   Implement "Win Probability" safety checks.
-
-2.  **MEV Protection:**
-    *   Flashbots integration.
-
-3.  **Simulation:**
-    *   Pre-trade simulation (Tenderly/Forked Mainnet).
-
-## Phase 5: Productization & Automation (The Final Mile)
-**Goal:** Transform the scripts into an autonomous, user-friendly trading bot.
-
-1.  **The Pulse (Scheduler):**
-    *   Implement `backend/scheduler.py` (using `apscheduler` or async loop) to run the Debate Team every 15 minutes.
-    *   Persist "Market Situation" and "Debate Outcome" to SQLite automatically.
-
-2.  **The Ledger (Paper Trading):**
-    *   Implement a `PaperTradingService` that listens for "BUY" signals from the Coordinator.
-    *   Track a virtual portfolio (USD Balance, Asset Holdings) in the database.
-    *   Calculate PnL based on real price updates.
-
-3.  **The Dashboard (Frontend):**
-    *   Update React UI to display:
-        *   **Market Regime Indicator** (Bull/Bear).
-        *   **Debate Logs** (Bull Thesis vs Bear Antithesis).
-        *   **Portfolio Performance** (Paper Trading PnL).
+    User->>Triage: "Analyze ETH volume"
+    Triage->>Triage: Classify Intent (Analytics)
+    Triage->>Spawner: Request(AgentType.ANALYST, Context)
+    Spawner->>DB: Fetch Templates
+    Spawner->>Spawner: Build Prompt (Dynamic)
+    Spawner->>Worker: Instantiate
+    Worker->>User: Execute & Reply
+    Worker->>Spawner: Signal Completion
+    Spawner->>Worker: Terminate
+```
