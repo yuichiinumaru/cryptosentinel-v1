@@ -1,0 +1,8 @@
+rule @inspect_large_trades
+trigger
+    execute_swap
+check
+    is_large_trade
+enforce
+    user_inspection
+end

@@ -9,6 +9,12 @@ from agno.team.team import Team
 # Import Toolkits (Classes, not instances)
 from backend.tools.dex import DexToolkit
 from backend.tools.portfolio import portfolio_toolkit
+from backend.agentspec.parser import AgentSpecParser
+from backend.agentspec.enforcement import AgentSpecEnforcement
+import backend.agentspec.predicates as predicates
+import backend.agentspec.enforcement as enforcements
+from agno.tools.toolkit import Toolkit
+from functools import wraps
 from backend.tools.market_data import market_data_toolkit
 # from backend.tools.asset_management import asset_management_toolkit # To be fixed in Rite 3
 from backend.tools.risk_management import risk_management_toolkit
@@ -20,6 +26,8 @@ from backend.storage.base import Storage
 from backend.config import Config
 from backend.factory import create_agent
 from backend.agents.researchers import get_bull_researcher, get_bear_researcher, get_debate_coordinator
+from backend.tools.agentspec import create_agentspec_tool
+from backend.agentspec.wrapper import apply_enforcement_to_toolkit
 
 load_dotenv()
 logger = logging.getLogger(__name__)
@@ -82,12 +90,48 @@ def get_crypto_trading_team(session_id: str) -> Team:
         model_id=model.id
     )
 
+    # --- AgentSpec Integration ---
+    # 1. Define predicate and enforcement maps
+    predicate_map = {
+        "is_large_trade": predicates.is_large_trade,
+    }
+    enforcement_map = {
+        "user_inspection": enforcements.user_inspection,
+        "stop": enforcements.stop,
+    }
+
+    # 2. Load and parse rules
+    dex_toolkit_instance = DexToolkit()
+    agentspec_tool = None
+    try:
+        rules_path = os.path.join(os.path.dirname(__file__), '..', 'agentspec', 'rules.ags')
+        with open(rules_path, 'r') as f:
+            rule_string = f.read()
+
+        parser = AgentSpecParser()
+        parsed_rules = parser.parse(rule_string)
+
+        enforcement_engine = AgentSpecEnforcement(parsed_rules, predicate_map, enforcement_map)
+
+        # Wrap the toolkit with the enforcement engine
+        dex_toolkit_instance = apply_enforcement_to_toolkit(dex_toolkit_instance, enforcement_engine)
+        agentspec_tool = create_agentspec_tool(enforcement_engine)
+
+    except FileNotFoundError:
+        logger.warning("AgentSpec rules file not found. Skipping enforcement.")
+    except Exception as e:
+        logger.error(f"Error initializing AgentSpec, enforcement disabled: {e}")
+
     # 3. Trader
+    trader_tools = [dex_toolkit_instance, portfolio_toolkit, KhalaMemoryToolkit()]
+    if agentspec_tool:
+        trader_tools.append(agentspec_tool)
+
     trader_agent = create_agent(
         name="Trader",
         role="Execution Trader",
         instructions_path=os.path.join(base_dir, "Trader/instructions.md"),
-        tools=[DexToolkit(), portfolio_toolkit, KhalaMemoryToolkit()], # Instantiate DexToolkit fresh? Ideally shared connection.
+        tools=trader_tools,
         model_id=model.id
     )
 
