@@ -552,7 +552,7 @@
   - [ ] Agent: Write `docs/ideas/2505.17612.md` using the Standard Template.
 
 ### [ ] Paper 2505.22954
-- **Status:** Pending
+- **Status:** In Progress
 - **Artifact:** `docs/ideas/2505.22954.md`
 - **Tasks:**
   - [ ] Agent: Read `docs/arxiv/2505.22954.pdf` fully.
