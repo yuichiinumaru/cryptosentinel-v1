@@ -672,7 +672,7 @@
   - [x] Agent: Write `docs/ideas/2510.03595.md` using the Standard Template.
 
 ### [ ] Paper 2510.04618
-- **Status:** Pending
+- **Status:** In Progress
 - **Artifact:** `docs/ideas/2510.04618.md`
 - **Tasks:**
   - [ ] Agent: Read `docs/arxiv/2510.04618.pdf` fully.
