@@ -20,6 +20,7 @@ from backend.tools.market_data import market_data_toolkit
 from backend.tools.risk_management import risk_management_toolkit
 from backend.tools.traffic_rules import TrafficRuleToolkit
 from backend.khala_integration import KhalaMemoryToolkit
+from backend.tools.cope import get_cope_toolkit
 
 # Import storage and config
 from backend.storage.sqlite import SqliteStorage
@@ -74,11 +75,12 @@ def get_crypto_trading_team(session_id: str) -> Team:
     # --- Instantiate Agents Freshly ---
 
     # 1. Deep Trader Manager (Leader)
+    cope_toolkit = get_cope_toolkit(session_id)
     deep_trader_manager = create_agent(
         name="DeepTraderManager",
         role="Trading Team Leader",
         instructions_path=os.path.join(base_dir, "DeepTraderManager/instructions.md"),
-        tools=[KhalaMemoryToolkit(), TrafficRuleToolkit()], # Manager delegates, doesn't use tools directly usually
+        tools=[KhalaMemoryToolkit(), TrafficRuleToolkit(), cope_toolkit],
         model_id=model.id
     )
 
@@ -157,6 +159,10 @@ def get_crypto_trading_team(session_id: str) -> Team:
     bear_researcher = get_bear_researcher(model, session_id)
     debate_coordinator = get_debate_coordinator(model, session_id)
 
+    # Add CopeAgent and PlannerAgent to the team
+    cope_agent = cope_toolkit.cope_agent
+    planner_agent = cope_agent.planner
+
     team = Team(
         members=[
             deep_trader_manager,
@@ -166,6 +172,8 @@ def get_crypto_trading_team(session_id: str) -> Team:
             bull_researcher,
             bear_researcher,
             debate_coordinator,
+            cope_agent,
+            planner_agent,
         ],
         name=f"CryptoSentinelTeam-{session_id}",
         session_id=session_id,
