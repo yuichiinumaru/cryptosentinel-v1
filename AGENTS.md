@@ -57,6 +57,12 @@ CryptoSentinel is a multi-agent trading system powered by:
     *   `05-ideas.md`: Feature Backlog.
     *   `06-rules.md`: Specific pattern rules (e.g., .cursorrules).
 
+### 5.1 Agent Cards (Standard Adopted from Paper 2502.01635)
+*   **Mandate:** Every individual agent within the system *must* have a corresponding `AGENT_CARD.md` file in its dedicated directory (e.g., `backend/MarketAnalyst/AGENT_CARD.md`).
+*   **Purpose:** This card serves as a structured, transparent, and standardized documentation of the agent's capabilities, components, and safety features.
+*   **Template:** All Agent Cards must be created using the official template located at `docs/templates/agent_card_template.md`.
+*   **Reference:** For a concrete example, see the `MarketAnalyst`'s card at `backend/MarketAnalyst/AGENT_CARD.md`.
+
 ## 6. External References
 
 *   **`references/` Folder:** This directory contains external repositories added as submodules. These are to be studied for architectural patterns, strategies, and code snippets.
