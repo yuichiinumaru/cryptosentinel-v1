@@ -58,6 +58,36 @@ sequenceDiagram
     Spawner->>Spawner: Build Prompt (Dynamic)
     Spawner->>Worker: Instantiate
     Worker->>User: Execute & Reply
-    Worker->>Spawner: Signal Completion
+    Worker->>Worker: Signal Completion
     Spawner->>Worker: Terminate
 ```
+
+## 5. Cognitive Fusion & Self-Correction (Research Integration)
+
+We are integrating advanced cognitive patterns derived from recent research to enhance agent robustness and reasoning depth.
+
+### 5.1 Cognitive Refinement Protocol (AVI - 2511.14446)
+*   **Goal:** Move from simple ReAct loops to a structured **Retrieve-Perceive-Review** cycle.
+*   **Implementation:**
+    *   **Retrieve:** Gather raw data (Market Data, Technicals).
+    *   **Perceive:** Apply quantitative models and signal processing.
+    *   **Review:** Synthesize findings and decide to *refine* (loop back) or *act*.
+*   **Component:** `CognitiveCoordinator` agent to manage this state machine.
+
+### 5.2 Codebase Self-Awareness (InfCode - 2511.16005)
+*   **Goal:** Enable agents to reason about the system's own code structure, facilitating self-diagnosis and "DevOps" capabilities.
+*   **Implementation:**
+    *   **AST Indexing:** A service to parse and index `backend/` source code.
+    *   **CodebaseToolkit:** Tools for semantic (Intent-to-Code) and structural (AST) queries.
+
+### 5.3 Agentic Verification Loop (AutoRocq - 2511.17330)
+*   **Goal:** Robust error handling through iterative refinement.
+*   **Implementation:**
+    *   **Task Tree:** Structured representation of goals and sub-goals.
+    *   **Refinement Loop:** Catching specific tool errors (e.g., `SlippageError`) and autonomously adjusting parameters before retrying.
+
+### 5.4 Intelligent Knowledge Retrieval (DataSage - 2511.14299)
+*   **Goal:** Reduce noise and cost by searching only when necessary.
+*   **Implementation:**
+    *   **Judge Logic:** A decision step to validate the need for external search (RAKG).
+    *   **Knowledge Synthesis:** Structuring search results into persistent "Knowledge Items" in `KhalaMemory`.
