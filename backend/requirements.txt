@@ -86,3 +86,21 @@ uvicorn
 web3==7.14.0
 websockets==15.0.1
 yarl==1.22.0
+
+pandas
+numpy
+scipy
+
+pytest
+pytest-asyncio
+surrealdb>=1.0.0
+
+beautifulsoup4
+rapidfuzz
+
+python-dotenv
+
+google-generativeai
+markdown-it-py
+
+-e ./packages/khala-agentmemory

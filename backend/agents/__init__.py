@@ -20,7 +20,8 @@ from backend.tools.market_data import market_data_toolkit
 from backend.tools.risk_management import risk_management_toolkit
 from backend.tools.traffic_rules import TrafficRuleToolkit
 from backend.khala_integration import KhalaMemoryToolkit
-from backend.tools.cope import get_cope_toolkit
+from agno.tools.duckduckgo import DuckDuckGoTools
+from backend.tools.sleep_time import sleep_time_toolkit
 
 # Import storage and config
 from backend.storage.sqlite import SqliteStorage
@@ -159,9 +160,14 @@ def get_crypto_trading_team(session_id: str) -> Team:
     bear_researcher = get_bear_researcher(model, session_id)
     debate_coordinator = get_debate_coordinator(model, session_id)
 
-    # Add CopeAgent and PlannerAgent to the team
-    cope_agent = cope_toolkit.cope_agent
-    planner_agent = cope_agent.planner
+    # 7. Mental Preparation Agent (for Sleep-Time Compute)
+    mental_preparation_agent = create_agent(
+        name="MentalPreparation",
+        role="Pre-computation Specialist",
+        instructions_path=os.path.join(base_dir, "MentalPreparation/instructions.md"),
+        tools=[market_data_toolkit, DuckDuckGoTools(), sleep_time_toolkit],
+        model_id=model.id
+    )
 
     team = Team(
         members=[
@@ -172,8 +178,7 @@ def get_crypto_trading_team(session_id: str) -> Team:
             bull_researcher,
             bear_researcher,
             debate_coordinator,
-            cope_agent,
-            planner_agent,
+            mental_preparation_agent,
         ],
         name=f"CryptoSentinelTeam-{session_id}",
         session_id=session_id,
