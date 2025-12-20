@@ -511,15 +511,15 @@
   - [x] Agent: Perform Gap Analysis (What exists vs What is needed).
   - [x] Agent: Write `docs/ideas/2504.13171.md` using the Standard Template.
 
-### [X] Paper 2504.20434
-- **Status:** Analysis Complete
+### [x] Paper 2504.20434
+- **Status:** Complete
 - **Artifact:** `docs/ideas/2504.20434.md`
 - **Tasks:**
-  - [X] Agent: Read `docs/arxiv/2504.20434.pdf` fully.
-  - [X] Agent: Deeply analyze current codebase architecture to understand context.
-  - [X] Agent: Brainstorm integration points (Paper Idea -> Codebase Module).
-  - [X] Agent: Perform Gap Analysis (What exists vs What is needed).
-  - [X] Agent: Write `docs/ideas/2504.20434.md` using the Standard Template.
+  - [x] Agent: Read `docs/arxiv/2504.20434.pdf` fully.
+  - [x] Agent: Deeply analyze current codebase architecture to understand context.
+  - [x] Agent: Brainstorm integration points (Paper Idea -> Codebase Module).
+  - [x] Agent: Perform Gap Analysis (What exists vs What is needed).
+  - [x] Agent: Write `docs/ideas/2504.20434.md` using the Standard Template.
 
 ### [x] Paper 2505.04588
 - **Status:** Complete
