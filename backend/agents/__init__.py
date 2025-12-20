@@ -76,11 +76,12 @@ def get_crypto_trading_team(session_id: str) -> Team:
     # --- Instantiate Agents Freshly ---
 
     # 1. Deep Trader Manager (Leader)
+    cope_toolkit = get_cope_toolkit(session_id)
     deep_trader_manager = create_agent(
         name="DeepTraderManager",
         role="Trading Team Leader",
         instructions_path=os.path.join(base_dir, "DeepTraderManager/instructions.md"),
-        tools=[KhalaMemoryToolkit(), TrafficRuleToolkit()], # Manager delegates, doesn't use tools directly usually
+        tools=[KhalaMemoryToolkit(), TrafficRuleToolkit(), cope_toolkit],
         model_id=model.id
     )
 
