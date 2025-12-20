@@ -91,3 +91,27 @@ We are integrating advanced cognitive patterns derived from recent research to e
 *   **Implementation:**
     *   **Judge Logic:** A decision step to validate the need for external search (RAKG).
     *   **Knowledge Synthesis:** Structuring search results into persistent "Knowledge Items" in `KhalaMemory`.
+
+### 5.5 Capability-Based Orchestration (Octopus - 2511.15351)
+*   **Goal:** Move from flat tool lists to high-level "Capabilities" to simplify agent decision-making.
+*   **Implementation:**
+    *   **Capability Manager:** A registry mapping capabilities (e.g., "OnChainAnalysis") to specific tools (`DexToolkit`).
+    *   **Dynamic Tool Loading:** Agents request capabilities, and the system loads the relevant toolset.
+
+### 5.6 Mixture of Retrievers (MoRA-RAG - 2511.14010)
+*   **Goal:** Enhance memory recall by combining different retrieval strategies.
+*   **Implementation:**
+    *   **Hybrid Search:** Combine Vector Search (Semantic) with Keyword Search (Lexical) in `KhalaMemory`.
+    *   **Graph Retrieval:** (Future) Integrate Graph-based queries if/when a Financial Knowledge Graph is built.
+
+### 5.7 Faithful Reasoning Traces (Faithful CoT - 2501.08156)
+*   **Goal:** Ensure agent reasoning is transparent and matches its actions.
+*   **Implementation:**
+    *   **Reasoning Logger:** Explicitly log the "Thought" component of the CoT process separately from the "Action".
+    *   **Verification Step:** A post-action check (or separate agent) to verify that the executed action aligns with the stated reasoning.
+
+### 5.8 Reasoning Profiles (Distilled Reasoning - 2503.03730)
+*   **Goal:** Steer agent behavior dynamically using specialized system prompts.
+*   **Implementation:**
+    *   **Profile Registry:** A library of system prompt fragments (e.g., "Skeptic", "Optimist", "Risk-Averse").
+    *   **Integration:** Feed these profiles into the `PromptBuilder` (Domain 2).
