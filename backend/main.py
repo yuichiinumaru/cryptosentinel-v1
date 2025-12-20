@@ -278,6 +278,27 @@ async def chat_with_agent(request: Request, chat_req: ChatRequest, api_key: str 
     """
     try:
         session_id = get_session_id(api_key)
+
+        # --- Sleep-Time Compute Phase ---
+        # Before handling the user's request, run the MentalPreparation agent to prime the memory.
+        # This is a non-blocking call that happens before the main logic.
+        async def run_mental_prep():
+            logger.info(f"[{session_id}] Initiating sleep-time compute phase...")
+            team = get_crypto_trading_team(session_id)
+            prep_agent = team.get_member("MentalPreparation")
+            if prep_agent:
+                # We run this in a threadpool because the agent's internal logic might be sync
+                await run_in_threadpool(prep_agent.run, "Begin mental preparation for the upcoming session.")
+                logger.info(f"[{session_id}] Sleep-time compute phase complete.")
+            else:
+                logger.warning(f"[{session_id}] MentalPreparation agent not found. Skipping sleep-time compute.")
+
+        # Run the preparation task. We don't need to block the user for this.
+        # For simplicity in this implementation, we'll run it quickly and await it.
+        # In a more advanced system, this could be a background task.
+        await run_mental_prep()
+        # --- End Sleep-Time Compute Phase ---
+
         consensus_toolkit = ConsensusToolkit()
 
         # New Consensus Logic
